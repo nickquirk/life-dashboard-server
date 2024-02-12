@@ -1,1 +1,1 @@
-# life-dashboard-backend
+# life-dashboard-server
