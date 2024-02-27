@@ -11,11 +11,11 @@ func GetRoutes(mx *chi.Mux) {
 
 	// Public Routes
 	mx.Get("/", helloWorld)
-	mx.Get("/tasks", getTasks)
+	mx.Post("/login", helloWorld)
 
 	// Private Routes
 	mx.Group(func(r chi.Router) {
 		r.Use(custommiddleware.Authenticate)
-		r.Get("/login", helloWorld)
+		r.Get("/tasks", helloWorld)
 	})
 }
