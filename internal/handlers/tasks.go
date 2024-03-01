@@ -14,7 +14,7 @@ import (
 )
 
 func helloWorld(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Hello World!"))
+	w.Write([]byte("Hello World!\n"))
 }
 
 func getTasks(w http.ResponseWriter, r *http.Request) {
@@ -25,7 +25,7 @@ func getTasks(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// If modifying these scopes, delete your previously saved token.json.
-	config, err := google.ConfigFromJSON(b, tasks.TasksReadonlyScope)
+	config, err := google.ConfigFromJSON(b, tasks.TasksScope)
 	if err != nil {
 		log.Fatalf("Unable to parse client secret file to config: %v", err)
 	}
