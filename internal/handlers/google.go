@@ -3,25 +3,21 @@ package handlers
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
 
 	"github.com/nickquirk/life-dashboard-server/internal/config"
+	"github.com/nickquirk/life-dashboard-server/internal/models"
+	"github.com/nickquirk/life-dashboard-server/internal/utils"
 )
-
-type User struct {
-	Id      string `json:"id"`
-	Email   string `json:"email"`
-	Picture string `json:"picture"`
-}
 
 // TODO
 // break out user data fetch into separte function
 // state as random variable in cookie
 // reauthorise in cookie?
+// User in models/user
 
 func GoogleLogin(w http.ResponseWriter, r *http.Request) {
 	url := config.AppConfig.GoogleLoginConfig.AuthCodeURL(os.Getenv("STATE"))
@@ -55,8 +51,6 @@ func GoogleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userData := User{}
-
 	rawUserData, err := io.ReadAll(resp.Body)
 	if err != nil {
 		http.Error(w, "Failed to parse Google response body", http.StatusInternalServerError)
@@ -64,12 +58,26 @@ func GoogleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	userData := models.User{}
+	userData.AccessToken = token.AccessToken
+
 	err = json.Unmarshal(rawUserData, &userData)
 	if err != nil {
 		http.Error(w, "Failed to unmarshal user data", http.StatusInternalServerError)
 		return
 	}
 
-	fmt.Printf("userData: %v/n", userData)
-	http.Redirect(w, r, "/tasks", http.StatusTemporaryRedirect)
+	jwt, err := utils.GenerateToken(userData)
+	if err != nil {
+		http.Error(w, "failed to generate jwt", http.StatusInternalServerError)
+		return
+	}
+
+	cookie := http.Cookie{
+		Name:  "lifeDashboard",
+		Value: jwt,
+	}
+
+	http.SetCookie(w, &cookie)
+	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 }
