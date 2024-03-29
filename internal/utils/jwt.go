@@ -13,11 +13,12 @@ var secretKey = os.Getenv("SECRET")
 
 func GenerateToken(user models.User) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"id":           user.Id,
-		"email":        user.Email,
-		"picture":      user.Picture,
-		"access_token": user.AccessToken,
-		"exp":          time.Now().Add(time.Hour * 6).Unix(),
+		"id":            user.Id,
+		"email":         user.Email,
+		"picture":       user.Picture,
+		"access_token":  user.AccessToken,
+		"refresh_token": user.RefreshToken,
+		"exp":           time.Now().Add(time.Hour * 6).Unix(),
 	})
 	return token.SignedString([]byte(secretKey))
 }
@@ -54,17 +55,27 @@ func VerifyToken(token string) (string, error) {
 }
 
 func GetUserFromToken(token string) (models.User, error) {
-	userData := models.User{}
+	user := models.User{}
 
 	// claims, err := VerifyToken(token)
 	// if err != nil {
-	// 	return userData, errors.New("unable to get claims from token")
+	// 	return user, errors.New("unable to get claims from token")
 	// }
 
-	// userData.Id = claims["id"].(string)
-	// userData.Email = claims["email"].(string)
-	// userData.Picture = claims["picture"].(string)
-	// userData.AccessToken = claims["access_token"].(string)
+	// user.Id = claims["id"].(string)
+	// user.Email = claims["email"].(string)
+	// user.Picture = claims["picture"].(string)
+	// user.AccessToken = claims["access_token"].(string)
 
-	return userData, nil
+	return user, nil
 }
+
+// func GetGoogleAuthTokenFromJwt(token string) (string, error) {
+// 	claimsMap, ok := parsedToken.Claims.(jwt.MapClaims)
+// 	if !ok {
+// 		return "", errors.New("invalid token claims ")
+// 	}
+
+// 	accessToken := claimsMap["access_token"].(string)
+
+// }

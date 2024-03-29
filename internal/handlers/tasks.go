@@ -29,7 +29,9 @@ func getTasks(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatalf("Unable to parse client secret file to config: %v", err)
 	}
+
 	client := utils.GetClient(config)
+	fmt.Printf("client: %v\n", client)
 
 	srv, err := tasks.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/nickquirk/life-dashboard-server/internal/models"
 	"golang.org/x/oauth2"
 )
 
@@ -16,14 +17,15 @@ func GetClient(config *oauth2.Config) *http.Client {
 	// The file token.json stores the user's access and refresh tokens, and is
 	// created automatically when the authorization flow completes for the first
 	// time.
-	// tokFile := "token.json"
-	// tok, err := TokenFromFile(tokFile)
-	// if err != nil {
-	// 	tok = GetTokenFromWeb(config)
-	// 	SaveToken(tokFile, tok)
-	// }
-	// return config.Client(context.Background(), tok)
-	return nil
+	tokFile := "token.json"
+	tok, err := TokenFromFile(tokFile)
+	if err != nil {
+		//tok = GetTokenFromWeb(config)
+		//SaveToken(tokFile, tok)
+		fmt.Printf("Error: %s\n", err)
+	}
+
+	return config.Client(context.Background(), tok)
 }
 
 // Request a token from the web, then returns the retrieved token.
@@ -65,4 +67,25 @@ func SaveToken(path string, token string) {
 	}
 	defer f.Close()
 	json.NewEncoder(f).Encode(token)
+}
+
+// Add logic to check if user is current user or already exists
+func SaveUser(path string, user models.User) error {
+	fmt.Printf("Saving user file to: %s\n", path)
+	jsonData, err := json.Marshal(user)
+	if err != nil {
+		return err
+	}
+	// Write JSON data to file
+	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
+		log.Fatalf("Unable to cache oauth token: %v", err)
+	}
+	defer f.Close()
+
+	_, err = f.Write(jsonData)
+	if err != nil {
+		return err
+	}
+	return nil
 }

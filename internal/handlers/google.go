@@ -11,6 +11,7 @@ import (
 	"github.com/nickquirk/life-dashboard-server/internal/config"
 	"github.com/nickquirk/life-dashboard-server/internal/models"
 	"github.com/nickquirk/life-dashboard-server/internal/utils"
+	"golang.org/x/oauth2"
 )
 
 // TODO
@@ -20,7 +21,7 @@ import (
 // User in models/user
 
 func GoogleLogin(w http.ResponseWriter, r *http.Request) {
-	url := config.AppConfig.GoogleLoginConfig.AuthCodeURL(os.Getenv("STATE"))
+	url := config.AppConfig.GoogleLoginConfig.AuthCodeURL(os.Getenv("STATE"), oauth2.AccessTypeOffline)
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }
 
@@ -60,10 +61,18 @@ func GoogleCallback(w http.ResponseWriter, r *http.Request) {
 
 	userData := models.User{}
 	userData.AccessToken = token.AccessToken
+	userData.RefreshToken = token.RefreshToken
+	userData.TokenExpiry = token.Expiry.String()
 
 	err = json.Unmarshal(rawUserData, &userData)
 	if err != nil {
 		http.Error(w, "Failed to unmarshal user data", http.StatusInternalServerError)
+		return
+	}
+
+	err = utils.SaveUser("user.json", userData)
+	if err != nil {
+		http.Error(w, "Failed to save user data", http.StatusInternalServerError)
 		return
 	}
 
