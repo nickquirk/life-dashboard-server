@@ -32,7 +32,7 @@ func Authenticate(next http.Handler) http.Handler {
 
 		//utils.SaveToken("token.json", authToken)
 
-		w.Write([]byte("Auth middleware hit!\n"))
+		//w.Write([]byte("Auth middleware hit!\n"))
 		next.ServeHTTP(w, r)
 	})
 }

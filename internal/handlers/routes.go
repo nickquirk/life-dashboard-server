@@ -18,6 +18,7 @@ func GetRoutes(mx *chi.Mux) {
 	// Private Routes
 	mx.Group(func(r chi.Router) {
 		r.Use(Authenticate)
-		r.Get("/tasks", getTasks)
+		r.Get("/tasks", getAllTaskLists)
+		r.Get("/tasks/{taskListId}", getAllTasksInList)
 	})
 }

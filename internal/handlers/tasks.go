@@ -3,9 +3,11 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/nickquirk/life-dashboard-server/internal/config"
 	"github.com/nickquirk/life-dashboard-server/internal/utils"
 	"google.golang.org/api/option"
@@ -27,7 +29,7 @@ func helloWorld(w http.ResponseWriter, r *http.Request) {
 
 // TODO
 // Send errors instead of log.Fatal
-func getTasks(w http.ResponseWriter, r *http.Request) {
+func getAllTaskLists(w http.ResponseWriter, r *http.Request) {
 	googleConfig := config.GoogleConfig()
 	ctx := context.Background()
 
@@ -64,6 +66,35 @@ func getTasks(w http.ResponseWriter, r *http.Request) {
 	resp, err := json.Marshal(taskLists)
 	if err != nil {
 		log.Fatalf("Error: %v", err)
+	}
+
+	w.Write(resp)
+}
+
+func getAllTasksInList(w http.ResponseWriter, r *http.Request) {
+	googleConfig := config.GoogleConfig()
+	ctx := context.Background()
+	taskListParam := chi.URLParam(r, "taskListId")
+
+	client, err := utils.GetClient(&googleConfig)
+	if err != nil {
+		log.Fatalf("Unable to create client: %s\n", err)
+	}
+
+	srv, err := tasks.NewService(ctx, option.WithHTTPClient(client))
+	if err != nil {
+		log.Fatalf("Unable to retrieve tasks Client %v", err)
+	}
+
+	t, err := srv.Tasks.List(taskListParam).Do()
+	if err != nil {
+		log.Fatalf("Error: %v\n", err)
+	}
+
+	fmt.Printf("Task: %v\n", t)
+	resp, err := t.MarshalJSON()
+	if err != nil {
+		log.Fatalf("Error: %v\n", err)
 	}
 
 	w.Write(resp)
