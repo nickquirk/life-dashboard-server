@@ -33,7 +33,7 @@ func Authenticate(next http.Handler) http.Handler {
 			return
 		}
 
-		fmt.Printf("auth tok: %s", authToken)
+		fmt.Printf("auth tok: %s\n", authToken)
 
 		//utils.SaveToken("token.json", authToken)
 

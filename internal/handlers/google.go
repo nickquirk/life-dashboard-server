@@ -18,7 +18,6 @@ import (
 // break out user data fetch into separte function
 // state as random variable in cookie
 // reauthorise in cookie?
-// User in models/user
 
 func GoogleLogin(w http.ResponseWriter, r *http.Request) {
 	url := config.AppConfig.GoogleLoginConfig.AuthCodeURL(os.Getenv("STATE"), oauth2.AccessTypeOffline)
@@ -70,7 +69,7 @@ func GoogleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = utils.SaveUser("user.json", userData)
+	err = utils.SaveUserToFile("user.json", userData)
 	if err != nil {
 		http.Error(w, "Failed to save user data", http.StatusInternalServerError)
 		return
