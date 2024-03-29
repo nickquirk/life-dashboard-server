@@ -5,33 +5,21 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 
+	"github.com/nickquirk/life-dashboard-server/internal/config"
 	"github.com/nickquirk/life-dashboard-server/internal/utils"
-	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
 	"google.golang.org/api/tasks/v1"
 )
 
-func helloWorld(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Hello World!\n"))
-}
-
 func getTasks(w http.ResponseWriter, r *http.Request) {
+	googleConfig := config.GoogleConfig()
 	ctx := context.Background()
-	b, err := os.ReadFile("credentials.json")
-	if err != nil {
-		log.Fatalf("Unable to read client secret file: %v", err)
-	}
 
-	// If modifying these scopes, delete your previously saved token.json.
-	config, err := google.ConfigFromJSON(b, tasks.TasksScope)
+	client, err := utils.GetClient(&googleConfig)
 	if err != nil {
-		log.Fatalf("Unable to parse client secret file to config: %v", err)
+		log.Fatalf("Unable to create client: %s\n", err)
 	}
-
-	client := utils.GetClient(config)
-	fmt.Printf("client: %v\n", client)
 
 	srv, err := tasks.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {

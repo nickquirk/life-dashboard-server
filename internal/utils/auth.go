@@ -4,10 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/nickquirk/life-dashboard-server/internal/models"
 	"golang.org/x/oauth2"
@@ -29,12 +27,13 @@ func GetClient(config *oauth2.Config) (*http.Client, error) {
 		RefreshToken: user.RefreshToken,
 	}
 
-	expiryTime, err := time.Parse(time.RFC3339, user.TokenExpiry)
-	if err != nil {
-		return nil, err
-	}
+	// expiryLayout := "2006-01-02 15:04:05.999999999 -0700 MST m=+3669.687948501"
+	// expiryTime, err := time.Parse(expiryLayout, user.TokenExpiry)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	tok.Expiry = expiryTime
+	// tok.Expiry = expiryTime
 
 	return config.Client(context.Background(), tok), nil
 }
@@ -61,6 +60,7 @@ func SaveUserToFile(path string, user models.User) error {
 	return nil
 }
 
+// Retrieve user data from a JSON file
 func GetUserFromFile(file string) (models.User, error) {
 	user := models.User{}
 	f, err := os.Open(file)
@@ -69,11 +69,7 @@ func GetUserFromFile(file string) (models.User, error) {
 	}
 	defer f.Close()
 
-	data, err := io.ReadAll(f)
-	if err != nil {
-		return user, err
-	}
-	err = json.Unmarshal(data, &user)
+	err = json.NewDecoder(f).Decode(&user)
 	if err != nil {
 		return user, err
 	}

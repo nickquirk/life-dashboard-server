@@ -58,10 +58,12 @@ func GoogleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userData := models.User{}
-	userData.AccessToken = token.AccessToken
-	userData.RefreshToken = token.RefreshToken
-	userData.TokenExpiry = token.Expiry.String()
+	// Add oauth2 tokens and expiry to userData
+	userData := models.User{
+		AccessToken:  token.AccessToken,
+		RefreshToken: token.RefreshToken,
+		TokenExpiry:  token.Expiry.String(),
+	}
 
 	err = json.Unmarshal(rawUserData, &userData)
 	if err != nil {
