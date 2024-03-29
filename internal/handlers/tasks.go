@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"context"
-	"fmt"
+	"encoding/json"
 	"log"
 	"net/http"
 
@@ -12,6 +12,21 @@ import (
 	"google.golang.org/api/tasks/v1"
 )
 
+type TaskLists struct {
+	Tasks []TaskList
+}
+
+type TaskList struct {
+	Title string `json:"title"`
+	Id    string `json:"id"`
+}
+
+func helloWorld(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("Hello World!\n"))
+}
+
+// TODO
+// Send errors instead of log.Fatal
 func getTasks(w http.ResponseWriter, r *http.Request) {
 	googleConfig := config.GoogleConfig()
 	ctx := context.Background()
@@ -31,13 +46,25 @@ func getTasks(w http.ResponseWriter, r *http.Request) {
 		log.Fatalf("Unable to retrieve task lists. %v", err)
 	}
 
-	list := fmt.Sprintln("Task Lists:")
-	if len(t.Items) > 0 {
-		for _, i := range t.Items {
-			fmt.Printf("%s (%s)\n", i.Title, i.Id)
-		}
-	} else {
-		fmt.Print("No task lists found.")
+	// Marshal the TaskLists struct into JSON
+	marshalled, err := json.Marshal(t.Items)
+	if err != nil {
+		log.Fatalf("Error marshalling TaskList items: %v", err)
 	}
-	w.Write([]byte(list))
+
+	// Unmarshal the JSON data into TaskLists struct
+	var taskLists TaskLists
+	if err := json.Unmarshal(marshalled, &taskLists.Tasks); err != nil {
+		log.Fatalf("Error unmarshalling TaskLists: %v", err)
+	}
+
+	// Set the content type of the response to application/json
+	w.Header().Set("Content-Type", "application/json")
+
+	resp, err := json.Marshal(taskLists)
+	if err != nil {
+		log.Fatalf("Error: %v", err)
+	}
+
+	w.Write(resp)
 }

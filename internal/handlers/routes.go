@@ -10,7 +10,6 @@ func GetRoutes(mx *chi.Mux) {
 
 	// Public Routes
 	mx.Get("/", helloWorld)
-	mx.Post("/login", helloWorld)
 
 	// Google OAuth2
 	mx.Get("/google-login", GoogleLogin)
