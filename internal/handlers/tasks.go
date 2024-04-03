@@ -29,7 +29,7 @@ func helloWorld(w http.ResponseWriter, r *http.Request) {
 
 // TODO
 // Send errors instead of log.Fatal
-func getAllTaskLists(w http.ResponseWriter, r *http.Request) {
+func getTaskLists(w http.ResponseWriter, r *http.Request) {
 	googleConfig := config.GoogleConfig()
 	ctx := context.Background()
 
@@ -43,11 +43,12 @@ func getAllTaskLists(w http.ResponseWriter, r *http.Request) {
 		log.Fatalf("Unable to retrieve tasks Client %v", err)
 	}
 
-	t, err := srv.Tasklists.List().MaxResults(10).Do()
+	t, err := srv.Tasklists.List().Do()
 	if err != nil {
 		log.Fatalf("Unable to retrieve task lists. %v", err)
 	}
 
+	// clean this up by using the marshalJSON method?
 	// Marshal the TaskLists struct into JSON
 	marshalled, err := json.Marshal(t.Items)
 	if err != nil {
@@ -71,30 +72,37 @@ func getAllTaskLists(w http.ResponseWriter, r *http.Request) {
 	w.Write(resp)
 }
 
-func getAllTasksInList(w http.ResponseWriter, r *http.Request) {
+func getTasksInList(w http.ResponseWriter, r *http.Request) {
 	googleConfig := config.GoogleConfig()
 	ctx := context.Background()
 	taskListParam := chi.URLParam(r, "taskListId")
 
 	client, err := utils.GetClient(&googleConfig)
 	if err != nil {
-		log.Fatalf("Unable to create client: %s\n", err)
+		message := fmt.Sprintf("Unable to create client: %s", err)
+		http.Error(w, message, http.StatusInternalServerError)
+		return
 	}
 
 	srv, err := tasks.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
-		log.Fatalf("Unable to retrieve tasks Client %v", err)
+		message := fmt.Sprintf("Unable to retrieve tasks client: %v", err)
+		http.Error(w, message, http.StatusInternalServerError)
+		return
 	}
 
 	t, err := srv.Tasks.List(taskListParam).Do()
 	if err != nil {
-		log.Fatalf("Error: %v\n", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
-	fmt.Printf("Task: %v\n", t)
+	// Set the content type of the response to application/json
+	w.Header().Set("Content-Type", "application/json")
+
 	resp, err := t.MarshalJSON()
 	if err != nil {
-		log.Fatalf("Error: %v\n", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
 	w.Write(resp)
