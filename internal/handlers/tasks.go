@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -28,37 +27,47 @@ func helloWorld(w http.ResponseWriter, r *http.Request) {
 }
 
 // TODO
-// Send errors instead of log.Fatal
+// Refactor to send string errors
 func getTaskLists(w http.ResponseWriter, r *http.Request) {
 	googleConfig := config.GoogleConfig()
 	ctx := context.Background()
 
 	client, err := utils.GetClient(&googleConfig)
 	if err != nil {
-		log.Fatalf("Unable to create client: %s\n", err)
+		message := fmt.Sprintf("Unable to create client: %s", err)
+		http.Error(w, message, http.StatusInternalServerError)
+		return
 	}
 
 	srv, err := tasks.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
-		log.Fatalf("Unable to retrieve tasks Client %v", err)
+		message := fmt.Sprintf("Unable to retrieve tasks client: %s", err)
+		http.Error(w, message, http.StatusInternalServerError)
+		return
 	}
 
 	t, err := srv.Tasklists.List().Do()
 	if err != nil {
-		log.Fatalf("Unable to retrieve task lists. %v", err)
+		message := fmt.Sprintf("Unable to retrieve tasklist: %s", err)
+		http.Error(w, message, http.StatusInternalServerError)
+		return
 	}
 
 	// clean this up by using the marshalJSON method?
 	// Marshal the TaskLists struct into JSON
 	marshalled, err := json.Marshal(t.Items)
 	if err != nil {
-		log.Fatalf("Error marshalling TaskList items: %v", err)
+		message := fmt.Sprintf("error marshalling tasklist items: %s", err)
+		http.Error(w, message, http.StatusInternalServerError)
+		return
 	}
 
 	// Unmarshal the JSON data into TaskLists struct
 	var taskLists TaskLists
 	if err := json.Unmarshal(marshalled, &taskLists.Tasks); err != nil {
-		log.Fatalf("Error unmarshalling TaskLists: %v", err)
+		message := fmt.Sprintf("error unmarshalling JSON: %s", err)
+		http.Error(w, message, http.StatusInternalServerError)
+		return
 	}
 
 	// Set the content type of the response to application/json
@@ -66,7 +75,9 @@ func getTaskLists(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := json.Marshal(taskLists)
 	if err != nil {
-		log.Fatalf("Error: %v", err)
+		message := fmt.Sprintf("unable to marshal JSON: %s", err)
+		http.Error(w, message, http.StatusInternalServerError)
+		return
 	}
 
 	w.Write(resp)
