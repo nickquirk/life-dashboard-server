@@ -104,7 +104,8 @@ func getTasksInList(w http.ResponseWriter, r *http.Request) {
 
 	t, err := srv.Tasks.List(taskListParam).Do()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		message := fmt.Sprintf("Unable to retrieve tasklist: %s", err)
+		http.Error(w, message, http.StatusInternalServerError)
 		return
 	}
 
@@ -113,7 +114,9 @@ func getTasksInList(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := t.MarshalJSON()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		message := fmt.Sprintf("unable to marshal JSON: %s", err)
+		http.Error(w, message, http.StatusInternalServerError)
+		return
 	}
 
 	w.Write(resp)
