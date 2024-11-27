@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -27,47 +28,38 @@ func helloWorld(w http.ResponseWriter, r *http.Request) {
 }
 
 // TODO
+// Send errors instead of log.Fatal
 // Refactor to send string errors
 func getTaskLists(w http.ResponseWriter, r *http.Request) {
-	googleConfig := config.GoogleConfig()
+	googleConfig := config.GetGoogleConfig()
 	ctx := context.Background()
 
 	client, err := utils.GetClient(&googleConfig)
 	if err != nil {
-		message := fmt.Sprintf("Unable to create client: %s", err)
-		http.Error(w, message, http.StatusInternalServerError)
-		return
+		log.Fatalf("Unable to create client: %s\n", err)
 	}
 
 	srv, err := tasks.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
-		message := fmt.Sprintf("Unable to retrieve tasks client: %s", err)
-		http.Error(w, message, http.StatusInternalServerError)
-		return
+		log.Fatalf("Unable to retrieve tasks Client %v", err)
 	}
 
 	t, err := srv.Tasklists.List().Do()
 	if err != nil {
-		message := fmt.Sprintf("Unable to retrieve tasklist: %s", err)
-		http.Error(w, message, http.StatusInternalServerError)
-		return
+		log.Fatalf("Unable to retrieve task lists. %v", err)
 	}
 
 	// clean this up by using the marshalJSON method?
 	// Marshal the TaskLists struct into JSON
 	marshalled, err := json.Marshal(t.Items)
 	if err != nil {
-		message := fmt.Sprintf("error marshalling tasklist items: %s", err)
-		http.Error(w, message, http.StatusInternalServerError)
-		return
+		log.Fatalf("Error marshalling TaskList items: %v", err)
 	}
 
 	// Unmarshal the JSON data into TaskLists struct
 	var taskLists TaskLists
 	if err := json.Unmarshal(marshalled, &taskLists.Tasks); err != nil {
-		message := fmt.Sprintf("error unmarshalling JSON: %s", err)
-		http.Error(w, message, http.StatusInternalServerError)
-		return
+		log.Fatalf("Error unmarshalling TaskLists: %v", err)
 	}
 
 	// Set the content type of the response to application/json
@@ -75,16 +67,14 @@ func getTaskLists(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := json.Marshal(taskLists)
 	if err != nil {
-		message := fmt.Sprintf("unable to marshal JSON: %s", err)
-		http.Error(w, message, http.StatusInternalServerError)
-		return
+		log.Fatalf("Error: %v", err)
 	}
 
 	w.Write(resp)
 }
 
 func getTasksInList(w http.ResponseWriter, r *http.Request) {
-	googleConfig := config.GoogleConfig()
+	googleConfig := config.GetGoogleConfig()
 	ctx := context.Background()
 	taskListParam := chi.URLParam(r, "taskListId")
 
@@ -104,8 +94,7 @@ func getTasksInList(w http.ResponseWriter, r *http.Request) {
 
 	t, err := srv.Tasks.List(taskListParam).Do()
 	if err != nil {
-		message := fmt.Sprintf("Unable to retrieve tasklist: %s", err)
-		http.Error(w, message, http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -114,9 +103,7 @@ func getTasksInList(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := t.MarshalJSON()
 	if err != nil {
-		message := fmt.Sprintf("unable to marshal JSON: %s", err)
-		http.Error(w, message, http.StatusInternalServerError)
-		return
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
 	w.Write(resp)

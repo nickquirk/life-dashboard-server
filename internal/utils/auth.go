@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/nickquirk/life-dashboard-server/internal/models"
 	"golang.org/x/oauth2"
@@ -27,13 +28,13 @@ func GetClient(config *oauth2.Config) (*http.Client, error) {
 		RefreshToken: user.RefreshToken,
 	}
 
-	// expiryLayout := "2006-01-02 15:04:05.999999999 -0700 MST m=+3669.687948501"
-	// expiryTime, err := time.Parse(expiryLayout, user.TokenExpiry)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	expiryLayout := "2006-01-02 15:04:05.999999999 -0700 MST m=+3669.687948501"
+	expiryTime, err := time.Parse(expiryLayout, user.TokenExpiry)
+	if err != nil {
+		return nil, err
+	}
 
-	// tok.Expiry = expiryTime
+	tok.Expiry = expiryTime
 
 	return config.Client(context.Background(), tok), nil
 }

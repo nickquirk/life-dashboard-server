@@ -1,27 +1,56 @@
 package config
 
 import (
-	"os"
-
-	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
+	"github.com/knadh/koanf/parsers/json"
+	"github.com/knadh/koanf/parsers/yaml"
+	"github.com/knadh/koanf/providers/file"
+	"github.com/knadh/koanf/v2"
 )
 
-type Config struct {
-	GoogleLoginConfig oauth2.Config
+type AppConfig struct {
+	App struct {
+		Name string
+	}
 }
 
-var AppConfig Config
+type Config interface {
+	LoadJson(path string) error
+	LoadYaml(path string) error
+	GetAsString(key string) string
+}
 
-func GoogleConfig() oauth2.Config {
+type koanfConfig struct {
+	conf *koanf.Koanf
+}
 
-	AppConfig.GoogleLoginConfig = oauth2.Config{
-		RedirectURL:  "http://localhost:4000/google-callback",
-		ClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
-		ClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
-		Scopes: []string{"https://www.googleapis.com/auth/tasks",
-			"https://www.googleapis.com/auth/userinfo.email"},
-		Endpoint: google.Endpoint,
+func NewConfig() Config {
+	return &koanfConfig{}
+}
+
+func (k *koanfConfig) LoadJson(path string) error {
+	// delimit by .
+	k.conf = koanf.New(".")
+	f := file.Provider(path)
+
+	err := k.conf.Load(f, json.Parser())
+	if err != nil {
+		return err
 	}
-	return AppConfig.GoogleLoginConfig
+	// poss merge markers here
+	return nil
+}
+
+func (k *koanfConfig) LoadYaml(path string) error {
+	k.conf = koanf.New(".")
+	f := file.Provider(path)
+
+	err := k.conf.Load(f, yaml.Parser())
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (k *koanfConfig) GetAsString(key string) string {
+	return k.conf.String(key)
 }

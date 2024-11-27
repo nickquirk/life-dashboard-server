@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/joho/godotenv"
 	"github.com/nickquirk/life-dashboard-server/internal/config"
+	"github.com/nickquirk/life-dashboard-server/internal/container"
 	"github.com/nickquirk/life-dashboard-server/internal/handlers"
+	"github.com/nickquirk/life-dashboard-server/internal/helper"
+	"gorm.io/gorm"
 )
 
 func init() {
@@ -21,15 +23,25 @@ func init() {
 }
 
 func main() {
-	r := chi.NewRouter()
-	handlers.GetRoutes(r)
 
-	config.GoogleConfig()
+	container := container.BuildContainer()
 
-	PORT := os.Getenv("PORT")
+	err := container.Invoke(func(app helper.App, db *gorm.DB) {
 
-	log.Printf("Listening on port %s\n", PORT)
-	err := http.ListenAndServe(fmt.Sprintf(":%s", PORT), r)
+		r := chi.NewRouter()
+		handlers.GetRoutes(r)
+
+		config.GetGoogleConfig()
+
+		PORT := app.GetConfig().GetAsString("service.port")
+
+		log.Printf("Listening on port %s\n", PORT)
+		err := http.ListenAndServe(fmt.Sprintf(":%s", PORT), r)
+
+		if err != nil {
+			panic(err)
+		}
+	})
 
 	if err != nil {
 		panic(err)

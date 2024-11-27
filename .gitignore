@@ -1,3 +1,4 @@
 .env
 user.json
 credentials.json
+config.dev.yaml

@@ -20,7 +20,7 @@ import (
 // reauthorise in cookie?
 
 func GoogleLogin(w http.ResponseWriter, r *http.Request) {
-	url := config.AppConfig.GoogleLoginConfig.AuthCodeURL(os.Getenv("STATE"), oauth2.AccessTypeOffline)
+	url := config.GoogleConfiguration.GoogleLoginConfig.AuthCodeURL(os.Getenv("STATE"), oauth2.AccessTypeOffline)
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }
 
@@ -34,7 +34,7 @@ func GoogleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	code := params["code"][0]
-	googleConfig := config.GoogleConfig()
+	googleConfig := config.GetGoogleConfig()
 	ctx := context.Background()
 
 	token, err := googleConfig.Exchange(ctx, code)
