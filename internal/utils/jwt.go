@@ -6,14 +6,14 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/nickquirk/life-dashboard-server/internal/models"
+	"github.com/nickquirk/life-dashboard-server/internal/domain"
 )
 
 var secretKey = os.Getenv("SECRET")
 
-func GenerateToken(user models.User) (string, error) {
+func GenerateToken(user domain.User) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"id":            user.Id,
+		"id":            user.ID,
 		"email":         user.Email,
 		"picture":       user.Picture,
 		"access_token":  user.AccessToken,
@@ -54,8 +54,8 @@ func VerifyToken(token string) (string, error) {
 	return accessToken, nil
 }
 
-func GetUserFromToken(token string) (models.User, error) {
-	user := models.User{}
+func GetUserFromToken(token string) (domain.User, error) {
+	user := domain.User{}
 
 	// claims, err := VerifyToken(token)
 	// if err != nil {

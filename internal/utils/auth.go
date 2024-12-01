@@ -6,9 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"time"
 
-	"github.com/nickquirk/life-dashboard-server/internal/models"
+	"github.com/nickquirk/life-dashboard-server/internal/domain"
 	"golang.org/x/oauth2"
 )
 
@@ -28,20 +27,20 @@ func GetClient(config *oauth2.Config) (*http.Client, error) {
 		RefreshToken: user.RefreshToken,
 	}
 
-	expiryLayout := "2006-01-02 15:04:05.999999999 -0700 MST m=+3669.687948501"
-	expiryTime, err := time.Parse(expiryLayout, user.TokenExpiry)
-	if err != nil {
-		return nil, err
-	}
+	// expiryLayout := "2006-01-02 15:04:05.999999999 -0700 MST m=+3669.687948501"
+	// expiryTime, err := time.Parse(expiryLayout, user.TokenExpiry)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	tok.Expiry = expiryTime
+	tok.Expiry = user.TokenExpiry
 
 	return config.Client(context.Background(), tok), nil
 }
 
 // TODO
 // Add logic to check if user is current user or already exists
-func SaveUserToFile(path string, user models.User) error {
+func SaveUserToFile(path string, user domain.User) error {
 	fmt.Printf("Saving user file to: %s\n", path)
 	jsonData, err := json.Marshal(user)
 	if err != nil {
@@ -62,8 +61,8 @@ func SaveUserToFile(path string, user models.User) error {
 }
 
 // Retrieve user data from a JSON file
-func GetUserFromFile(file string) (models.User, error) {
-	user := models.User{}
+func GetUserFromFile(file string) (domain.User, error) {
+	user := domain.User{}
 	f, err := os.Open(file)
 	if err != nil {
 		return user, err

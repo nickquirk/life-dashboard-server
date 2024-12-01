@@ -9,7 +9,7 @@ import (
 	"os"
 
 	"github.com/nickquirk/life-dashboard-server/internal/config"
-	"github.com/nickquirk/life-dashboard-server/internal/models"
+	"github.com/nickquirk/life-dashboard-server/internal/domain"
 	"github.com/nickquirk/life-dashboard-server/internal/utils"
 	"golang.org/x/oauth2"
 )
@@ -59,10 +59,10 @@ func GoogleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Add oauth2 tokens and expiry to userData
-	userData := models.User{
+	userData := domain.User{
 		AccessToken:  token.AccessToken,
 		RefreshToken: token.RefreshToken,
-		TokenExpiry:  token.Expiry.String(),
+		TokenExpiry:  token.Expiry,
 	}
 
 	err = json.Unmarshal(rawUserData, &userData)

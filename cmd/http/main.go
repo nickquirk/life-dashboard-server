@@ -9,6 +9,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/nickquirk/life-dashboard-server/internal/config"
 	"github.com/nickquirk/life-dashboard-server/internal/container"
+	"github.com/nickquirk/life-dashboard-server/internal/domain"
 	"github.com/nickquirk/life-dashboard-server/internal/handlers"
 	"github.com/nickquirk/life-dashboard-server/internal/helper"
 	"gorm.io/gorm"
@@ -32,6 +33,8 @@ func main() {
 		handlers.GetRoutes(r)
 
 		config.GetGoogleConfig()
+
+		db.AutoMigrate(&domain.User{})
 
 		PORT := app.GetConfig().GetAsString("service.port")
 
