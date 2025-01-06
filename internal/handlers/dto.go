@@ -1,6 +1,6 @@
-package domain
+package handlers
 
-type CreateUserRequest struct {
+type CreateUserRequestDto struct {
 	Email        string `json:"email"`
 	Picture      string `json:"picture"`
 	AccessToken  string `json:"access_token"`
@@ -8,6 +8,6 @@ type CreateUserRequest struct {
 	TokenExpiry  string `json:"token_expiry"`
 }
 
-type CreateUserResponse struct {
+type CreateUserResponseDto struct {
 	Id uint `json:"id"`
 }

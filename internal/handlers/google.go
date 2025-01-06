@@ -71,6 +71,7 @@ func GoogleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Add save user to DB
 	err = utils.SaveUserToFile("user.json", userData)
 	if err != nil {
 		http.Error(w, "Failed to save user data", http.StatusInternalServerError)

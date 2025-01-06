@@ -10,6 +10,10 @@ type App interface {
 	GetConfig() cfg.Config
 }
 
+func (a *app) GetConfig() cfg.Config {
+	return a.config
+}
+
 func NewApp(configPath string) App {
 
 	c := cfg.NewConfig()
@@ -22,8 +26,4 @@ func NewApp(configPath string) App {
 	return &app{
 		config: c,
 	}
-}
-
-func (a *app) GetConfig() cfg.Config {
-	return a.config
 }

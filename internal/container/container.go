@@ -3,6 +3,7 @@ package container
 import (
 	"os"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/nickquirk/life-dashboard-server/internal/helper"
 	"github.com/nickquirk/life-dashboard-server/internal/service"
 	"go.uber.org/dig"
@@ -13,6 +14,7 @@ import (
 func BuildContainer() *dig.Container {
 	container := dig.New()
 	container.Provide(NewApp)
+	container.Provide(NewChiRouter)
 	container.Provide(NewService)
 	container.Provide(NewDb)
 
@@ -21,6 +23,11 @@ func BuildContainer() *dig.Container {
 
 func NewApp() helper.App {
 	return helper.NewApp("config.dev.yaml")
+}
+
+func NewChiRouter() *chi.Mux {
+	r := chi.NewRouter()
+	return r
 }
 
 func NewService(db *gorm.DB) service.Service {

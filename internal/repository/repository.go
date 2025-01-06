@@ -12,25 +12,20 @@ type GormUserRepository struct {
 }
 
 type UserRepository interface {
-	Create(CreateUserRequest) (uint, error)
+	CreateUser(CreateUserRequest) (uint, error)
 }
 
-func (g GormUserRepository) Create(c CreateUserRequest) (uint, error) {
+func (g GormUserRepository) CreateUser(c CreateUserRequest) (uint, error) {
 
-	// convert TokenExpiry from string to time.Time
-
-	expiryLayout := "2006-01-02 15:04:05.999999999 -0700 MST m=+3669.687948501"
-	expiryTime, err := time.Parse(expiryLayout, c.TokenExpiry)
-	if err != nil {
-		return 0, err
-	}
+	// convert TokenExpiry from string to time.Time and truncate
+	//expiry = c.TokenExpiry
 
 	user := domain.User{
 		Email:        c.Email,
 		Picture:      c.Picture,
 		AccessToken:  c.AccessToken,
 		RefreshToken: c.RefreshToken,
-		TokenExpiry:  expiryTime,
+		TokenExpiry:  time.Now(),
 	}
 	result := g.Db.Create(&user)
 

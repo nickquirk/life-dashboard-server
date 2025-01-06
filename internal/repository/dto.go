@@ -1,7 +1,6 @@
 package repository
 
 type CreateUserRequest struct {
-	Id           string
 	Email        string
 	Picture      string
 	AccessToken  string
@@ -10,10 +9,5 @@ type CreateUserRequest struct {
 }
 
 type CreateUserResponse struct {
-	Id           string
-	Email        string
-	Picture      string
-	AccessToken  string
-	RefreshToken string
-	TokenExpiry  string
+	Id uint
 }

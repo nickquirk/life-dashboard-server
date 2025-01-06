@@ -7,7 +7,7 @@ import (
 )
 
 type Service interface {
-	Create(user domain.CreateUserRequest) (domain.CreateUserResponse, error)
+	CreateUser(user domain.CreateUserRequest) (domain.CreateUserResponse, error)
 }
 
 type service struct {
@@ -23,16 +23,15 @@ func NewService(db *gorm.DB) Service {
 	}
 }
 
-func (s service) Create(user domain.CreateUserRequest) (domain.CreateUserResponse, error) {
+func (s service) CreateUser(user domain.CreateUserRequest) (domain.CreateUserResponse, error) {
 	createUserDto := repository.CreateUserRequest{
-		Id:           user.Id,
 		Email:        user.Email,
 		Picture:      user.Picture,
 		AccessToken:  user.AccessToken,
 		RefreshToken: user.RefreshToken,
 		TokenExpiry:  user.TokenExpiry,
 	}
-	id, err := s.repository.Create(createUserDto)
+	id, err := s.repository.CreateUser(createUserDto)
 
 	if err != nil {
 		return domain.CreateUserResponse{}, err
