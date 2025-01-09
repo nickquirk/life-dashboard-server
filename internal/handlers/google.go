@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -10,7 +11,6 @@ import (
 
 	"github.com/nickquirk/life-dashboard-server/internal/config"
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
-	"github.com/nickquirk/life-dashboard-server/internal/utils"
 	"golang.org/x/oauth2"
 )
 
@@ -24,7 +24,7 @@ func GoogleLogin(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }
 
-func GoogleCallback(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) GoogleCallback(w http.ResponseWriter, r *http.Request) {
 	params := r.URL.Query()
 	state := params["state"][0]
 	if state != os.Getenv("STATE") {
@@ -51,7 +51,7 @@ func GoogleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rawUserData, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		http.Error(w, "Failed to parse Google response body", http.StatusInternalServerError)
 		log.Println("Error:", err)
@@ -59,36 +59,34 @@ func GoogleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Add oauth2 tokens and expiry to userData
-	userData := domain.User{
+	userData := domain.CreateUserRequest{
 		AccessToken:  token.AccessToken,
 		RefreshToken: token.RefreshToken,
 		TokenExpiry:  token.Expiry,
 	}
 
-	err = json.Unmarshal(rawUserData, &userData)
+	err = json.Unmarshal(body, &userData)
 	if err != nil {
 		http.Error(w, "Failed to unmarshal user data", http.StatusInternalServerError)
 		return
 	}
 
-	// Add save user to DB
-	err = utils.SaveUserToFile("user.json", userData)
+	fmt.Printf("userData: %s\n", userData)
+
+	// Save user to DB
+	id, err := h.CreateUser(userData)
 	if err != nil {
-		http.Error(w, "Failed to save user data", http.StatusInternalServerError)
+		errMessage := fmt.Sprintf("Failed to save user to database - %s", err)
+		http.Error(w, errMessage, http.StatusInternalServerError)
 		return
 	}
 
-	jwt, err := utils.GenerateToken(userData)
-	if err != nil {
-		http.Error(w, "failed to generate jwt", http.StatusInternalServerError)
-		return
-	}
+	fmt.Printf("%v\n", id)
 
-	cookie := http.Cookie{
-		Name:  "lifeDashboard",
-		Value: jwt,
-	}
-
-	http.SetCookie(w, &cookie)
+	// err = utils.SaveUserToFile("user.json", userData)
+	// if err != nil {
+	// 	http.Error(w, "Failed to save user data", http.StatusInternalServerError)
+	// 	return
+	// }
 	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 }

@@ -1,8 +1,6 @@
 package repository
 
 import (
-	"time"
-
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
 	"gorm.io/gorm"
 )
@@ -25,7 +23,7 @@ func (g GormUserRepository) CreateUser(c CreateUserRequest) (uint, error) {
 		Picture:      c.Picture,
 		AccessToken:  c.AccessToken,
 		RefreshToken: c.RefreshToken,
-		TokenExpiry:  time.Now(),
+		TokenExpiry:  c.TokenExpiry,
 	}
 	result := g.Db.Create(&user)
 

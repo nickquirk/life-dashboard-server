@@ -6,10 +6,11 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
-	"github.com/nickquirk/life-dashboard-server/internal/service"
 )
 
-func GetRoutes(mx *chi.Mux, service service.Service) {
+func GetRoutes(mx *chi.Mux, h *Handler) {
+	// Initialize the handler with the service
+
 	// Middleware
 	mx.Use(middleware.Logger)
 	mx.Use(cors.Handler(cors.Options{
@@ -24,12 +25,12 @@ func GetRoutes(mx *chi.Mux, service service.Service) {
 	// Public Routes
 	mx.Get("/", helloWorld)
 	mx.Post("/users", func(w http.ResponseWriter, r *http.Request) {
-		createUser(w, r, service)
+		// h.CreateUser(w, r)
 	})
 
 	// Google OAuth2
 	mx.Get("/google-login", GoogleLogin)
-	mx.Get("/google-callback", GoogleCallback)
+	mx.Get("/google-callback", h.GoogleCallback)
 
 	// Private Routes
 	mx.Group(func(r chi.Router) {

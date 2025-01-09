@@ -25,15 +25,14 @@ func init() {
 }
 
 func main() {
-
 	container := container.BuildContainer()
 
-	err := container.Invoke(func(app helper.App, r *chi.Mux, s service.Service, db *gorm.DB) {
+	err := container.Invoke(func(app helper.App, r *chi.Mux, h *handlers.Handler, s service.Service, db *gorm.DB) {
 
-		handlers.GetRoutes(r, s)
+		handlers.GetRoutes(r, h)
 		config.GetGoogleConfig()
 
-		// update db table from User model
+		// update db table from User model if needed
 		db.AutoMigrate(&domain.User{})
 
 		PORT := app.GetConfig().GetAsString("service.port")

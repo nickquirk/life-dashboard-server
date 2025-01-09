@@ -1,37 +1,22 @@
 package handlers
 
 import (
-	"encoding/json"
-	"io"
-	"net/http"
+	"errors"
+	"fmt"
 
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
 	"github.com/nickquirk/life-dashboard-server/internal/service"
 )
 
-func createUser(w http.ResponseWriter, r *http.Request, s service.Service) {
-	body, err := io.ReadAll(r.Body)
+type Handler struct {
+	Service service.Service
+}
+
+func (h *Handler) CreateUser(user domain.CreateUserRequest) (uint, error) {
+	createUserResponse, err := h.Service.CreateUser(user)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		io.WriteString(w, "failed to read request body\n")
-		return
+		errorMessage := fmt.Sprint(err)
+		return 0, errors.New(errorMessage)
 	}
-
-	user := domain.CreateUserRequest{}
-
-	err = json.Unmarshal(body, &user)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		io.WriteString(w, "failed to parse JSON\n")
-		return
-	}
-
-	createUserDto, err := s.CreateUser(user)
-	response, _ := json.Marshal(domain.CreateUserResponse{Id: createUserDto.Id})
-
-	if err != nil {
-		io.WriteString(w, err.Error())
-		return
-	}
-	w.Write(response)
+	return createUserResponse.Id, nil
 }

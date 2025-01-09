@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/nickquirk/life-dashboard-server/internal/handlers"
 	"github.com/nickquirk/life-dashboard-server/internal/helper"
 	"github.com/nickquirk/life-dashboard-server/internal/service"
 	"go.uber.org/dig"
@@ -15,6 +16,7 @@ func BuildContainer() *dig.Container {
 	container := dig.New()
 	container.Provide(NewApp)
 	container.Provide(NewChiRouter)
+	container.Provide(NewHandler)
 	container.Provide(NewService)
 	container.Provide(NewDb)
 
@@ -26,8 +28,11 @@ func NewApp() helper.App {
 }
 
 func NewChiRouter() *chi.Mux {
-	r := chi.NewRouter()
-	return r
+	return chi.NewRouter()
+}
+
+func NewHandler(s service.Service) *handlers.Handler {
+	return &handlers.Handler{Service: s}
 }
 
 func NewService(db *gorm.DB) service.Service {
@@ -41,6 +46,5 @@ func NewDb() *gorm.DB {
 	if errConn != nil {
 		panic(errConn)
 	}
-
 	return db
 }
