@@ -9,8 +9,6 @@ import (
 )
 
 func GetRoutes(mx *chi.Mux, h *Handler) {
-	// Initialize the handler with the service
-
 	// Middleware
 	mx.Use(middleware.Logger)
 	mx.Use(cors.Handler(cors.Options{

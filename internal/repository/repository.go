@@ -14,10 +14,6 @@ type UserRepository interface {
 }
 
 func (g GormUserRepository) CreateUser(c CreateUserRequest) (uint, error) {
-
-	// convert TokenExpiry from string to time.Time and truncate
-	//expiry = c.TokenExpiry
-
 	user := domain.User{
 		Email:        c.Email,
 		Picture:      c.Picture,
