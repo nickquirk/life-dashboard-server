@@ -11,6 +11,7 @@ import (
 
 	"github.com/nickquirk/life-dashboard-server/internal/config"
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
+	"github.com/nickquirk/life-dashboard-server/internal/utils"
 	"golang.org/x/oauth2"
 )
 
@@ -71,22 +72,27 @@ func (h *Handler) GoogleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Printf("userData: %s\n", userData)
-
 	// Save user to DB
-	id, err := h.CreateUser(userData)
+	user, err := h.CreateUser(userData)
 	if err != nil {
 		errMessage := fmt.Sprintf("Failed to save user to database - %s", err)
 		http.Error(w, errMessage, http.StatusInternalServerError)
 		return
 	}
 
-	fmt.Printf("%v\n", id)
+	// save id and email in JWT
+	tok, err := utils.GenerateToken(user.Id, userData.Email)
+	if err != nil {
+		errMessage := fmt.Sprintf("Failed to generate JWT - %s", err)
+		http.Error(w, errMessage, http.StatusInternalServerError)
+		return
+	}
 
-	// err = utils.SaveUserToFile("user.json", userData)
-	// if err != nil {
-	// 	http.Error(w, "Failed to save user data", http.StatusInternalServerError)
-	// 	return
-	// }
+	cookie := http.Cookie{
+		Name:  "life-dashboard",
+		Value: tok,
+	}
+
+	http.SetCookie(w, &cookie)
 	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 }

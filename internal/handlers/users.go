@@ -12,11 +12,19 @@ type Handler struct {
 	Service service.Service
 }
 
-func (h *Handler) CreateUser(user domain.CreateUserRequest) (uint, error) {
-	createUserResponse, err := h.Service.CreateUser(user)
+func (h *Handler) CreateUser(user domain.CreateUserRequest) (domain.CreateUserResponse, error) {
+	resp, err := h.Service.CreateUser(user)
 	if err != nil {
 		errorMessage := fmt.Sprint(err)
-		return 0, errors.New(errorMessage)
+		return domain.CreateUserResponse{}, errors.New(errorMessage)
 	}
-	return createUserResponse.Id, nil
+	return resp, nil
+}
+
+func (h *Handler) GetUser(user domain.GetUserRequest) (domain.GetUserResponse, error) {
+	resp, err := h.Service.GetUser(user)
+	if err != nil {
+		return domain.GetUserResponse{}, err
+	}
+	return resp, nil
 }

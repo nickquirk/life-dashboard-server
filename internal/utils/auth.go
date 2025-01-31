@@ -16,6 +16,11 @@ func GetClient(config *oauth2.Config) (*http.Client, error) {
 	// The file user.json stores the user's access and refresh tokens, and is
 	// created automatically when the authorization flow completes for the first
 	// time.
+
+	//TODO
+	// get id/email of user
+	// get user from db
+
 	user, err := GetUserFromFile("user.json")
 	if err != nil {
 		fmt.Printf("Error: %s\n", err)
@@ -25,21 +30,12 @@ func GetClient(config *oauth2.Config) (*http.Client, error) {
 	tok := &oauth2.Token{
 		AccessToken:  user.AccessToken,
 		RefreshToken: user.RefreshToken,
+		Expiry:       user.TokenExpiry,
 	}
-
-	// expiryLayout := "2006-01-02 15:04:05.999999999 -0700 MST m=+3669.687948501"
-	// expiryTime, err := time.Parse(expiryLayout, user.TokenExpiry)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	tok.Expiry = user.TokenExpiry
 
 	return config.Client(context.Background(), tok), nil
 }
 
-// TODO
-// Add logic to check if user is current user or already exists
 func SaveUserToFile(path string, user domain.User) error {
 	fmt.Printf("Saving user file to: %s\n", path)
 	jsonData, err := json.Marshal(user)

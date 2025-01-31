@@ -13,3 +13,15 @@ type CreateUserRequest struct {
 type CreateUserResponse struct {
 	Id uint
 }
+
+type GetUserRequest struct {
+	Id uint
+}
+
+type GetUserResponse struct {
+	Email        string
+	Picture      string
+	AccessToken  string
+	RefreshToken string
+	TokenExpiry  time.Time
+}

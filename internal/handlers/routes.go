@@ -25,6 +25,7 @@ func GetRoutes(mx *chi.Mux, h *Handler) {
 	mx.Post("/users", func(w http.ResponseWriter, r *http.Request) {
 		// h.CreateUser(w, r)
 	})
+	// mx.Get("/users{id}", h.GetUser())
 
 	// Google OAuth2
 	mx.Get("/google-login", GoogleLogin)
