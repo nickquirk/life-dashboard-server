@@ -15,7 +15,7 @@ var GoogleConfiguration GoogleConfig
 
 func GetGoogleConfig() oauth2.Config {
 	GoogleConfiguration.GoogleLoginConfig = oauth2.Config{
-		RedirectURL:  "http://localhost:4000/google-callback",
+		RedirectURL:  os.Getenv("REDIRECT_URL"),
 		ClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
 		ClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
 		Scopes: []string{"https://www.googleapis.com/auth/tasks",

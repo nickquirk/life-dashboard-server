@@ -4,11 +4,11 @@ import (
 	"os"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/nickquirk/life-dashboard-server/internal/db"
 	"github.com/nickquirk/life-dashboard-server/internal/handlers"
 	"github.com/nickquirk/life-dashboard-server/internal/helper"
 	"github.com/nickquirk/life-dashboard-server/internal/service"
 	"go.uber.org/dig"
-	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
@@ -18,13 +18,20 @@ func BuildContainer() *dig.Container {
 	container.Provide(NewChiRouter)
 	container.Provide(NewHandler)
 	container.Provide(NewService)
-	container.Provide(NewDb)
+	// container.Provide(NewDb)
+	container.Provide(NewConnection)
 
 	return container
 }
 
 func NewApp() helper.App {
-	return helper.NewApp("config.dev.yaml")
+	configPath := os.Getenv("CONFIG_PATH")
+
+	if configPath == "" {
+		configPath = "config.dev.yaml"
+	}
+
+	return helper.NewApp(configPath)
 }
 
 func NewChiRouter() *chi.Mux {
@@ -39,12 +46,24 @@ func NewService(db *gorm.DB) service.Service {
 	return service.NewService(db)
 }
 
-func NewDb() *gorm.DB {
-	dsn := os.Getenv("MARIA_DB")
-	db, errConn := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+// func NewDb() *gorm.DB {
+// 	dsn := os.Getenv("MARIA_DB")
+// 	db, errConn := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 
-	if errConn != nil {
-		panic(errConn)
+// 	if errConn != nil {
+// 		panic(errConn)
+// 	}
+// 	return db
+// }
+
+func NewConnection() *gorm.DB {
+	conn, err := db.InitDb()
+
+	if err != nil {
+		panic(err.Error())
 	}
-	return db
+
+	db.InitMigration(conn)
+
+	return conn
 }

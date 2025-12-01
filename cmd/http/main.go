@@ -9,7 +9,6 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/nickquirk/life-dashboard-server/internal/config"
 	"github.com/nickquirk/life-dashboard-server/internal/container"
-	"github.com/nickquirk/life-dashboard-server/internal/domain"
 	"github.com/nickquirk/life-dashboard-server/internal/handlers"
 	"github.com/nickquirk/life-dashboard-server/internal/helper"
 	"github.com/nickquirk/life-dashboard-server/internal/service"
@@ -31,9 +30,6 @@ func main() {
 
 		handlers.GetRoutes(r, h)
 		config.GetGoogleConfig()
-
-		// update db table from User model if needed
-		db.AutoMigrate(&domain.User{})
 
 		PORT := app.GetConfig().GetAsString("service.port")
 

@@ -2,14 +2,14 @@ package utils
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/nickquirk/life-dashboard-server/internal/domain"
 )
 
-var secretKey = os.Getenv("SECRET")
+var secretKey = []byte(os.Getenv("SECRET")) // Ensure this is []byte
 
 func GenerateToken(id uint, email string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
@@ -17,62 +17,57 @@ func GenerateToken(id uint, email string) (string, error) {
 		"email": email,
 		"exp":   time.Now().Add(time.Hour * 6).Unix(),
 	})
-	return token.SignedString([]byte(secretKey))
+	return token.SignedString(secretKey)
 }
 
-func VerifyToken(token string) (string, error) {
-	parsedToken, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
+func VerifyToken(tokenString string) (jwt.MapClaims, error) {
+	parsedToken, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		_, ok := token.Method.(*jwt.SigningMethodHMAC)
-
 		if !ok {
 			return nil, errors.New("unexpected signing method")
 		}
-		return []byte(secretKey), nil
+		return secretKey, nil
 	})
 
 	if err != nil {
-		return "", errors.New("could not parse token")
+		return nil, errors.New("could not parse token: " + err.Error())
 	}
 
-	tokenIsValid := parsedToken.Valid
-
-	if !tokenIsValid {
-		return "", errors.New("invalid token")
+	if !parsedToken.Valid {
+		return nil, errors.New("invalid token")
 	}
 
-	// claims will automatically be set to type jwt.MapClaims
-	claimsMap, ok := parsedToken.Claims.(jwt.MapClaims)
+	claims, ok := parsedToken.Claims.(jwt.MapClaims)
 	if !ok {
-		return "", errors.New("invalid token claims ")
+		return nil, errors.New("invalid token claims")
 	}
 
-	accessToken := claimsMap["access_token"].(string)
-
-	return accessToken, nil
+	return claims, nil
 }
 
-func GetUserFromToken(token string) (domain.User, error) {
-	user := domain.User{}
+func GetUserIdFromToken(tokenString string) (uint, error) {
+	claims, err := VerifyToken(tokenString)
+	if err != nil {
+		return 0, err
+	}
 
-	// claims, err := VerifyToken(token)
-	// if err != nil {
-	// 	return user, errors.New("unable to get claims from token")
-	// }
+	// JWT JSON numbers are often float64 by default
+	idFloat, ok := claims["id"].(float64)
+	if ok {
+		return uint(idFloat), nil
+	}
 
-	// user.Id = claims["id"].(string)
-	// user.Email = claims["email"].(string)
-	// user.Picture = claims["picture"].(string)
-	// user.AccessToken = claims["access_token"].(string)
+	// Fallback: sometimes it might be stored as a string or int depending on config
+	idInt, ok := claims["id"].(int)
+	if ok {
+		return uint(idInt), nil
+	}
 
-	return user, nil
+	// Fallback if strict JSON parsing wasn't used
+	idUint, ok := claims["id"].(uint)
+	if ok {
+		return idUint, nil
+	}
+
+	return 0, fmt.Errorf("unable to parse ID from token claims: %v", claims["id"])
 }
-
-// func GetGoogleAuthTokenFromJwt(token string) (string, error) {
-// 	claimsMap, ok := parsedToken.Claims.(jwt.MapClaims)
-// 	if !ok {
-// 		return "", errors.New("invalid token claims ")
-// 	}
-
-// 	accessToken := claimsMap["access_token"].(string)
-
-// }

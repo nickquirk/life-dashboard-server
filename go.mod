@@ -10,8 +10,10 @@ require (
 	go.uber.org/dig v1.18.0
 	golang.org/x/oauth2 v0.17.0
 	google.golang.org/api v0.167.0
-	gorm.io/gorm v1.25.12
+	gorm.io/gorm v1.30.0
 )
+
+require github.com/mattn/go-sqlite3 v1.14.22 // indirect
 
 require (
 	cloud.google.com/go/compute v1.23.4 // indirect
@@ -53,4 +55,5 @@ require (
 	google.golang.org/protobuf v1.32.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gorm.io/driver/mysql v1.5.7 // indirect
+	gorm.io/driver/sqlite v1.6.0
 )

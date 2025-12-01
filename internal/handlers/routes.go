@@ -25,7 +25,7 @@ func GetRoutes(mx *chi.Mux, h *Handler) {
 	mx.Post("/users", func(w http.ResponseWriter, r *http.Request) {
 		// h.CreateUser(w, r)
 	})
-	// mx.Get("/users{id}", h.GetUser())
+	// mx.Get("/users{id}", h.GetUser)
 
 	// Google OAuth2
 	mx.Get("/google-login", GoogleLogin)
@@ -34,7 +34,7 @@ func GetRoutes(mx *chi.Mux, h *Handler) {
 	// Private Routes
 	mx.Group(func(r chi.Router) {
 		r.Use(Authenticate)
-		r.Get("/tasks", getTaskLists)
-		r.Get("/tasks/{taskListId}", getTasksInList)
+		r.Get("/tasks", h.getTaskLists)
+		r.Get("/tasks/{taskListId}", h.getTasksInList)
 	})
 }

@@ -5,39 +5,38 @@ import (
 	"net/http"
 
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
+	"github.com/nickquirk/life-dashboard-server/internal/utils"
 	"golang.org/x/oauth2"
 )
 
 // TODO
 // read session cookie and authenticate if valid
 
+type contextKey string
+
+const UserIDKey contextKey = "userID"
+
 func Authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// cookie, err := r.Cookie("lifeDashboard")
-		// if err != nil {
-		// 	switch {
-		// 	case errors.Is(err, http.ErrNoCookie):
-		// 		http.Error(w, "cookie not found", http.StatusBadRequest)
-		// 	default:
-		// 		log.Println(err)
-		// 		http.Error(w, "server error", http.StatusInternalServerError)
-		// 	}
-		// 	return
-		// }
+		// 1. Get the cookie
+		cookie, err := r.Cookie("life-dashboard") // Ensure name matches SetCookie in google.go
+		if err != nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
 
-		// authToken, err := utils.VerifyToken(cookie.Value)
-		// if err != nil {
-		// 	http.Error(w, "not authorised", http.StatusUnauthorized)
-		// 	fmt.Printf("error: %v\n", err)
-		// 	return
-		// }
+		// 2. Validate token and get User ID
+		userID, err := utils.GetUserIdFromToken(cookie.Value)
+		if err != nil {
+			http.Error(w, "Invalid Token", http.StatusUnauthorized)
+			return
+		}
 
-		// fmt.Printf("auth tok: %s\n", authToken)
+		// 3. Store UserID in context so the handler can use it
+		ctx := context.WithValue(r.Context(), UserIDKey, userID)
 
-		//utils.SaveToken("token.json", authToken)
-
-		//w.Write([]byte("Auth middleware hit!\n"))
-		next.ServeHTTP(w, r)
+		// 4. Call the next handler with the new context
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 

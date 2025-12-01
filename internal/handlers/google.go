@@ -21,7 +21,12 @@ import (
 // reauthorise in cookie?
 
 func GoogleLogin(w http.ResponseWriter, r *http.Request) {
-	url := config.GoogleConfiguration.GoogleLoginConfig.AuthCodeURL(os.Getenv("STATE"), oauth2.AccessTypeOffline)
+	url := config.GoogleConfiguration.GoogleLoginConfig.AuthCodeURL(
+		os.Getenv("STATE"),
+		oauth2.AccessTypeOffline,
+		oauth2.SetAuthURLParam("prompt", "consent"),
+	)
+
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }
 

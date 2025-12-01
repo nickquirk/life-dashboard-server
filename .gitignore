@@ -1,4 +1,16 @@
+# Environment variables
 .env
+
+# Google Auth / Legacy files
 user.json
 credentials.json
-config.dev.yaml
+
+# --- Configuration ---
+# 1. Ignore ALL config variations (dev, prod, test, local)
+config.*.yaml
+
+# 2. Exception: Allow the example template to be committed
+!config.example.yaml
+
+# Project summary files 
+repomix-output.xml
