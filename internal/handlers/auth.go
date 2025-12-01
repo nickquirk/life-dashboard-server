@@ -42,14 +42,6 @@ func Authenticate(next http.Handler) http.Handler {
 
 // Retrieve a token, saves the token, then returns the generated client.
 func (h *Handler) GetClient(config *oauth2.Config) (*http.Client, error) {
-	// The file user.json stores the user's access and refresh tokens, and is
-	// created automatically when the authorization flow completes for the first
-	// time.
-
-	//TODO
-	// get id/email of user
-	// get user from db
-
 	userToLogIn := domain.GetUserRequest{}
 
 	user, err := h.GetUser(userToLogIn)
