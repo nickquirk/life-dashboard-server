@@ -29,7 +29,7 @@ func helloWorld(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) getTaskLists(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	// 1. Retrieve UserID from context (set by Middleware)
+	// Retrieve UserID from context (set by Middleware)
 	userID, ok := ctx.Value(UserIDKey).(uint)
 	if !ok {
 		http.Error(w, "User not found in context", http.StatusUnauthorized)
@@ -44,7 +44,7 @@ func (h *Handler) getTaskLists(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 3. Build the Token Source dynamically
+	// Build the Token Source dynamically
 	tok := &oauth2.Token{
 		AccessToken:  user.AccessToken,
 		RefreshToken: user.RefreshToken,
@@ -84,7 +84,6 @@ func (h *Handler) getTasksInList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 3. Fetch User from DB (using the REAL ID, not 0)
 	userReq := domain.GetUserRequest{Id: userID}
 	user, err := h.Service.GetUser(userReq)
 	if err != nil {
@@ -92,7 +91,7 @@ func (h *Handler) getTasksInList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 4. Build the Token Source dynamically
+	// Build the Token Source dynamically
 	tok := &oauth2.Token{
 		AccessToken:  user.AccessToken,
 		RefreshToken: user.RefreshToken,
@@ -111,7 +110,7 @@ func (h *Handler) getTasksInList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 6. Call the Google API
+	// Call the Google API
 	t, err := srv.Tasks.List(taskListID).Do()
 	if err != nil {
 		log.Printf("Unable to retrieve tasks: %v", err)
