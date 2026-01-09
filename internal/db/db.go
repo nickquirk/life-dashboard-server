@@ -2,6 +2,7 @@ package db
 
 import (
 	"log"
+	"os"
 
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
 	"gorm.io/driver/mysql"
@@ -10,8 +11,7 @@ import (
 )
 
 func InitDb() (*gorm.DB, error) {
-	// dbConn := os.Getenv("DB_CONNECTION")
-	dbConn := "sqlite"
+	dbConn := os.Getenv("DB_CONNECTION")
 	if dbConn == "" {
 		dbConn = "sqlite" // Default to SQLite for local development
 	}
@@ -39,4 +39,6 @@ func InitDb() (*gorm.DB, error) {
 
 func InitMigration(db *gorm.DB) {
 	db.AutoMigrate(domain.User{})
+	db.AutoMigrate(domain.TaskList{})
+	db.AutoMigrate(domain.Task{})
 }

@@ -16,7 +16,7 @@ func GetRoutes(mx *chi.Mux, h *Handler) {
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
-		AllowCredentials: false,
+		AllowCredentials: true,
 		MaxAge:           300, // Maximum value not ignored by any major browsers
 	}))
 
@@ -25,7 +25,7 @@ func GetRoutes(mx *chi.Mux, h *Handler) {
 	mx.Post("/users", func(w http.ResponseWriter, r *http.Request) {
 		// h.CreateUser(w, r)
 	})
-	// mx.Get("/users{id}", h.GetUser)
+	mx.Get("/users/{id}", h.GetUserHTTP)
 
 	// Google OAuth2
 	mx.Get("/google-login", GoogleLogin)
@@ -36,5 +36,6 @@ func GetRoutes(mx *chi.Mux, h *Handler) {
 		r.Use(Authenticate)
 		r.Get("/tasks", h.getTaskLists)
 		r.Get("/tasks/{taskListId}", h.getTasksInList)
+		r.Get("/tasks/{taskListId}/active", h.getActiveTasksInList)
 	})
 }
