@@ -63,7 +63,5 @@ func NewConnection() *gorm.DB {
 		panic(err.Error())
 	}
 
-	db.InitMigration(conn)
-
 	return conn
 }

@@ -14,11 +14,11 @@ type UserRepository interface {
 	Get(domain.GetUserRequest) (domain.GetUserResponse, error)
 }
 
-func (g GormUserRepository) Create(c domain.CreateUserRequest) (domain.CreateUserResponse, error) {
+func (r GormUserRepository) Create(c domain.CreateUserRequest) (domain.CreateUserResponse, error) {
 	var user domain.User
 
 	// 1. Check if the user already exists by Email
-	err := g.Db.Where("email = ?", c.Email).First(&user).Error
+	err := r.Db.Where("email = ?", c.Email).First(&user).Error
 
 	if err == nil {
 		// --- USER EXISTS: UPDATE ---
@@ -36,7 +36,7 @@ func (g GormUserRepository) Create(c domain.CreateUserRequest) (domain.CreateUse
 		}
 
 		// Save changes
-		if err := g.Db.Save(&user).Error; err != nil {
+		if err := r.Db.Save(&user).Error; err != nil {
 			return domain.CreateUserResponse{}, err
 		}
 
@@ -53,7 +53,7 @@ func (g GormUserRepository) Create(c domain.CreateUserRequest) (domain.CreateUse
 		TokenExpiry:  c.TokenExpiry,
 	}
 
-	result := g.Db.Create(&newUser)
+	result := r.Db.Create(&newUser)
 	if result.Error != nil {
 		return domain.CreateUserResponse{}, result.Error
 	}
@@ -63,10 +63,10 @@ func (g GormUserRepository) Create(c domain.CreateUserRequest) (domain.CreateUse
 	}, nil
 }
 
-func (g GormUserRepository) Get(r domain.GetUserRequest) (domain.GetUserResponse, error) {
+func (r GormUserRepository) Get(g domain.GetUserRequest) (domain.GetUserResponse, error) {
 	var user domain.User
 	// Find user by ID
-	result := g.Db.First(&user, r.Id)
+	result := r.Db.First(&user, g.Id)
 
 	if result.Error != nil {
 		return domain.GetUserResponse{}, result.Error

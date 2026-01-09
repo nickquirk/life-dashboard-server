@@ -94,8 +94,12 @@ func (h *Handler) GoogleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cookie := http.Cookie{
-		Name:  "life-dashboard",
-		Value: tok,
+		Name:     "life-dashboard",
+		Value:    tok,
+		HttpOnly: true,                       // Vital: prevents XSS attacks stealing tokens
+		Secure:   os.Getenv("ENV") == "prod", // Only send over HTTPS in prod
+		SameSite: http.SameSiteLaxMode,
+		Path:     "/",
 	}
 
 	http.SetCookie(w, &cookie)

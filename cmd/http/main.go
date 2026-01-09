@@ -9,6 +9,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/nickquirk/life-dashboard-server/internal/config"
 	"github.com/nickquirk/life-dashboard-server/internal/container"
+	"github.com/nickquirk/life-dashboard-server/internal/db"
 	"github.com/nickquirk/life-dashboard-server/internal/handlers"
 	"github.com/nickquirk/life-dashboard-server/internal/helper"
 	"github.com/nickquirk/life-dashboard-server/internal/service"
@@ -26,8 +27,9 @@ func init() {
 func main() {
 	container := container.BuildContainer()
 
-	err := container.Invoke(func(app helper.App, r *chi.Mux, h *handlers.Handler, s service.Service, db *gorm.DB) {
+	err := container.Invoke(func(app helper.App, r *chi.Mux, h *handlers.Handler, s service.Service, gormDB *gorm.DB) {
 
+		db.InitMigration(gormDB)
 		handlers.GetRoutes(r, h)
 		config.GetGoogleConfig()
 
