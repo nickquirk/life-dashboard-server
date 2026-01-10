@@ -18,24 +18,24 @@ const UserIDKey contextKey = "userID"
 
 func Authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// 1. Get the cookie
+		// Get the cookie
 		cookie, err := r.Cookie("life-dashboard") // Ensure name matches SetCookie in google.go
 		if err != nil {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
-		// 2. Validate token and get User ID
+		// Validate token and get User ID
 		userID, err := utils.GetUserIdFromToken(cookie.Value)
 		if err != nil {
 			http.Error(w, "Invalid Token", http.StatusUnauthorized)
 			return
 		}
 
-		// 3. Store UserID in context so the handler can use it
+		// Store UserID in context so the handler can use it
 		ctx := context.WithValue(r.Context(), UserIDKey, userID)
 
-		// 4. Call the next handler with the new context
+		// Call the next handler with the new context
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

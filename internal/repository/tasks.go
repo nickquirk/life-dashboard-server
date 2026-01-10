@@ -13,15 +13,18 @@ type GormTaskRepository struct {
 }
 
 type TaskRepository interface {
+	// Task Lists
 	UpsertTaskLists(lists []domain.TaskList) error
 	GetTaskLists(userID uint) ([]domain.TaskList, error)
 	GetTaskList(listID string) (domain.TaskList, error)
 	UpdateListLastSync(listID string, t time.Time) error
-
+	// Tasks
 	UpsertTasks(tasks []domain.Task) error
 	GetTasks(taskListID string) ([]domain.Task, error)
+	GetTaskByID(taskID string) (domain.Task, error)
 	GetActiveTasks(taskListID string) ([]domain.Task, error)
 	DeleteTasks(ids []string) error
+	UpdateTask(taskID string, updates map[string]interface{}) error
 	MarkTasksCompletedExcluding(taskListID string, activeIDs []string) error
 }
 
@@ -70,6 +73,16 @@ func (r *GormTaskRepository) GetTasks(taskListID string) ([]domain.Task, error) 
 	var tasks []domain.Task
 	err := r.Db.Where("task_list_id = ?", taskListID).Find(&tasks).Error
 	return tasks, err
+}
+
+func (r *GormTaskRepository) GetTaskByID(taskID string) (domain.Task, error) {
+	var task domain.Task
+	err := r.Db.First(&task, "id = ?", taskID).Error
+	return task, err
+}
+
+func (r *GormTaskRepository) UpdateTask(taskID string, updates map[string]interface{}) error {
+	return r.Db.Model(&domain.Task{}).Where("id = ?", taskID).Updates(updates).Error
 }
 
 func (r *GormTaskRepository) DeleteTasks(ids []string) error {

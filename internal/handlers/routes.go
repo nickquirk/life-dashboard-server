@@ -37,5 +37,6 @@ func GetRoutes(mx *chi.Mux, h *Handler) {
 		r.Get("/tasks", h.getTaskLists)
 		r.Get("/tasks/{taskListId}", h.getTasksInList)
 		r.Get("/tasks/{taskListId}/active", h.getActiveTasksInList)
+		r.Patch("/tasks/{id}", h.updateTask)
 	})
 }

@@ -27,15 +27,20 @@ type TaskList struct {
 }
 
 type Task struct {
-	ID         string `gorm:"primaryKey;size:255"` // Google's ID
-	TaskListID string `gorm:"index;size:255"`
-	Title      string
-	Status     string // "needsAction" or "completed"
-	Due        *time.Time
-	Notes      string
-	Updated    string // Google's timestamp
-
-	// Dashboard Fields (Ready for the UI)
-	// 0 = Unsorted (Inbox), 1 = Do (Urgent/Imp), 2 = Schedule (Imp/Not Urgent), etc.
-	Quadrant int `gorm:"default:0"`
+	ID              string  `gorm:"primaryKey;size:255"` // Google's ID
+	ParentID        *string `gorm:"index;size:255"`      // Pointer allows nil (top-level tasks)
+	TaskListID      string  `gorm:"index;size:255"`
+	Title           string
+	Status          string // "needsAction" or "completed"
+	Due             *time.Time
+	Notes           string
+	Updated         string // Google's timestamp
+	DurationMins    int    // Task duration
+	ScheduledTime   int
+	ScheduledMinute int
+	Date            *time.Time
+	Description     string
+	Subtasks        []Task `gorm:"foreignKey:ParentID"` // So we can preload subtasks
+	IsRepeating     bool
+	Quadrant        int `gorm:"default:0"`
 }
