@@ -8,7 +8,14 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var secretKey = []byte(os.Getenv("SECRET")) // Ensure this is []byte
+// Helper to prevent 401 Aunauthorised errors due to secret being empty
+func getSecret() []byte {
+	secret := os.Getenv("SECRET")
+	if secret == "" {
+		return []byte("default-dev-secret") // Fallback for safety in dev
+	}
+	return []byte(secret)
+}
 
 func GenerateToken(id uint, email string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
@@ -16,7 +23,7 @@ func GenerateToken(id uint, email string) (string, error) {
 		"email": email,
 		// "exp":   time.Now().Add(time.Hour * 6).Unix(),
 	})
-	return token.SignedString(secretKey)
+	return token.SignedString(getSecret())
 }
 
 func VerifyToken(tokenString string) (jwt.MapClaims, error) {
@@ -25,7 +32,7 @@ func VerifyToken(tokenString string) (jwt.MapClaims, error) {
 		if !ok {
 			return nil, errors.New("unexpected signing method")
 		}
-		return secretKey, nil
+		return getSecret(), nil
 	})
 
 	if err != nil {
