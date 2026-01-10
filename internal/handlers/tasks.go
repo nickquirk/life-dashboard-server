@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/nickquirk/life-dashboard-server/internal/domain"
 )
 
 func helloWorld(w http.ResponseWriter, r *http.Request) {
@@ -63,4 +64,29 @@ func (h *Handler) getActiveTasksInList(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(tasks)
+}
+
+func (h *Handler) updateTask(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	taskID := chi.URLParam(r, "id")
+
+	userID, ok := ctx.Value(UserIDKey).(uint)
+	if !ok {
+		http.Error(w, "User not found in context", http.StatusUnauthorized)
+		return
+	}
+
+	var req domain.UpdateTaskRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.Service.UpdateTask(ctx, userID, taskID, req); err != nil {
+		http.Error(w, "Failed to update task: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"message":"Task updated"}`))
 }
