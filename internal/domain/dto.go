@@ -26,3 +26,16 @@ type GetUserResponse struct {
 	RefreshToken string    `json:"refresh_token"`
 	TokenExpiry  time.Time `json:"token_expiry"`
 }
+
+type UpdateTaskRequest struct {
+	// Local fields
+	// Using pointers to distinguish between Update to 0 and don't update (nil)
+	Quadrant      *int       `json:"quadrant"`
+	DurationMins  *int       `json:"durationMins"`
+	Date          *time.Time `json:"date"`          // The "Planned" date
+	ScheduledTime *int       `json:"scheduledTime"` // Hour (0-23)
+
+	// Google Fields
+	Status *string    `json:"status"` // "needsAction" or "completed"
+	Due    *time.Time `json:"due"`
+}

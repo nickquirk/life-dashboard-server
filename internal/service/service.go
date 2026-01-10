@@ -15,6 +15,7 @@ type Service interface {
 	SyncAndGetTaskLists(ctx context.Context, userID uint) ([]domain.TaskList, error)
 	SyncAndGetAllTasks(ctx context.Context, userID uint, taskListID string) ([]domain.Task, error)
 	GetActiveTasks(ctx context.Context, taskListID string) ([]domain.Task, error)
+	UpdateTask(ctx context.Context, userID uint, taskID string, req domain.UpdateTaskRequest) error
 }
 
 type service struct {

@@ -69,8 +69,6 @@ func (s *service) SyncAndGetTaskLists(ctx context.Context, userID uint) ([]domai
 	return s.taskRepo.GetTaskLists(userID)
 }
 
-// In internal/service/tasks.go
-
 func (s *service) SyncAndGetAllTasks(ctx context.Context, userID uint, taskListID string) ([]domain.Task, error) {
 	// 1. Connect to Google
 	srv, err := s.getGoogleClient(ctx, userID)
@@ -103,8 +101,16 @@ func (s *service) SyncAndGetAllTasks(ctx context.Context, userID uint, taskListI
 			}
 		}
 
+		var parentID *string
+		if item.Parent != "" {
+			// We capture the value in a new variable to get its address safely
+			val := item.Parent
+			parentID = &val
+		}
+
 		domainTasks = append(domainTasks, domain.Task{
 			ID:         item.Id,
+			ParentID:   parentID,
 			TaskListID: taskListID,
 			Title:      item.Title,
 			Status:     "needsAction", // Force status to active
@@ -116,25 +122,81 @@ func (s *service) SyncAndGetAllTasks(ctx context.Context, userID uint, taskListI
 		activeIDs = append(activeIDs, item.Id)
 	}
 
-	// 4. Upsert the Active Tasks (Updates existing ones, inserts new ones)
+	// Upsert the Active Tasks (Updates existing ones, inserts new ones)
 	if err := s.taskRepo.UpsertTasks(domainTasks); err != nil {
 		return nil, err
 	}
 
-	// 5. THE MAGIC: Mark local tasks as 'completed' if they are missing from Google's active list
+	// Mark local tasks as 'completed' if they are missing from Google's active list
 	if err := s.taskRepo.MarkTasksCompletedExcluding(taskListID, activeIDs); err != nil {
 		fmt.Printf("Error marking tasks completed: %v\n", err)
 		return nil, err
 	}
 
-	// 6. Update Sync Time
+	// Update Sync Time
 	s.taskRepo.UpdateListLastSync(taskListID, time.Now())
 
-	// 7. Return ALL tasks (Active + Completed) so the UI can decide what to show
+	// Return ALL tasks (Active + Completed) so the UI can decide what to show
 	return s.taskRepo.GetTasks(taskListID)
 }
 
 func (s *service) GetActiveTasks(ctx context.Context, taskListID string) ([]domain.Task, error) {
 	// Just read from DB (Source of Truth)
 	return s.taskRepo.GetActiveTasks(taskListID)
+}
+
+func (s *service) UpdateTask(ctx context.Context, userID uint, taskID string, req domain.UpdateTaskRequest) error {
+	// Fetch task
+	task, err := s.taskRepo.GetTaskByID(taskID)
+	if err != nil {
+		return err
+	}
+
+	updates := make(map[string]interface{})
+
+	if req.Quadrant != nil {
+		updates["quadrant"] = *req.Quadrant
+	}
+	if req.DurationMins != nil {
+		updates["duration_mins"] = *req.DurationMins
+	}
+	if req.Date != nil {
+		updates["date"] = *req.Date
+	}
+	if req.ScheduledTime != nil {
+		updates["scheduled_time"] = *req.ScheduledTime
+	}
+	if req.Status != nil {
+		updates["status"] = *req.Status
+	}
+	if req.Due != nil {
+		updates["due"] = *req.Due
+	}
+
+	// Handle Google sync (if status or due changed)
+	if req.Status != nil || req.Due != nil {
+		srv, err := s.getGoogleClient(ctx, userID)
+		if err != nil {
+			// Create a minimal Google Task object for patching
+			googleTask := &tasks.Task{}
+			shouldCallGoogle := false
+
+			if req.Status != nil {
+				googleTask.Status = *req.Status
+				shouldCallGoogle = true
+			}
+			// Only sync due date if explicitly requested
+			if req.Due != nil {
+				googleTask.Due = req.Due.Format(time.RFC3339)
+				shouldCallGoogle = true
+			}
+
+			if shouldCallGoogle {
+				// ignore error so that db is still synced
+				_, _ = srv.Tasks.Patch(task.TaskListID, taskID, googleTask).Do()
+			}
+		}
+	}
+	// Save to loacal DB
+	return s.taskRepo.UpdateTask(taskID, updates)
 }
