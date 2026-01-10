@@ -42,7 +42,7 @@ func (h *Handler) GetUserHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 2. Call your existing service logic
+	// Call your existing service logic
 	req := domain.GetUserRequest{Id: uint(id)}
 	resp, err := h.Service.GetUser(req)
 	if err != nil {
@@ -51,7 +51,29 @@ func (h *Handler) GetUserHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 3. Write JSON response
+	// Write JSON response
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
+func (h *Handler) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
+	// Get UserID from context (set by Authenticate middleware)
+	ctx := r.Context()
+	userID, ok := ctx.Value(UserIDKey).(uint)
+	if !ok {
+		http.Error(w, "User not found in context", http.StatusUnauthorized)
+		return
+	}
+
+	// Fetch User Details
+	req := domain.GetUserRequest{Id: userID}
+	resp, err := h.Service.GetUser(req)
+	if err != nil {
+		http.Error(w, "Failed to fetch user profile", http.StatusInternalServerError)
+		return
+	}
+
+	// Return JSON
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
 }
