@@ -56,7 +56,7 @@ func (h *Handler) GetUserHTTP(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resp)
 }
 
-func (h *Handler) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) getCurrentUser(w http.ResponseWriter, r *http.Request) {
 	// Get UserID from context (set by Authenticate middleware)
 	ctx := r.Context()
 	userID, ok := ctx.Value(UserIDKey).(uint)

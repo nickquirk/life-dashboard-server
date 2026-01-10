@@ -34,6 +34,7 @@ func GetRoutes(mx *chi.Mux, h *Handler) {
 	// Private Routes
 	mx.Group(func(r chi.Router) {
 		r.Use(Authenticate)
+		r.Get("/auth/me", h.getCurrentUser)
 		r.Get("/tasks", h.getTaskLists)
 		r.Get("/tasks/{taskListId}", h.getTasksInList)
 		r.Get("/tasks/{taskListId}/active", h.getActiveTasksInList)
