@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	"net/http"
-
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
@@ -20,23 +18,18 @@ func GetRoutes(mx *chi.Mux, h *Handler) {
 		MaxAge:           300, // Maximum value not ignored by any major browsers
 	}))
 
-	// Public Routes
-	mx.Get("/", helloWorld)
-	mx.Post("/users", func(w http.ResponseWriter, r *http.Request) {
-		// h.CreateUser(w, r)
-	})
-	mx.Get("/users/{id}", h.GetUserHTTP)
+	// API routes
+	mx.Route("/api", func(r chi.Router) {
 
-	// Google OAuth2
-	mx.Get("/google-login", GoogleLogin)
-	mx.Get("/google-callback", h.GoogleCallback)
+		// Private API Routes (Authenticated)
+		r.Group(func(auth chi.Router) {
+			auth.Use(Authenticate)
 
-	// Private Routes
-	mx.Group(func(r chi.Router) {
-		r.Use(Authenticate)
-		r.Get("/tasks", h.getTaskLists)
-		r.Get("/tasks/{taskListId}", h.getTasksInList)
-		r.Get("/tasks/{taskListId}/active", h.getActiveTasksInList)
-		r.Patch("/tasks/{id}", h.updateTask)
+			auth.Get("/auth/me", h.getCurrentUser)
+			auth.Get("/tasks", h.getTaskLists)
+			auth.Get("/tasks/{taskListId}", h.getTasksInList)
+			auth.Get("/tasks/{taskListId}/active", h.getActiveTasksInList)
+			auth.Patch("/tasks/{id}", h.updateTask)
+		})
 	})
 }
