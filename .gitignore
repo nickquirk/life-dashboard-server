@@ -14,3 +14,4 @@ config.*.yaml
 
 # Project summary files 
 repomix-output.xml
+gorm.db
