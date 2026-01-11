@@ -57,3 +57,18 @@ func (h *Handler) GetClient(config *oauth2.Config) (*http.Client, error) {
 
 	return config.Client(context.Background(), tok), nil
 }
+
+func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
+	// Overwrite the cookie with one that expires immediately
+	cookie := http.Cookie{
+		Name:     "life-dashboard",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1, // Tell browser to delete it
+		HttpOnly: true,
+	}
+
+	http.SetCookie(w, &cookie)
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"message": "Logged out"}`))
+}

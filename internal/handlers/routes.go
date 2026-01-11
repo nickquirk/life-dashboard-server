@@ -27,6 +27,7 @@ func GetRoutes(mx *chi.Mux, h *Handler) {
 		r.Group(func(public chi.Router) {
 			public.Get("/auth/google-login", GoogleLogin)
 			public.Get("/auth/google-callback", h.GoogleCallback)
+			public.Post("/auth/logout", h.logout)
 		})
 		// Private API Routes (Authenticated)
 		r.Group(func(auth chi.Router) {
