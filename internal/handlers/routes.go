@@ -18,13 +18,18 @@ func GetRoutes(mx *chi.Mux, h *Handler) {
 		MaxAge:           300, // Maximum value not ignored by any major browsers
 	}))
 
-	// API routes
-	mx.Route("/api", func(r chi.Router) {
+	// Public Routes
+	mx.Get("/", helloWorld)
 
+	mx.Route("/api", func(r chi.Router) {
+		// Public API routes
+
+		// Google OAuth2
+		mx.Get("/google-login", GoogleLogin)
+		mx.Get("/google-callback", h.GoogleCallback)
 		// Private API Routes (Authenticated)
 		r.Group(func(auth chi.Router) {
 			auth.Use(Authenticate)
-
 			auth.Get("/auth/me", h.getCurrentUser)
 			auth.Get("/tasks", h.getTaskLists)
 			auth.Get("/tasks/{taskListId}", h.getTasksInList)
