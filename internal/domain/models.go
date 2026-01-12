@@ -16,31 +16,32 @@ type User struct {
 }
 
 type TaskList struct {
-	ID       string `gorm:"primaryKey;size:255"` // Google's ID
-	UserID   uint   `gorm:"index"`
-	Title    string
-	Updated  string    // Google's timestamp
-	LastSync time.Time // local timestamp of last successful sync
+	ID       string    `gorm:"primaryKey;size:255" json:"id"` // Google's ID
+	UserID   uint      `gorm:"index" json:"userId"`
+	Title    string    `json:"title"`
+	Updated  string    `json:"updated"`  // Google's timestamp
+	LastSync time.Time `json:"lastSync"` // local timestamp of last successful sync
 
 	// Relationships
-	Tasks []Task `gorm:"foreignKey:TaskListID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	// Added omitempty so this field is ignored if not preloaded
+	Tasks []Task `gorm:"foreignKey:TaskListID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"tasks,omitempty"`
 }
 
 type Task struct {
-	ID              string  `gorm:"primaryKey;size:255"` // Google's ID
-	ParentID        *string `gorm:"index;size:255"`      // Pointer allows nil (top-level tasks)
-	TaskListID      string  `gorm:"index;size:255"`
-	Title           string
-	Status          string // "needsAction" or "completed"
-	Due             *time.Time
-	Notes           string
-	Updated         string // Google's timestamp
-	DurationMins    int    // Task duration
-	ScheduledTime   int
-	ScheduledMinute int
-	Date            *time.Time
-	Description     string
-	Subtasks        []Task `gorm:"foreignKey:ParentID"` // So we can preload subtasks
-	IsRepeating     bool
-	Quadrant        int `gorm:"default:0"`
+	ID              string     `gorm:"primaryKey;size:255" json:"id"`          // Google's ID
+	ParentID        *string    `gorm:"index;size:255" json:"parent,omitempty"` // Google API usually calls this 'parent'
+	TaskListID      string     `gorm:"index;size:255" json:"taskListId"`
+	Title           string     `json:"title"`
+	Status          string     `json:"status"` // "needsAction" or "completed"
+	Due             *time.Time `json:"due,omitempty"`
+	Notes           string     `json:"notes"`
+	Updated         string     `json:"updated"` // Google's timestamp
+	DurationMins    int        `json:"durationMins"`
+	ScheduledTime   int        `json:"scheduledTime"`
+	ScheduledMinute int        `json:"scheduledMinute"`
+	Date            *time.Time `json:"date,omitempty"`
+	Description     string     `json:"description"`
+	Subtasks        []Task     `gorm:"foreignKey:ParentID" json:"subtasks,omitempty"` // So we can preload subtasks
+	IsRepeating     bool       `json:"isRepeating"`
+	Quadrant        int        `gorm:"default:0" json:"quadrant"`
 }
