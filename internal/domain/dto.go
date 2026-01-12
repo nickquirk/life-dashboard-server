@@ -30,10 +30,11 @@ type GetUserResponse struct {
 type UpdateTaskRequest struct {
 	// Local fields
 	// Using pointers to distinguish between Update to 0 and don't update (nil)
-	Quadrant      *int       `json:"quadrant"`
-	DurationMins  *int       `json:"durationMins"`
-	Date          *time.Time `json:"date"`          // The "Planned" date
-	ScheduledTime *int       `json:"scheduledTime"` // Hour (0-23)
+	Quadrant        *int    `json:"quadrant"`
+	DurationMins    *int    `json:"durationMins"`
+	Date            *string `json:"date"`          // The "Planned" date
+	ScheduledTime   *int    `json:"scheduledTime"` // Hour (0-23)
+	ScheduledMinute *int    `json:"scheduledMinute"`
 
 	// Google Fields
 	Status *string    `json:"status"` // "needsAction" or "completed"

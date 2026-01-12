@@ -161,10 +161,20 @@ func (s *service) UpdateTask(ctx context.Context, userID uint, taskID string, re
 		updates["duration_mins"] = *req.DurationMins
 	}
 	if req.Date != nil {
-		updates["date"] = *req.Date
+		// Parse "2006-01-02" format
+		parsedDate, err := time.Parse("2006-01-02", *req.Date)
+		if err == nil {
+			updates["date"] = parsedDate
+		} else {
+			// Log error or ignore if format is bad
+			fmt.Printf("Error parsing date: %v\n", err)
+		}
 	}
 	if req.ScheduledTime != nil {
 		updates["scheduled_time"] = *req.ScheduledTime
+	}
+	if req.ScheduledMinute != nil {
+		updates["scheduled_minute"] = *req.ScheduledMinute
 	}
 	if req.Status != nil {
 		updates["status"] = *req.Status
