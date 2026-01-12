@@ -161,17 +161,33 @@ func (s *service) UpdateTask(ctx context.Context, userID uint, taskID string, re
 		updates["duration_mins"] = *req.DurationMins
 	}
 	if req.Date != nil {
-		// Parse "2006-01-02" format
-		parsedDate, err := time.Parse("2006-01-02", *req.Date)
-		if err == nil {
-			updates["date"] = parsedDate
+		if *req.Date == "" {
+			updates["date"] = nil
 		} else {
-			// Log error or ignore if format is bad
-			fmt.Printf("Error parsing date: %v\n", err)
+			// Parse "2006-01-02" format
+			parsedDate, err := time.Parse("2006-01-02", *req.Date)
+			if err == nil {
+				updates["date"] = parsedDate
+			} else {
+				// Log error or ignore if format is bad
+				fmt.Printf("Error parsing date: %v\n", err)
+			}
 		}
+
 	}
 	if req.ScheduledTime != nil {
-		updates["scheduled_time"] = *req.ScheduledTime
+		if *req.ScheduledTime == -1 {
+			// Signal received: Clear the time
+			updates["scheduled_time"] = nil
+			updates["scheduled_minute"] = nil
+		} else {
+			// Normal update
+			updates["scheduled_time"] = *req.ScheduledTime
+			// Only update minute if time is being set or updated
+			if req.ScheduledMinute != nil {
+				updates["scheduled_minute"] = *req.ScheduledMinute
+			}
+		}
 	}
 	if req.ScheduledMinute != nil {
 		updates["scheduled_minute"] = *req.ScheduledMinute
