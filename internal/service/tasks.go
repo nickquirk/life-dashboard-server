@@ -137,19 +137,40 @@ func (s *service) SyncTasks(ctx context.Context, userID uint, taskListID string)
 		activeIDs = append(activeIDs, item.Id)
 	}
 
+	tx := s.taskRepo.BeginTx()
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// Create a specialized repo that uses this transaction
+	txRepo := s.taskRepo.WithTx(tx)
+
 	// Upsert the Active Tasks (Updates existing ones, inserts new ones)
-	if err := s.taskRepo.UpsertTasks(domainTasks); err != nil {
+	if err := txRepo.UpsertTasks(domainTasks); err != nil {
+		tx.Rollback()
 		return err
 	}
 
 	// Mark local tasks as 'completed' if they are missing from Google's active list
-	if err := s.taskRepo.MarkTasksCompletedExcluding(taskListID, activeIDs); err != nil {
+	if err := txRepo.MarkTasksCompletedExcluding(taskListID, activeIDs); err != nil {
 		fmt.Printf("Error marking tasks completed: %v\n", err)
+		tx.Rollback()
 		return err
 	}
 
 	// Update Sync Time
-	return s.taskRepo.UpdateListLastSync(taskListID, time.Now())
+	if err := txRepo.UpdateListLastSync(taskListID, time.Now()); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit().Error
 }
 
 func (s *service) GetActiveTasks(ctx context.Context, taskListID string) ([]domain.Task, error) {

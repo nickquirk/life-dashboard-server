@@ -26,6 +26,9 @@ type TaskRepository interface {
 	DeleteTasks(ids []string) error
 	UpdateTask(taskID string, updates map[string]interface{}) error
 	MarkTasksCompletedExcluding(taskListID string, activeIDs []string) error
+	// Transaction support
+	BeginTx() *gorm.DB
+	WithTx(tx *gorm.DB) TaskRepository
 }
 
 func (r *GormTaskRepository) UpsertTaskLists(lists []domain.TaskList) error {
@@ -115,4 +118,16 @@ func (r *GormTaskRepository) GetActiveTasks(taskListID string) ([]domain.Task, e
 	err := r.Db.Where("task_list_id = ? AND status = ?", taskListID, "needsAction").
 		Find(&tasks).Error
 	return tasks, err
+}
+
+// Start a transaction
+func (r *GormTaskRepository) BeginTx() *gorm.DB {
+	return r.Db.Begin()
+}
+
+// Return a copy of the repository using the transaction
+func (r *GormTaskRepository) WithTx(tx *gorm.DB) TaskRepository {
+	return &GormTaskRepository{
+		Db: tx, // This new repo instance uses the transaction connection
+	}
 }
