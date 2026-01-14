@@ -12,29 +12,43 @@ func helloWorld(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Hello World!\n"))
 }
 
+// GET /api/tasks
 func (h *Handler) getTaskLists(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-
 	userID, ok := ctx.Value(UserIDKey).(uint)
 	if !ok {
-		http.Error(w, "User not found in context", http.StatusUnauthorized)
+		http.Error(w, "User not found", http.StatusUnauthorized)
 		return
 	}
 
-	lists, err := h.Service.SyncAndGetTaskLists(ctx, userID)
+	// FAST READ
+	lists, err := h.Service.GetTaskLists(userID)
 	if err != nil {
-		// If the service says "unauthorized", send 401
-		if err.Error() == "unauthorized: refresh token invalid" {
-			http.Error(w, "Token expired", http.StatusUnauthorized)
-			return
-		}
-		// In production, log the specific error but return generic to user
-		http.Error(w, "Failed to retrieve task lists: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Failed to fetch lists", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(lists)
+}
+
+// POST /api/tasks/sync
+func (h *Handler) syncTaskLists(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	userID, ok := ctx.Value(UserIDKey).(uint)
+	if !ok {
+		http.Error(w, "User not found", http.StatusUnauthorized)
+		return
+	}
+
+	// SLOW SYNC
+	if err := h.Service.SyncTaskLists(ctx, userID); err != nil {
+		http.Error(w, "Sync failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"status":"synced"}`))
 }
 
 // GET /api/tasks/{taskListId} - Now super fast!

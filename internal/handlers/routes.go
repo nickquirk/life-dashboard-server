@@ -32,8 +32,12 @@ func GetRoutes(mx *chi.Mux, h *Handler) {
 		// Private API Routes (Authenticated)
 		r.Group(func(auth chi.Router) {
 			auth.Use(Authenticate)
+			// auth
 			auth.Get("/auth/me", h.getCurrentUser)
+			// Task List
 			auth.Get("/tasks", h.getTaskLists)
+			auth.Post("/tasks/sync", h.syncTaskLists)
+			// Tasks
 			auth.Get("/tasks/{taskListId}", h.getTasksInList)
 			auth.Post("/tasks/{taskListId}/sync", h.syncTasksInList)
 			auth.Get("/tasks/{taskListId}/active", h.getActiveTasksInList)

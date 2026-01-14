@@ -36,25 +36,29 @@ func (s *service) getGoogleClient(ctx context.Context, userID uint) (*tasks.Serv
 	return tasks.NewService(ctx, option.WithHTTPClient(client))
 }
 
-func (s *service) SyncAndGetTaskLists(ctx context.Context, userID uint) ([]domain.TaskList, error) {
-	// Connect to Google
+// READ: Fast, Database only
+func (s *service) GetTaskLists(userID uint) ([]domain.TaskList, error) {
+	return s.taskRepo.GetTaskLists(userID)
+}
+
+// SYNC: Fetch from Google, Save to DB
+func (s *service) SyncTaskLists(ctx context.Context, userID uint) error {
+	// Connect
 	srv, err := s.getGoogleClient(ctx, userID)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	// Fetch from Tasks API
+	// Fetch
 	gLists, err := srv.Tasklists.List().Do()
 	if err != nil {
 		if s.isTokenError(err) {
-			// TODO Clear invalid tokens in the db
-			//s.userRepo.ClearTokens(userID)
-			return nil, errors.New("unauthorized: refresh token invalid")
+			return errors.New("unauthorized: refresh token invalid")
 		}
-		return nil, err
+		return err
 	}
 
-	// Map to Domain Models
+	// Map
 	var domainLists []domain.TaskList
 	for _, item := range gLists.Items {
 		domainLists = append(domainLists, domain.TaskList{
@@ -66,13 +70,8 @@ func (s *service) SyncAndGetTaskLists(ctx context.Context, userID uint) ([]domai
 		})
 	}
 
-	// Save to DB (Upsert)
-	if err := s.taskRepo.UpsertTaskLists(domainLists); err != nil {
-		return nil, err
-	}
-
-	// Return from DB (Source of Truth)
-	return s.taskRepo.GetTaskLists(userID)
+	// Save (Command only, returns error)
+	return s.taskRepo.UpsertTaskLists(domainLists)
 }
 
 func (s *service) GetTasks(ctx context.Context, taskListID string) ([]domain.Task, error) {
