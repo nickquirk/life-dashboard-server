@@ -35,6 +35,7 @@ func GetRoutes(mx *chi.Mux, h *Handler) {
 			auth.Get("/auth/me", h.getCurrentUser)
 			auth.Get("/tasks", h.getTaskLists)
 			auth.Get("/tasks/{taskListId}", h.getTasksInList)
+			auth.Post("/tasks/{taskListId}/sync", h.syncTasksInList)
 			auth.Get("/tasks/{taskListId}/active", h.getActiveTasksInList)
 			auth.Patch("/tasks/{id}", h.updateTask)
 		})

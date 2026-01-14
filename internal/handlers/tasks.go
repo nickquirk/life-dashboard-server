@@ -37,24 +37,42 @@ func (h *Handler) getTaskLists(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(lists)
 }
 
+// GET /api/tasks/{taskListId} - Now super fast!
 func (h *Handler) getTasksInList(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
 	taskListID := chi.URLParam(r, "taskListId")
 
-	userID, ok := ctx.Value(UserIDKey).(uint)
-	if !ok {
-		http.Error(w, "User not found in context", http.StatusUnauthorized)
-		return
-	}
-
-	tasks, err := h.Service.SyncAndGetAllTasks(ctx, userID, taskListID)
+	// Just read from DB
+	tasks, err := h.Service.GetTasks(r.Context(), taskListID)
 	if err != nil {
-		http.Error(w, "Failed to retrieve tasks: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Failed to fetch tasks", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(tasks)
+}
+
+// POST /api/tasks/{taskListId}/sync - New Endpoint
+func (h *Handler) syncTasksInList(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	taskListID := chi.URLParam(r, "taskListId")
+
+	userID, ok := ctx.Value(UserIDKey).(uint)
+	if !ok {
+		http.Error(w, "User not found", http.StatusUnauthorized)
+		return
+	}
+
+	// Perform the heavy lifting
+	err := h.Service.SyncTasks(ctx, userID, taskListID)
+	if err != nil {
+		// Log error in production
+		http.Error(w, "Sync failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"status": "synced"}`))
 }
 
 // Should this sync from google too?

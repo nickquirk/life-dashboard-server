@@ -9,11 +9,14 @@ import (
 )
 
 type Service interface {
+	// User
 	CreateUser(user domain.CreateUserRequest) (domain.CreateUserResponse, error)
 	GetUser(domain.GetUserRequest) (domain.GetUserResponse, error)
-
+	// Lists
 	SyncAndGetTaskLists(ctx context.Context, userID uint) ([]domain.TaskList, error)
-	SyncAndGetAllTasks(ctx context.Context, userID uint, taskListID string) ([]domain.Task, error)
+	// Tasks
+	GetTasks(ctx context.Context, taskListID string) ([]domain.Task, error)
+	SyncTasks(ctx context.Context, userID uint, taskListID string) error
 	GetActiveTasks(ctx context.Context, taskListID string) ([]domain.Task, error)
 	UpdateTask(ctx context.Context, userID uint, taskID string, req domain.UpdateTaskRequest) error
 }

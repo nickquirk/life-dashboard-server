@@ -75,26 +75,36 @@ func (s *service) SyncAndGetTaskLists(ctx context.Context, userID uint) ([]domai
 	return s.taskRepo.GetTaskLists(userID)
 }
 
-func (s *service) SyncAndGetAllTasks(ctx context.Context, userID uint, taskListID string) ([]domain.Task, error) {
-	// 1. Connect to Google
+func (s *service) GetTasks(ctx context.Context, taskListID string) ([]domain.Task, error) {
+	// Directly return what we have in db. No Google API calls.
+	return s.taskRepo.GetTasks(taskListID)
+}
+
+func (s *service) SyncTasks(ctx context.Context, userID uint, taskListID string) error {
+	// Connect to Google
 	srv, err := s.getGoogleClient(ctx, userID)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	// 2. Fetch ONLY active tasks (ShowCompleted = false)
+	// Fetch ONLY active tasks (ShowCompleted = false)
 	//    We want Google to tell us what is currently "Active"
 	gTasks, err := srv.Tasks.List(taskListID).ShowCompleted(false).ShowHidden(false).Do()
 	if err != nil {
-		return nil, err
+		if s.isTokenError(err) {
+			// TODO Clear invalid tokens in the db
+			//s.userRepo.ClearTokens(userID)
+			return errors.New("unauthorized: refresh token invalid")
+		}
+		return err
 	}
 
-	// 3. Map to Domain Models & Collect Active IDs
+	// Map to Domain Models & Collect Active IDs
 	var domainTasks []domain.Task
 	var activeIDs []string
 
 	for _, item := range gTasks.Items {
-		// Just in case Google sends a stray completed one
+		// Catch if Google sends a stray completed one
 		if item.Status != "needsAction" {
 			continue
 		}
@@ -130,20 +140,17 @@ func (s *service) SyncAndGetAllTasks(ctx context.Context, userID uint, taskListI
 
 	// Upsert the Active Tasks (Updates existing ones, inserts new ones)
 	if err := s.taskRepo.UpsertTasks(domainTasks); err != nil {
-		return nil, err
+		return err
 	}
 
 	// Mark local tasks as 'completed' if they are missing from Google's active list
 	if err := s.taskRepo.MarkTasksCompletedExcluding(taskListID, activeIDs); err != nil {
 		fmt.Printf("Error marking tasks completed: %v\n", err)
-		return nil, err
+		return err
 	}
 
 	// Update Sync Time
-	s.taskRepo.UpdateListLastSync(taskListID, time.Now())
-
-	// Return ALL tasks (Active + Completed) so the UI can decide what to show
-	return s.taskRepo.GetTasks(taskListID)
+	return s.taskRepo.UpdateListLastSync(taskListID, time.Now())
 }
 
 func (s *service) GetActiveTasks(ctx context.Context, taskListID string) ([]domain.Task, error) {
