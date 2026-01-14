@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -36,19 +37,24 @@ func (s *service) getGoogleClient(ctx context.Context, userID uint) (*tasks.Serv
 }
 
 func (s *service) SyncAndGetTaskLists(ctx context.Context, userID uint) ([]domain.TaskList, error) {
-	// 1. Connect to Google
+	// Connect to Google
 	srv, err := s.getGoogleClient(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	// 2. Fetch from API
+	// Fetch from Tasks API
 	gLists, err := srv.Tasklists.List().Do()
 	if err != nil {
+		if s.isTokenError(err) {
+			// TODO Clear invalid tokens in the db
+			//s.userRepo.ClearTokens(userID)
+			return nil, errors.New("unauthorized: refresh token invalid")
+		}
 		return nil, err
 	}
 
-	// 3. Map to Domain Models
+	// Map to Domain Models
 	var domainLists []domain.TaskList
 	for _, item := range gLists.Items {
 		domainLists = append(domainLists, domain.TaskList{
@@ -60,12 +66,12 @@ func (s *service) SyncAndGetTaskLists(ctx context.Context, userID uint) ([]domai
 		})
 	}
 
-	// 4. Save to DB (Upsert)
+	// Save to DB (Upsert)
 	if err := s.taskRepo.UpsertTaskLists(domainLists); err != nil {
 		return nil, err
 	}
 
-	// 5. Return from DB (Source of Truth)
+	// Return from DB (Source of Truth)
 	return s.taskRepo.GetTaskLists(userID)
 }
 
@@ -225,4 +231,12 @@ func (s *service) UpdateTask(ctx context.Context, userID uint, taskID string, re
 	}
 	// Save to loacal DB
 	return s.taskRepo.UpdateTask(taskID, updates)
+}
+
+func (s *service) isTokenError(err error) bool {
+	var retrieveErr *oauth2.RetrieveError
+	if errors.As(err, &retrieveErr) {
+		return true
+	}
+	return false
 }

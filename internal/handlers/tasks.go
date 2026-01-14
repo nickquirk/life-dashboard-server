@@ -23,6 +23,11 @@ func (h *Handler) getTaskLists(w http.ResponseWriter, r *http.Request) {
 
 	lists, err := h.Service.SyncAndGetTaskLists(ctx, userID)
 	if err != nil {
+		// If the service says "unauthorized", send 401
+		if err.Error() == "unauthorized: refresh token invalid" {
+			http.Error(w, "Token expired", http.StatusUnauthorized)
+			return
+		}
 		// In production, log the specific error but return generic to user
 		http.Error(w, "Failed to retrieve task lists: "+err.Error(), http.StatusInternalServerError)
 		return
