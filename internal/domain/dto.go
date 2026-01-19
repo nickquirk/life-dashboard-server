@@ -2,6 +2,7 @@ package domain
 
 import "time"
 
+// User
 type CreateUserRequest struct {
 	Email        string    `json:"email"`
 	Picture      string    `json:"picture"`
@@ -25,6 +26,13 @@ type GetUserResponse struct {
 	AccessToken  string    `json:"access_token"`
 	RefreshToken string    `json:"refresh_token"`
 	TokenExpiry  time.Time `json:"token_expiry"`
+}
+
+// Task
+type CreateTaskRequest struct {
+	Title      string `json:"title"`
+	ParentID   string `json:"parent,omitempty"`   // Optional: ID of the parent task
+	PreviousID string `json:"previous,omitempty"` // Optional: ID of task to insert after (for ordering)
 }
 
 type UpdateTaskRequest struct {

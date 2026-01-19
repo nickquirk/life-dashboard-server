@@ -51,7 +51,29 @@ func (h *Handler) syncTaskLists(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(`{"status":"synced"}`))
 }
 
-// GET /api/tasks/{taskListId} - Now super fast!
+// POST /api/tasks/{taskListId}
+func (h *Handler) createTask(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	taskListID := chi.URLParam(r, "taskListId")
+	userID := ctx.Value(UserIDKey).(uint)
+
+	var req domain.CreateTaskRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid body", http.StatusBadRequest)
+		return
+	}
+
+	task, err := h.Service.CreateTask(ctx, userID, taskListID, req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(task)
+}
+
+// GET /api/tasks/{taskListId}
 func (h *Handler) getTasksInList(w http.ResponseWriter, r *http.Request) {
 	taskListID := chi.URLParam(r, "taskListId")
 

@@ -19,12 +19,13 @@ type TaskRepository interface {
 	GetTaskList(listID string) (domain.TaskList, error)
 	UpdateListLastSync(listID string, t time.Time) error
 	// Tasks
-	UpsertTasks(tasks []domain.Task) error
+	CreateTask(task domain.Task) error
 	GetTasks(taskListID string) ([]domain.Task, error)
 	GetTaskByID(taskID string) (domain.Task, error)
 	GetActiveTasks(taskListID string) ([]domain.Task, error)
-	DeleteTasks(ids []string) error
+	UpsertTasks(tasks []domain.Task) error
 	UpdateTask(taskID string, updates map[string]interface{}) error
+	DeleteTasks(ids []string) error
 	MarkTasksCompletedExcluding(taskListID string, activeIDs []string) error
 	// Transaction support
 	BeginTx() *gorm.DB
@@ -70,6 +71,10 @@ func (r *GormTaskRepository) UpsertTasks(tasks []domain.Task) error {
 		Columns:   []clause.Column{{Name: "id"}},
 		DoUpdates: clause.AssignmentColumns([]string{"title", "status", "due", "notes", "updated", "task_list_id"}),
 	}).Create(&tasks).Error
+}
+
+func (r *GormTaskRepository) CreateTask(task domain.Task) error {
+	return r.Db.Create(&task).Error
 }
 
 func (r *GormTaskRepository) GetTasks(taskListID string) ([]domain.Task, error) {

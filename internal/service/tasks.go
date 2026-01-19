@@ -74,6 +74,50 @@ func (s *service) SyncTaskLists(ctx context.Context, userID uint) error {
 	return s.taskRepo.UpsertTaskLists(domainLists)
 }
 
+func (s *service) CreateTask(ctx context.Context, userID uint, taskListID string, req domain.CreateTaskRequest) (domain.Task, error) {
+	srv, err := s.getGoogleClient(ctx, userID)
+	if err != nil {
+		return domain.Task{}, err
+	}
+
+	googleTask := &tasks.Task{
+		Title: req.Title,
+	}
+
+	// If it's a subtask, set the parent
+	if req.ParentID != "" {
+		googleTask.Parent = req.ParentID
+	}
+
+	// Call Google API
+	createdGTask, err := srv.Tasks.Insert(taskListID, googleTask).Do()
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("google api insert failed: %w", err)
+	}
+
+	// Map response to our Domain Model
+	newTask := domain.Task{
+		ID:         createdGTask.Id,
+		TaskListID: taskListID,
+		Title:      createdGTask.Title,
+		Status:     createdGTask.Status, // Usually "needsAction"
+		Updated:    createdGTask.Updated,
+		Notes:      createdGTask.Notes,
+	}
+
+	if createdGTask.Parent != "" {
+		parent := createdGTask.Parent
+		newTask.ParentID = &parent
+	}
+
+	// Save to DB
+	if err := s.taskRepo.CreateTask(newTask); err != nil {
+		return domain.Task{}, err
+	}
+
+	return newTask, nil
+}
+
 func (s *service) GetTasks(ctx context.Context, taskListID string) ([]domain.Task, error) {
 	// Directly return what we have in db. No Google API calls.
 	return s.taskRepo.GetTasks(taskListID)

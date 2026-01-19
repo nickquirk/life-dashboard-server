@@ -16,6 +16,7 @@ type Service interface {
 	SyncTaskLists(ctx context.Context, userID uint) error
 	GetTaskLists(userID uint) ([]domain.TaskList, error)
 	// Tasks
+	CreateTask(ctx context.Context, userID uint, taskListID string, req domain.CreateTaskRequest) (domain.Task, error)
 	GetTasks(ctx context.Context, taskListID string) ([]domain.Task, error)
 	SyncTasks(ctx context.Context, userID uint, taskListID string) error
 	GetActiveTasks(ctx context.Context, taskListID string) ([]domain.Task, error)
