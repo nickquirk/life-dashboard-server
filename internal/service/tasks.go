@@ -186,7 +186,7 @@ func (s *service) UpdateTask(ctx context.Context, userID uint, taskID string, re
 
 	updates := make(map[string]interface{})
 
-	// 1. Handle Standard Fields
+	// Handle Standard Fields
 	if req.Quadrant != nil {
 		updates["quadrant"] = *req.Quadrant
 	}
@@ -194,56 +194,44 @@ func (s *service) UpdateTask(ctx context.Context, userID uint, taskID string, re
 		updates["duration_mins"] = *req.DurationMins
 	}
 
-	// If nil, the field was not sent in JSON -> Do nothing
+	// Handle Date/Time Logic, set or clear the date
 	if req.Date != nil {
 		if req.Date.Valid {
-			// Valid date provided -> Update it
 			updates["date"] = req.Date.Time
 		} else {
-			// Sent as "" or null -> Clear it in DB
 			updates["date"] = nil
 		}
 	}
 
-	// ... Handle ScheduledTime logic ...
-
-	// Handle Google Sync (Fixed Logic)
+	// Handle Google Sync (Status and Due)
 	if req.Status != nil || req.Due != nil {
-		// Prepare the Patch
 		googleTask := &tasks.Task{}
 		shouldPatch := false
 
 		if req.Status != nil {
 			googleTask.Status = *req.Status
-			updates["status"] = *req.Status // Update local map
+			updates["status"] = *req.Status
 			shouldPatch = true
 		}
 		if req.Due != nil {
 			googleTask.Due = req.Due.Format(time.RFC3339)
-			updates["due"] = *req.Due // Update local map
+			updates["due"] = *req.Due
 			shouldPatch = true
 		}
 
 		if shouldPatch {
-			// Get Client
 			srv, err := s.getGoogleClient(ctx, userID)
 			if err != nil {
-				// Decide: Fail request? Or Log and continue local only?
-				// Usually, if sync fails, we might want to warn the user,
-				// but let's assume we log and continue for now.
 				fmt.Printf("Warning: Could not sync to Google: %v\n", err)
 			} else {
-				// ONLY Call Google if srv is valid
 				_, err = srv.Tasks.Patch(task.TaskListID, taskID, googleTask).Do()
 				if err != nil {
 					fmt.Printf("Error patching Google Task: %v\n", err)
-					// Optional: Return error here if you want strict consistency
 				}
 			}
 		}
 	}
 
-	// 4. Save to Local DB
 	return s.taskRepo.UpdateTask(taskID, updates)
 }
 

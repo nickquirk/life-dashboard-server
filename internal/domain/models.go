@@ -28,20 +28,18 @@ type TaskList struct {
 }
 
 type Task struct {
-	ID              string     `gorm:"primaryKey;size:255" json:"id"`          // Google's ID
-	ParentID        *string    `gorm:"index;size:255" json:"parent,omitempty"` // Google API usually calls this 'parent'
-	TaskListID      string     `gorm:"index;size:255" json:"taskListId"`
-	Title           string     `json:"title"`
-	Status          string     `json:"status"` // "needsAction" or "completed"
-	Due             *time.Time `json:"due,omitempty"`
-	Notes           string     `json:"notes"`
-	Updated         string     `json:"updated"` // Google's timestamp
-	DurationMins    int        `json:"durationMins"`
-	ScheduledTime   int        `json:"scheduledTime"`
-	ScheduledMinute int        `json:"scheduledMinute"`
-	Date            *time.Time `json:"date,omitempty"`
-	Description     string     `json:"description"`
-	Subtasks        []Task     `gorm:"foreignKey:ParentID" json:"subtasks,omitempty"` // So we can preload subtasks
-	IsRepeating     bool       `json:"isRepeating"`
-	Quadrant        int        `gorm:"default:0" json:"quadrant"`
+	ID           string     `gorm:"primaryKey;size:255" json:"id"`          // Google's ID
+	ParentID     *string    `gorm:"index;size:255" json:"parent,omitempty"` // Google API usually calls this 'parent'
+	TaskListID   string     `gorm:"index;size:255" json:"taskListId"`
+	Title        string     `json:"title"`
+	Status       string     `json:"status"` // "needsAction" or "completed"
+	Due          *time.Time `json:"due,omitempty"`
+	Notes        string     `json:"notes"`
+	Updated      string     `json:"updated"` // Google's timestamp
+	DurationMins int        `json:"durationMins"`
+	Date         *time.Time `gorm:"type:datetime" json:"date,omitempty"`
+	Description  string     `json:"description"`
+	Subtasks     []Task     `gorm:"foreignKey:ParentID" json:"subtasks,omitempty"` // So we can preload subtasks
+	IsRepeating  bool       `json:"isRepeating"`
+	Quadrant     int        `gorm:"default:0" json:"quadrant"`
 }
