@@ -203,31 +203,45 @@ func (s *service) UpdateTask(ctx context.Context, userID uint, taskID string, re
 		}
 	}
 
-	// Handle Google Sync (Status and Due)
-	if req.Status != nil || req.Due != nil {
-		googleTask := &tasks.Task{}
-		shouldPatch := false
+	// Handle Google Sync
+	googleTask := &tasks.Task{}
+	shouldPatch := false
 
-		if req.Status != nil {
-			googleTask.Status = *req.Status
-			updates["status"] = *req.Status
-			shouldPatch = true
-		}
-		if req.Due != nil {
-			googleTask.Due = req.Due.Format(time.RFC3339)
-			updates["due"] = *req.Due
-			shouldPatch = true
-		}
+	if req.Title != nil {
+		googleTask.Title = *req.Title
+		updates["title"] = *req.Title
+		shouldPatch = true
+	}
+	if req.Notes != nil {
+		googleTask.Notes = *req.Notes
+		updates["notes"] = *req.Notes
+		shouldPatch = true
 
-		if shouldPatch {
-			srv, err := s.getGoogleClient(ctx, userID)
+		// Force send an empty string if the notes field has been cleared otherwise 'omitempty' will remove it
+		if *req.Notes == "" {
+			googleTask.ForceSendFields = append(googleTask.ForceSendFields, "Notes")
+		}
+	}
+
+	if req.Status != nil {
+		googleTask.Status = *req.Status
+		updates["status"] = *req.Status
+		shouldPatch = true
+	}
+	if req.Due != nil {
+		googleTask.Due = req.Due.Format(time.RFC3339)
+		updates["due"] = *req.Due
+		shouldPatch = true
+	}
+
+	if shouldPatch {
+		srv, err := s.getGoogleClient(ctx, userID)
+		if err != nil {
+			fmt.Printf("Warning: Could not sync to Google: %v\n", err)
+		} else {
+			_, err = srv.Tasks.Patch(task.TaskListID, taskID, googleTask).Do()
 			if err != nil {
-				fmt.Printf("Warning: Could not sync to Google: %v\n", err)
-			} else {
-				_, err = srv.Tasks.Patch(task.TaskListID, taskID, googleTask).Do()
-				if err != nil {
-					fmt.Printf("Error patching Google Task: %v\n", err)
-				}
+				fmt.Printf("Error patching Google Task: %v\n", err)
 			}
 		}
 	}
