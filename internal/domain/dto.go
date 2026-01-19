@@ -31,7 +31,7 @@ type GetUserResponse struct {
 // Task
 type CreateTaskRequest struct {
 	Title      string `json:"title"`
-	ParentID   string `json:"parent,omitempty"`   // Optional: ID of the parent task
+	Parent     string `json:"parent,omitempty"`   // Optional: ID of the parent task
 	PreviousID string `json:"previous,omitempty"` // Optional: ID of task to insert after (for ordering)
 }
 

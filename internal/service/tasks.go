@@ -84,13 +84,21 @@ func (s *service) CreateTask(ctx context.Context, userID uint, taskListID string
 		Title: req.Title,
 	}
 
+	// Prepare the Insert call
+	insertCall := srv.Tasks.Insert(taskListID, googleTask)
+
+	// CHANGE THIS: Use the .Parent() method to set the query parameter
+	if req.Parent != "" {
+		insertCall = insertCall.Parent(req.Parent)
+	}
+
 	// If it's a subtask, set the parent
-	if req.ParentID != "" {
-		googleTask.Parent = req.ParentID
+	if req.Parent != "" {
+		googleTask.Parent = req.Parent
 	}
 
 	// Call Google API
-	createdGTask, err := srv.Tasks.Insert(taskListID, googleTask).Do()
+	createdGTask, err := insertCall.Do()
 	if err != nil {
 		return domain.Task{}, fmt.Errorf("google api insert failed: %w", err)
 	}
@@ -105,11 +113,15 @@ func (s *service) CreateTask(ctx context.Context, userID uint, taskListID string
 		Notes:      createdGTask.Notes,
 	}
 
+	// If Google returned it, use it. If not, use what we requested.
 	if createdGTask.Parent != "" {
 		parent := createdGTask.Parent
-		newTask.ParentID = &parent
+		newTask.Parent = &parent
+	} else if req.Parent != "" {
+		// Fallback: Google didn't echo it, but we know it belongs to this parent
+		parent := req.Parent
+		newTask.Parent = &parent
 	}
-
 	// Save to DB
 	if err := s.taskRepo.CreateTask(newTask); err != nil {
 		return domain.Task{}, err
@@ -160,16 +172,16 @@ func (s *service) SyncTasks(ctx context.Context, userID uint, taskListID string)
 			}
 		}
 
-		var parentID *string
+		var parent *string
 		if item.Parent != "" {
 			// We capture the value in a new variable to get its address safely
 			val := item.Parent
-			parentID = &val
+			parent = &val
 		}
 
 		domainTasks = append(domainTasks, domain.Task{
 			ID:         item.Id,
-			ParentID:   parentID,
+			Parent:     parent,
 			TaskListID: taskListID,
 			Title:      item.Title,
 			Status:     "needsAction", // Force status to active
