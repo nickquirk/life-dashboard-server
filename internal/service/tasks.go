@@ -87,7 +87,7 @@ func (s *service) CreateTask(ctx context.Context, userID uint, taskListID string
 	// Prepare the Insert call
 	insertCall := srv.Tasks.Insert(taskListID, googleTask)
 
-	// CHANGE THIS: Use the .Parent() method to set the query parameter
+	// Use the .Parent() method to set the query parameter
 	if req.Parent != "" {
 		insertCall = insertCall.Parent(req.Parent)
 	}
@@ -103,7 +103,7 @@ func (s *service) CreateTask(ctx context.Context, userID uint, taskListID string
 		return domain.Task{}, fmt.Errorf("google api insert failed: %w", err)
 	}
 
-	// Map response to our Domain Model
+	// Map response to Domain Model
 	newTask := domain.Task{
 		ID:         createdGTask.Id,
 		TaskListID: taskListID,
