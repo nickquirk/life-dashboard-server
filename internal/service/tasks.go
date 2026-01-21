@@ -229,11 +229,6 @@ func (s *service) SyncTasks(ctx context.Context, userID uint, taskListID string)
 	return tx.Commit().Error
 }
 
-func (s *service) GetActiveTasks(ctx context.Context, taskListID string) ([]domain.Task, error) {
-	// Just read from DB (Source of Truth)
-	return s.taskRepo.GetActiveTasks(taskListID)
-}
-
 func (s *service) UpdateTask(ctx context.Context, userID uint, taskID string, req domain.UpdateTaskRequest) error {
 	task, err := s.taskRepo.GetTaskByID(taskID)
 	if err != nil {
@@ -303,6 +298,33 @@ func (s *service) UpdateTask(ctx context.Context, userID uint, taskID string, re
 	}
 
 	return s.taskRepo.UpdateTask(taskID, updates)
+}
+
+func (s *service) DeleteTask(ctx context.Context, userID uint, taskID string) error {
+	// Get the task to find its taskListID
+	task, err := s.taskRepo.GetTaskByID(taskID)
+	if err != nil {
+		return fmt.Errorf("task not found: %w", err)
+	}
+
+	// Delete from Google Tasks API
+	srv, err := s.getGoogleClient(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("failed to get Google client: %w", err)
+	}
+
+	err = srv.Tasks.Delete(task.TaskListID, taskID).Do()
+	if err != nil {
+		// Log but continue - task might already be deleted on Google's side
+		fmt.Printf("Warning: Could not delete from Google Tasks: %v\n", err)
+	}
+
+	// Delete from local database
+	if err := s.taskRepo.DeleteTask(taskID); err != nil {
+		return fmt.Errorf("failed to delete task from database: %w", err)
+	}
+
+	return nil
 }
 
 func (s *service) isTokenError(err error) bool {

@@ -19,8 +19,8 @@ type Service interface {
 	CreateTask(ctx context.Context, userID uint, taskListID string, req domain.CreateTaskRequest) (domain.Task, error)
 	GetTasks(ctx context.Context, taskListID string) ([]domain.Task, error)
 	SyncTasks(ctx context.Context, userID uint, taskListID string) error
-	GetActiveTasks(ctx context.Context, taskListID string) ([]domain.Task, error)
 	UpdateTask(ctx context.Context, userID uint, taskID string, req domain.UpdateTaskRequest) error
+	DeleteTask(ctx context.Context, userID uint, taskID string) error
 }
 
 type service struct {

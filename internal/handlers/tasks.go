@@ -114,20 +114,6 @@ func (h *Handler) syncTasksInList(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(`{"status": "synced"}`))
 }
 
-// Should this sync from google too?
-func (h *Handler) getActiveTasksInList(w http.ResponseWriter, r *http.Request) {
-	taskListID := chi.URLParam(r, "taskListId")
-
-	tasks, err := h.Service.GetActiveTasks(r.Context(), taskListID)
-	if err != nil {
-		http.Error(w, "Failed to fetch active tasks", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(tasks)
-}
-
 func (h *Handler) updateTask(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	taskID := chi.URLParam(r, "id")
@@ -151,4 +137,24 @@ func (h *Handler) updateTask(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`{"message":"Task updated"}`))
+}
+
+// DELETE /api/tasks/{id}
+func (h *Handler) deleteTask(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	taskID := chi.URLParam(r, "id")
+
+	userID, ok := ctx.Value(UserIDKey).(uint)
+	if !ok {
+		http.Error(w, "User not found in context", http.StatusUnauthorized)
+		return
+	}
+
+	if err := h.Service.DeleteTask(ctx, userID, taskID); err != nil {
+		http.Error(w, "Failed to delete task: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"message":"Task deleted"}`))
 }

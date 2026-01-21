@@ -22,10 +22,9 @@ type TaskRepository interface {
 	CreateTask(task domain.Task) error
 	GetTasks(taskListID string) ([]domain.Task, error)
 	GetTaskByID(taskID string) (domain.Task, error)
-	GetActiveTasks(taskListID string) ([]domain.Task, error)
 	UpsertTasks(tasks []domain.Task) error
 	UpdateTask(taskID string, updates map[string]interface{}) error
-	DeleteTasks(ids []string) error
+	DeleteTask(taskID string) error
 	MarkTasksCompletedExcluding(taskListID string, activeIDs []string) error
 	// Transaction support
 	BeginTx() *gorm.DB
@@ -93,11 +92,8 @@ func (r *GormTaskRepository) UpdateTask(taskID string, updates map[string]interf
 	return r.Db.Model(&domain.Task{}).Where("id = ?", taskID).Updates(updates).Error
 }
 
-func (r *GormTaskRepository) DeleteTasks(ids []string) error {
-	if len(ids) == 0 {
-		return nil
-	}
-	return r.Db.Where("id IN ?", ids).Delete(&domain.Task{}).Error
+func (r *GormTaskRepository) DeleteTask(taskID string) error {
+	return r.Db.Where("id = ?", taskID).Delete(&domain.Task{}).Error
 }
 
 func (r *GormTaskRepository) MarkTasksCompletedExcluding(taskListID string, activeIDs []string) error {
@@ -115,14 +111,6 @@ func (r *GormTaskRepository) MarkTasksCompletedExcluding(taskListID string, acti
 		Not("id IN ?", activeIDs).
 		Where("status != ?", "completed"). // Optimization: don't update if already completed
 		Update("status", "completed").Error
-}
-
-func (r *GormTaskRepository) GetActiveTasks(taskListID string) ([]domain.Task, error) {
-	var tasks []domain.Task
-	// filter by task_list_id AND status
-	err := r.Db.Where("task_list_id = ? AND status = ?", taskListID, "needsAction").
-		Find(&tasks).Error
-	return tasks, err
 }
 
 // Start a transaction
