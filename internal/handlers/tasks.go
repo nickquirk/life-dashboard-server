@@ -29,7 +29,10 @@ func (h *Handler) getTaskLists(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(lists)
+	if err := json.NewEncoder(w).Encode(lists); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
 // POST /api/tasks/sync
