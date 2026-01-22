@@ -291,7 +291,7 @@ func (s *service) UpdateTask(ctx context.Context, userID uint, taskID string, re
 			return fmt.Errorf("failed to get Google client: %w", err)
 		}
 
-		// FIX: Capture the response to get the official 'Updated' timestamp
+		// Capture the response to get the official 'Updated' timestamp
 		updatedGTask, err := srv.Tasks.Patch(task.TaskListID, taskID, googleTask).Do()
 		if err != nil {
 			return fmt.Errorf("failed to sync to Google: %w", err)
