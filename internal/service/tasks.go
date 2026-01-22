@@ -288,12 +288,11 @@ func (s *service) UpdateTask(ctx context.Context, userID uint, taskID string, re
 	if shouldPatch {
 		srv, err := s.getGoogleClient(ctx, userID)
 		if err != nil {
-			fmt.Printf("Warning: Could not sync to Google: %v\n", err)
-		} else {
-			_, err = srv.Tasks.Patch(task.TaskListID, taskID, googleTask).Do()
-			if err != nil {
-				fmt.Printf("Error patching Google Task: %v\n", err)
-			}
+			return fmt.Errorf("failed to get Google client: %w", err)
+		}
+		_, err = srv.Tasks.Patch(task.TaskListID, taskID, googleTask).Do()
+		if err != nil {
+			return fmt.Errorf("failed to sync to Google: %w", err)
 		}
 	}
 
