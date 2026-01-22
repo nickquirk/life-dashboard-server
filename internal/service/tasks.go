@@ -144,7 +144,7 @@ func (s *service) SyncTasks(ctx context.Context, userID uint, taskListID string)
 
 	// Fetch ONLY active tasks (ShowCompleted = false)
 	//    We want Google to tell us what is currently "Active"
-	gTasks, err := srv.Tasks.List(taskListID).ShowCompleted(false).ShowHidden(false).Do()
+	gTasks, err := srv.Tasks.List(taskListID).ShowCompleted(false).ShowHidden(true).Do()
 	if err != nil {
 		if s.isTokenError(err) {
 			// TODO Clear invalid tokens in the db
@@ -290,10 +290,15 @@ func (s *service) UpdateTask(ctx context.Context, userID uint, taskID string, re
 		if err != nil {
 			return fmt.Errorf("failed to get Google client: %w", err)
 		}
-		_, err = srv.Tasks.Patch(task.TaskListID, taskID, googleTask).Do()
+
+		// FIX: Capture the response to get the official 'Updated' timestamp
+		updatedGTask, err := srv.Tasks.Patch(task.TaskListID, taskID, googleTask).Do()
 		if err != nil {
 			return fmt.Errorf("failed to sync to Google: %w", err)
 		}
+
+		// Update the local timestamp to match Google's server time immediately
+		updates["updated"] = updatedGTask.Updated
 	}
 
 	return s.taskRepo.UpdateTask(taskID, updates)
