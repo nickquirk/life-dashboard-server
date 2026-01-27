@@ -1,16 +1,22 @@
 package handlers
 
 import (
+	"os"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 )
 
 func GetRoutes(mx *chi.Mux, h *Handler) {
+	clientUrl := os.Getenv("CLIENT_URL")
+	if clientUrl == "" {
+		panic("cannot find CLIENT_URL in .env")
+	}
 	// Middleware
 	mx.Use(middleware.Logger)
 	mx.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:3000"},
+		AllowedOrigins:   []string{clientUrl},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
