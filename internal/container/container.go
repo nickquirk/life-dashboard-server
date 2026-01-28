@@ -46,16 +46,6 @@ func NewService(db *gorm.DB) service.Service {
 	return service.NewService(db)
 }
 
-// func NewDb() *gorm.DB {
-// 	dsn := os.Getenv("MARIA_DB")
-// 	db, errConn := gorm.Open(mysql.Open(dsn), &gorm.Config{})
-
-// 	if errConn != nil {
-// 		panic(errConn)
-// 	}
-// 	return db
-// }
-
 func NewConnection() *gorm.DB {
 	conn, err := db.InitDb()
 
