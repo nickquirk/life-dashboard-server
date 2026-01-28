@@ -20,7 +20,7 @@ import (
 // state as random variable in cookie
 // reauthorise in cookie?
 
-func GoogleLogin(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) googleLogin(w http.ResponseWriter, r *http.Request) {
 	url := config.GoogleConfiguration.GoogleLoginConfig.AuthCodeURL(
 		os.Getenv("STATE"),
 		oauth2.AccessTypeOffline,
@@ -30,7 +30,7 @@ func GoogleLogin(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }
 
-func (h *Handler) GoogleCallback(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 	params := r.URL.Query()
 	state := params["state"][0]
 	if state != os.Getenv("STATE") {

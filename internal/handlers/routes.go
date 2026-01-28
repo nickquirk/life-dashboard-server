@@ -24,15 +24,15 @@ func GetRoutes(mx *chi.Mux, h *Handler) {
 		MaxAge:           300, // Maximum value not ignored by any major browsers
 	}))
 
-	// Public Routes mx is router route
+	// Public Routes
 	mx.Get("/", helloWorld)
 	mx.Route("/api", func(r chi.Router) {
 		// Public API routes
 
 		// Google OAuth2
 		r.Group(func(public chi.Router) {
-			public.Get("/auth/google-login", GoogleLogin)
-			public.Get("/auth/google-callback", h.GoogleCallback)
+			public.Get("/auth/google-login", h.googleLogin)
+			public.Get("/auth/google-callback", h.googleCallback)
 			public.Post("/auth/logout", h.logout)
 		})
 		// Private API Routes (Authenticated)
