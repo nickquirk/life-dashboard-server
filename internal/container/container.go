@@ -20,6 +20,7 @@ func BuildContainer() *dig.Container {
 	container.Provide(NewService)
 	// container.Provide(NewDb)
 	container.Provide(NewConnection)
+	container.Provide(NewPoller)
 
 	return container
 }
