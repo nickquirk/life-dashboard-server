@@ -31,9 +31,9 @@ func New(svc service.Service, db *gorm.DB) *Poller {
 		parsed, err := time.ParseDuration(envInterval)
 		if err != nil {
 			log.Printf("[Poller] Invalid GOOGLE_POLL_INTERVAL '%s': %v. Using default %v\n", envInterval, err, interval)
-		} else {
-			interval = parsed
+			parsed = interval // Reset to default
 		}
+		interval = parsed
 	}
 
 	return &Poller{
