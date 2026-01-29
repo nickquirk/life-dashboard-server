@@ -1,6 +1,9 @@
 package config
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/knadh/koanf/parsers/json"
 	"github.com/knadh/koanf/parsers/yaml"
 	"github.com/knadh/koanf/providers/file"
@@ -53,4 +56,33 @@ func (k *koanfConfig) LoadYaml(path string) error {
 
 func (k *koanfConfig) GetAsString(key string) string {
 	return k.conf.String(key)
+}
+
+// LoadConfig replaces the old "NewApp"
+func LoadConfig() Config {
+	// 1. Determine Path
+	configPath := os.Getenv("CONFIG_PATH")
+	if configPath == "" {
+		configPath = "config.dev.yaml"
+	}
+
+	// 2. Initialize
+	k := &koanfConfig{
+		conf: koanf.New("."),
+	}
+
+	// 3. Load
+	// Note: You can add logic here to switch between JSON/YAML based on extension if you want
+	f := file.Provider(configPath)
+	if err := k.conf.Load(f, yaml.Parser()); err != nil {
+		// Fail fast if config is missing
+		panic(fmt.Sprintf("Failed to load config file at %s: %v", configPath, err))
+	}
+
+	// 4. Validate
+	if k.GetAsString("app.name") == "" {
+		panic("Missing app.name in the config file")
+	}
+
+	return k
 }
