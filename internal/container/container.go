@@ -15,7 +15,7 @@ func BuildContainer() *dig.Container {
 	container := dig.New()
 
 	// Provide the dependencies
-	container.Provide(config.LoadConfig())
+	container.Provide(config.LoadConfig)
 	container.Provide(NewChiRouter)
 	container.Provide(NewHandler)
 	container.Provide(NewService)
