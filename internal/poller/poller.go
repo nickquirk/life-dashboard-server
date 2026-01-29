@@ -16,9 +16,9 @@ type Poller struct {
 	service  service.Service
 	db       *gorm.DB
 	interval time.Duration
+	running  bool
 	stopCh   chan struct{}
 	wg       sync.WaitGroup
-	running  bool
 	mu       sync.Mutex
 }
 

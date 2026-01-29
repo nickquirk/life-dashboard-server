@@ -7,6 +7,7 @@ import (
 	"github.com/nickquirk/life-dashboard-server/internal/db"
 	"github.com/nickquirk/life-dashboard-server/internal/handlers"
 	"github.com/nickquirk/life-dashboard-server/internal/helper"
+	"github.com/nickquirk/life-dashboard-server/internal/poller"
 	"github.com/nickquirk/life-dashboard-server/internal/service"
 	"go.uber.org/dig"
 	"gorm.io/gorm"
@@ -55,4 +56,8 @@ func NewConnection() *gorm.DB {
 	}
 
 	return conn
+}
+
+func NewPoller(s service.Service, db *gorm.DB) *poller.Poller {
+	return poller.New(s, db)
 }
