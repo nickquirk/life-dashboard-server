@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/nickquirk/life-dashboard-server/internal/config"
 	"github.com/nickquirk/life-dashboard-server/internal/db"
 	"github.com/nickquirk/life-dashboard-server/internal/handlers"
 	"github.com/nickquirk/life-dashboard-server/internal/helper"
@@ -17,7 +18,7 @@ func BuildContainer() *dig.Container {
 	container := dig.New()
 
 	// Provide the dependencies
-	container.Provide(NewApp)
+	container.Provide(config.LoadConfig())
 	container.Provide(NewChiRouter)
 	container.Provide(NewHandler)
 	container.Provide(NewService)

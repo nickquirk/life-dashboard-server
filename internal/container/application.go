@@ -14,14 +14,13 @@ import (
 	"github.com/nickquirk/life-dashboard-server/internal/config"
 	"github.com/nickquirk/life-dashboard-server/internal/db"
 	"github.com/nickquirk/life-dashboard-server/internal/handlers"
-	"github.com/nickquirk/life-dashboard-server/internal/helper"
 	"github.com/nickquirk/life-dashboard-server/internal/poller"
 	"gorm.io/gorm"
 )
 
 // Application holds the "wired" dependencies of your system
 type Application struct {
-	App    helper.App
+	Config config.Config
 	Router *chi.Mux
 	Poller *poller.Poller
 	DB     *gorm.DB
@@ -29,7 +28,7 @@ type Application struct {
 
 // NewApplication is the constructor invoked by dig.
 // It performs the "Wiring" phase (routes, configs).
-func NewApplication(app helper.App, r *chi.Mux, h *handlers.Handler, gormDB *gorm.DB, p *poller.Poller) *Application {
+func NewApplication(cfg config.Config, r *chi.Mux, h *handlers.Handler, gormDB *gorm.DB, p *poller.Poller) *Application {
 	// Initialize routes (modifies the router in-place)
 	handlers.GetRoutes(r, h)
 
@@ -37,7 +36,7 @@ func NewApplication(app helper.App, r *chi.Mux, h *handlers.Handler, gormDB *gor
 	config.GetGoogleConfig()
 
 	return &Application{
-		App:    app,
+		Config: cfg,
 		Router: r,
 		Poller: p,
 		DB:     gormDB,
@@ -55,7 +54,7 @@ func (a *Application) Run() error {
 	a.Poller.Start()
 
 	// Configure HTTP Server
-	port := a.App.GetConfig().GetAsString("service.port")
+	port := a.Config.GetAsString("service.port")
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%s", port),
 		Handler:      a.Router,
