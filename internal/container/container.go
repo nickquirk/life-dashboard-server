@@ -15,24 +15,26 @@ import (
 
 func BuildContainer() *dig.Container {
 	container := dig.New()
+
+	// Provide the dependencies
 	container.Provide(NewApp)
 	container.Provide(NewChiRouter)
 	container.Provide(NewHandler)
 	container.Provide(NewService)
-	// container.Provide(NewDb)
 	container.Provide(NewConnection)
 	container.Provide(NewPoller)
+
+	// Provide the Main Application Wrapper (defined in application.go)
+	container.Provide(NewApplication)
 
 	return container
 }
 
 func NewApp() helper.App {
 	configPath := os.Getenv("CONFIG_PATH")
-
 	if configPath == "" {
 		configPath = "config.dev.yaml"
 	}
-
 	return helper.NewApp(configPath)
 }
 
@@ -50,11 +52,9 @@ func NewService(db *gorm.DB) service.Service {
 
 func NewConnection() *gorm.DB {
 	conn, err := db.InitDb()
-
 	if err != nil {
 		panic(err.Error())
 	}
-
 	return conn
 }
 
