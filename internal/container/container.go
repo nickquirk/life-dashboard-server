@@ -1,13 +1,10 @@
 package container
 
 import (
-	"os"
-
 	"github.com/go-chi/chi/v5"
 	"github.com/nickquirk/life-dashboard-server/internal/config"
 	"github.com/nickquirk/life-dashboard-server/internal/db"
 	"github.com/nickquirk/life-dashboard-server/internal/handlers"
-	"github.com/nickquirk/life-dashboard-server/internal/helper"
 	"github.com/nickquirk/life-dashboard-server/internal/poller"
 	"github.com/nickquirk/life-dashboard-server/internal/service"
 	"go.uber.org/dig"
@@ -29,14 +26,6 @@ func BuildContainer() *dig.Container {
 	container.Provide(NewApplication)
 
 	return container
-}
-
-func NewApp() helper.App {
-	configPath := os.Getenv("CONFIG_PATH")
-	if configPath == "" {
-		configPath = "config.dev.yaml"
-	}
-	return helper.NewApp(configPath)
 }
 
 func NewChiRouter() *chi.Mux {
