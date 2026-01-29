@@ -12,6 +12,7 @@ import (
 	"github.com/nickquirk/life-dashboard-server/internal/db"
 	"github.com/nickquirk/life-dashboard-server/internal/handlers"
 	"github.com/nickquirk/life-dashboard-server/internal/helper"
+	"github.com/nickquirk/life-dashboard-server/internal/poller"
 	"github.com/nickquirk/life-dashboard-server/internal/service"
 	"gorm.io/gorm"
 )
@@ -27,11 +28,12 @@ func init() {
 func main() {
 	container := container.BuildContainer()
 
-	err := container.Invoke(func(app helper.App, r *chi.Mux, h *handlers.Handler, s service.Service, gormDB *gorm.DB) {
+	err := container.Invoke(func(app helper.App, r *chi.Mux, h *handlers.Handler, s service.Service, gormDB *gorm.DB, p *poller.Poller) {
 
 		db.InitMigration(gormDB)
 		handlers.GetRoutes(r, h)
 		config.GetGoogleConfig()
+		p.Start()
 
 		PORT := app.GetConfig().GetAsString("service.port")
 

@@ -24,17 +24,7 @@ type Poller struct {
 
 // New creates a new Poller instance
 func New(svc service.Service, db *gorm.DB) *Poller {
-	// define interval for polling
-	interval := 5 * time.Minute
-	envInterval := os.Getenv("GOOGLE_POLL_INTERVAL")
-	if envInterval != "" {
-		parsed, err := time.ParseDuration(envInterval)
-		if err != nil {
-			log.Printf("[Poller] Invalid GOOGLE_POLL_INTERVAL '%s': %v. Using default %v\n", envInterval, err, interval)
-			parsed = interval // Reset to default
-		}
-		interval = parsed
-	}
+	interval := getPollInterval()
 
 	return &Poller{
 		service:  svc,
@@ -42,6 +32,24 @@ func New(svc service.Service, db *gorm.DB) *Poller {
 		interval: interval,
 		stopCh:   make(chan struct{}),
 	}
+}
+
+func getPollInterval() time.Duration {
+	defaultInterval := 5 * time.Minute
+	env := os.Getenv("GOOGLE_POLL_INTERVAL")
+
+	if env == "" {
+		return defaultInterval
+	}
+
+	// parse duration string e.g 5s, 5m, 5h
+	parsed, err := time.ParseDuration(env)
+	if err != nil {
+		log.Printf("[Poller] Invalid GOOGLE_POLL_INTERVAL '%s': %v. Using default %v\n", env, err, defaultInterval)
+		return defaultInterval
+	}
+
+	return parsed
 }
 
 // begins background polling goroutine
