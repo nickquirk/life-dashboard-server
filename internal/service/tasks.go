@@ -352,7 +352,6 @@ func (s *service) moveTask(ctx context.Context, userID uint, currentTask domain.
 		return err
 	}
 
-	// 1. Prepare New Task Data
 	// Merge current data with any updates in the request
 	title := currentTask.Title
 	if req.Title != nil {
@@ -364,7 +363,7 @@ func (s *service) moveTask(ctx context.Context, userID uint, currentTask domain.
 		notes = *req.Notes
 	}
 
-	// FIX: Default to CURRENT status, not "needsAction"
+	// Default to CURRENT status, not "needsAction"
 	// This ensures that if you just move a task without changing status, it stays completed/active
 	status := currentTask.Status
 	if req.Status != nil {
@@ -381,17 +380,17 @@ func (s *service) moveTask(ctx context.Context, userID uint, currentTask domain.
 		googleTask.Due = req.Due.Format(time.RFC3339)
 	}
 
-	// 2. Insert into NEW List on Google
+	// Insert into NEW List on Google
 	newGTask, err := srv.Tasks.Insert(newListID, googleTask).Do()
 	if err != nil {
 		return fmt.Errorf("failed to create task in new list: %w", err)
 	}
 
-	// 3. Delete from OLD List on Google
+	// Delete from OLD List on Google
 	// We do this after successful insert to prevent data loss if insert fails
 	_ = srv.Tasks.Delete(currentTask.TaskListID, currentTask.ID).Do()
 
-	// 4. Update Database (Atomic Swap)
+	// Update Database (Atomic Swap)
 	// We delete the old record and create a new one because the Primary Key (Google ID) has changed.
 
 	// Prepare new domain task
