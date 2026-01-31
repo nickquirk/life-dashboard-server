@@ -14,7 +14,7 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-// Helper to get Google Client (moved from Handlers)
+// Helper to get Google Client
 func (s *service) getGoogleClient(ctx context.Context, userID uint) (*tasks.Service, error) {
 	// 1. Get User for tokens
 	userResp, err := s.userRepo.Get(domain.GetUserRequest{Id: userID})
