@@ -43,6 +43,7 @@ type UpdateTaskRequest struct {
 	DurationMins *int          `json:"durationMins"`
 	Date         *NullableDate `json:"date"` // The "Planned" date
 	Notes        *string       `json:"notes"`
+	TaskListID   *string       `json:"taskListId"`
 
 	// Google Fields
 	Status *string    `json:"status"` // "needsAction" or "completed"

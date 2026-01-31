@@ -11,6 +11,7 @@ import (
 	"golang.org/x/oauth2"
 	"google.golang.org/api/option"
 	"google.golang.org/api/tasks/v1"
+	"gorm.io/gorm/clause"
 )
 
 // Helper to get Google Client (moved from Handlers)
@@ -235,6 +236,11 @@ func (s *service) UpdateTask(ctx context.Context, userID uint, taskID string, re
 		return err
 	}
 
+	// DETECT MOVE: If TaskListID is present and different, trigger the Move logic
+	if req.TaskListID != nil && *req.TaskListID != task.TaskListID {
+		return s.moveTask(ctx, userID, task, *req.TaskListID, req)
+	}
+
 	updates := make(map[string]interface{})
 
 	// Handle Standard Fields
@@ -337,4 +343,100 @@ func (s *service) isTokenError(err error) bool {
 		return true
 	}
 	return false
+}
+
+// Private helper to handle the "Delete Old + Create New" dance
+func (s *service) moveTask(ctx context.Context, userID uint, currentTask domain.Task, newListID string, req domain.UpdateTaskRequest) error {
+	srv, err := s.getGoogleClient(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	// 1. Prepare New Task Data
+	// Merge current data with any updates in the request
+	title := currentTask.Title
+	if req.Title != nil {
+		title = *req.Title
+	}
+
+	notes := currentTask.Notes
+	if req.Notes != nil {
+		notes = *req.Notes
+	}
+
+	// FIX: Default to CURRENT status, not "needsAction"
+	// This ensures that if you just move a task without changing status, it stays completed/active
+	status := currentTask.Status
+	if req.Status != nil {
+		status = *req.Status
+	}
+
+	// Create Google Object
+	googleTask := &tasks.Task{
+		Title:  title,
+		Notes:  notes,
+		Status: status,
+	}
+	if req.Due != nil {
+		googleTask.Due = req.Due.Format(time.RFC3339)
+	}
+
+	// 2. Insert into NEW List on Google
+	newGTask, err := srv.Tasks.Insert(newListID, googleTask).Do()
+	if err != nil {
+		return fmt.Errorf("failed to create task in new list: %w", err)
+	}
+
+	// 3. Delete from OLD List on Google
+	// We do this after successful insert to prevent data loss if insert fails
+	_ = srv.Tasks.Delete(currentTask.TaskListID, currentTask.ID).Do()
+
+	// 4. Update Database (Atomic Swap)
+	// We delete the old record and create a new one because the Primary Key (Google ID) has changed.
+
+	// Prepare new domain task
+	newTask := domain.Task{
+		ID:         newGTask.Id,
+		TaskListID: newListID,
+		Title:      newGTask.Title,
+		Status:     newGTask.Status,
+		Updated:    newGTask.Updated,
+		Notes:      newGTask.Notes,
+		// Carry over local-only fields
+		Quadrant:     currentTask.Quadrant,
+		DurationMins: currentTask.DurationMins,
+		IsRepeating:  currentTask.IsRepeating,
+		Date:         currentTask.Date, // Default to old date
+	}
+
+	// Apply overrides for local fields from request
+	if req.Quadrant != nil {
+		newTask.Quadrant = *req.Quadrant
+	}
+	if req.Date != nil {
+		if req.Date.Valid {
+			newTask.Date = &req.Date.Time
+		} else {
+			newTask.Date = nil
+		}
+	}
+
+	// Transaction to swap them
+	tx := s.taskRepo.BeginTx()
+
+	// Delete the old task ID
+	if err := tx.Where("id = ?", currentTask.ID).Delete(&domain.Task{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Use Upsert (OnConflict) instead of Create
+	// If 'newTask.ID' happens to collide with an existing record (zombie data/race condition),
+	// this will overwrite it safely instead of crashing with UNIQUE constraint failed.
+	if err := tx.Clauses(clause.OnConflict{UpdateAll: true}).Create(&newTask).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit().Error
 }
