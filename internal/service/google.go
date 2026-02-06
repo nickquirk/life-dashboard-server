@@ -45,7 +45,7 @@ func (s *service) getGoogleTaskService(ctx context.Context, userID uint) (*tasks
 func (s *service) getGoogleCalendarService(ctx context.Context, userID uint) (*calendar.Service, error) {
 	client, err := s.getAuthenticatedClient(ctx, userID)
 	if err != nil {
-		return &calendar.Service{}, fmt.Errorf("failed to create tasks service: %w", err)
+		return &calendar.Service{}, fmt.Errorf("failed to create calendar service: %w", err)
 	}
 	return calendar.NewService(ctx, option.WithHTTPClient(client))
 }
