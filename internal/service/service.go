@@ -9,18 +9,20 @@ import (
 )
 
 type Service interface {
-	// User
+	// ------ User ---------
 	CreateUser(user domain.CreateUserRequest) (domain.CreateUserResponse, error)
 	GetUser(domain.GetUserRequest) (domain.GetUserResponse, error)
-	// Lists
+	// ------ Lists ---------
 	SyncTaskLists(ctx context.Context, userID uint) error
 	GetTaskLists(userID uint) ([]domain.TaskList, error)
-	// Tasks
+	// ------ Tasks ---------
 	CreateTask(ctx context.Context, userID uint, taskListID string, req domain.CreateTaskRequest) (domain.Task, error)
 	GetTasks(ctx context.Context, taskListID string) ([]domain.Task, error)
 	SyncTasks(ctx context.Context, userID uint, taskListID string) error
 	UpdateTask(ctx context.Context, userID uint, taskID string, req domain.UpdateTaskRequest) error
 	DeleteTask(ctx context.Context, userID uint, taskID string) error
+	// ------ Calendar ---------
+	//GetCalendarEvents(ctx context.Context, userID uint, start, end time.Time) ([]domain.CalendarEvent, error)
 }
 
 type service struct {

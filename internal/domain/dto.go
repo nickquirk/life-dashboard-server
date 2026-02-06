@@ -2,7 +2,7 @@ package domain
 
 import "time"
 
-// User
+// ------ User ---------
 type CreateUserRequest struct {
 	Email        string    `json:"email"`
 	Picture      string    `json:"picture"`
@@ -28,7 +28,7 @@ type GetUserResponse struct {
 	TokenExpiry  time.Time `json:"token_expiry"`
 }
 
-// Task
+// ------ Task ---------
 type CreateTaskRequest struct {
 	Title      string `json:"title"`
 	Parent     string `json:"parent,omitempty"`   // Optional: ID of the parent task
@@ -48,4 +48,20 @@ type UpdateTaskRequest struct {
 	// Google Fields
 	Status *string    `json:"status"` // "needsAction" or "completed"
 	Due    *time.Time `json:"due"`
+}
+
+// ------ Calendar ---------
+type CalendarEvent struct {
+	ID           string    `json:"id"`
+	Title        string    `json:"title"`
+	Start        time.Time `json:"start"`
+	End          time.Time `json:"end"`
+	IsAllDay     bool      `json:"isAllDay"`
+	CalendarName string    `json:"calendarName"` // "Primary", "Work", etc.
+	ColorId      string    `json:"colorId,omitempty"`
+}
+
+type GetEventsRequest struct {
+	Start time.Time `json:"start"`
+	End   time.Time `json:"end"`
 }

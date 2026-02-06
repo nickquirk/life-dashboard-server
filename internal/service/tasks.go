@@ -6,36 +6,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/nickquirk/life-dashboard-server/internal/config"
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
 	"golang.org/x/oauth2"
-	"google.golang.org/api/option"
 	"google.golang.org/api/tasks/v1"
 	"gorm.io/gorm/clause"
 )
-
-// Helper to get Google Client
-func (s *service) getGoogleClient(ctx context.Context, userID uint) (*tasks.Service, error) {
-	// 1. Get User for tokens
-	userResp, err := s.userRepo.Get(domain.GetUserRequest{Id: userID})
-	if err != nil {
-		return nil, err
-	}
-
-	// 2. Build Token
-	tok := &oauth2.Token{
-		AccessToken:  userResp.AccessToken,
-		RefreshToken: userResp.RefreshToken,
-		Expiry:       userResp.TokenExpiry,
-		TokenType:    "Bearer",
-	}
-
-	// 3. Create Client
-	conf := config.GetGoogleConfig()
-	client := conf.Client(ctx, tok)
-
-	return tasks.NewService(ctx, option.WithHTTPClient(client))
-}
 
 // READ: Fast, Database only
 func (s *service) GetTaskLists(userID uint) ([]domain.TaskList, error) {
@@ -44,8 +19,7 @@ func (s *service) GetTaskLists(userID uint) ([]domain.TaskList, error) {
 
 // SYNC: Fetch from Google, Save to DB
 func (s *service) SyncTaskLists(ctx context.Context, userID uint) error {
-	// Connect
-	srv, err := s.getGoogleClient(ctx, userID)
+	srv, err := s.getGoogleTaskService(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -76,7 +50,7 @@ func (s *service) SyncTaskLists(ctx context.Context, userID uint) error {
 }
 
 func (s *service) CreateTask(ctx context.Context, userID uint, taskListID string, req domain.CreateTaskRequest) (domain.Task, error) {
-	srv, err := s.getGoogleClient(ctx, userID)
+	srv, err := s.getGoogleTaskService(ctx, userID)
 	if err != nil {
 		return domain.Task{}, err
 	}
@@ -138,7 +112,7 @@ func (s *service) GetTasks(ctx context.Context, taskListID string) ([]domain.Tas
 
 func (s *service) SyncTasks(ctx context.Context, userID uint, taskListID string) error {
 	// Connect to Google
-	srv, err := s.getGoogleClient(ctx, userID)
+	srv, err := s.getGoogleTaskService(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -292,7 +266,7 @@ func (s *service) UpdateTask(ctx context.Context, userID uint, taskID string, re
 	}
 
 	if shouldPatch {
-		srv, err := s.getGoogleClient(ctx, userID)
+		srv, err := s.getGoogleTaskService(ctx, userID)
 		if err != nil {
 			return fmt.Errorf("failed to get Google client: %w", err)
 		}
@@ -318,7 +292,7 @@ func (s *service) DeleteTask(ctx context.Context, userID uint, taskID string) er
 	}
 
 	// Delete from Google Tasks API
-	srv, err := s.getGoogleClient(ctx, userID)
+	srv, err := s.getGoogleTaskService(ctx, userID)
 	if err != nil {
 		return fmt.Errorf("failed to get Google client: %w", err)
 	}
@@ -347,7 +321,7 @@ func (s *service) isTokenError(err error) bool {
 
 // Private helper to handle the "Delete Old + Create New" dance
 func (s *service) moveTask(ctx context.Context, userID uint, currentTask domain.Task, newListID string, req domain.UpdateTaskRequest) error {
-	srv, err := s.getGoogleClient(ctx, userID)
+	srv, err := s.getGoogleTaskService(ctx, userID)
 	if err != nil {
 		return err
 	}
