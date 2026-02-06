@@ -42,3 +42,18 @@ type Task struct {
 	IsRepeating  bool       `json:"isRepeating"`
 	Quadrant     int        `gorm:"default:0" json:"quadrant"`
 }
+
+type CalendarEvent struct {
+	ID           string    `gorm:"primaryKey;size:255" json:"id"` // Google's ID
+	UserID       uint      `gorm:"index" json:"-"`
+	Title        string    `json:"title"`
+	Start        time.Time `gorm:"index" json:"start"` // Index for range queries
+	End          time.Time `json:"end"`
+	IsAllDay     bool      `json:"isAllDay"`
+	CalendarName string    `json:"calendarName"`
+	ColorID      string    `json:"colorId"`
+
+	// Add timestamps for GORM to handle internal housekeeping
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}

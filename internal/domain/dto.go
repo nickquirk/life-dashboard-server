@@ -51,16 +51,6 @@ type UpdateTaskRequest struct {
 }
 
 // ------ Calendar ---------
-type CalendarEvent struct {
-	ID           string    `json:"id"`
-	Title        string    `json:"title"`
-	Start        time.Time `json:"start"`
-	End          time.Time `json:"end"`
-	IsAllDay     bool      `json:"isAllDay"`
-	CalendarName string    `json:"calendarName"` // "Primary", "Work", etc.
-	ColorId      string    `json:"colorId,omitempty"`
-}
-
 type GetEventsRequest struct {
 	Start time.Time `json:"start"`
 	End   time.Time `json:"end"`
