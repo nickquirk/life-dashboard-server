@@ -18,8 +18,12 @@ func GetGoogleConfig() oauth2.Config {
 		RedirectURL:  os.Getenv("REDIRECT_URL"),
 		ClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
 		ClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
-		Scopes: []string{"https://www.googleapis.com/auth/tasks",
-			"https://www.googleapis.com/auth/userinfo.email"},
+		Scopes: []string{
+			"https://www.googleapis.com/auth/tasks",
+			"https://www.googleapis.com/auth/userinfo.email",
+			"https://www.googleapis.com/auth/calendar.readonly",
+		},
+
 		Endpoint: google.Endpoint,
 	}
 	return GoogleConfiguration.GoogleLoginConfig
