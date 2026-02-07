@@ -35,6 +35,8 @@ type CreateTaskRequest struct {
 	PreviousID string `json:"previous,omitempty"` // Optional: ID of task to insert after (for ordering)
 }
 
+//!  Create Response DTOs
+
 type UpdateTaskRequest struct {
 	// Local fields
 	// Using pointers to distinguish between Update to 0 and don't update (nil)
@@ -44,14 +46,22 @@ type UpdateTaskRequest struct {
 	Date         *NullableDate `json:"date"` // The "Planned" date
 	Notes        *string       `json:"notes"`
 	TaskListID   *string       `json:"taskListId"`
-
 	// Google Fields
 	Status *string    `json:"status"` // "needsAction" or "completed"
 	Due    *time.Time `json:"due"`
 }
 
 // ------ Calendar ---------
-type GetEventsRequest struct {
+type GetCalendarEventsRequest struct {
 	Start time.Time `json:"start"`
 	End   time.Time `json:"end"`
+}
+
+type GetCalendarEventsResponse struct {
+	ID       string    `json:"id"`
+	Title    string    `json:"title"`
+	Start    time.Time `json:"start"`
+	End      time.Time `json:"end"`
+	IsAllDay bool      `json:"is_all_day"`
+	ColorID  string    `json:"color_id"`
 }

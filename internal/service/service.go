@@ -27,8 +27,9 @@ type Service interface {
 }
 
 type service struct {
-	userRepo repository.UserRepository
-	taskRepo repository.TaskRepository
+	userRepo     repository.UserRepository
+	taskRepo     repository.TaskRepository
+	calendarRepo repository.CalendarRepository
 }
 
 // service handler
@@ -38,6 +39,9 @@ func NewService(db *gorm.DB) Service {
 			Db: db,
 		},
 		taskRepo: &repository.GormTaskRepository{
+			Db: db,
+		},
+		calendarRepo: &repository.GormCalendarRepository{
 			Db: db,
 		},
 	}
