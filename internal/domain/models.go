@@ -25,6 +25,8 @@ type TaskList struct {
 	// Relationships
 	// Added omitempty so this field is ignored if not preloaded
 	Tasks []Task `gorm:"foreignKey:TaskListID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"tasks,omitempty"`
+	// Add timestamps for GORM to handle internal housekeeping
+	CreatedAt time.Time
 }
 
 type Task struct {
@@ -41,6 +43,9 @@ type Task struct {
 	Subtasks     []Task     `gorm:"foreignKey:Parent" json:"subtasks,omitempty"` // So we can preload subtasks
 	IsRepeating  bool       `json:"isRepeating"`
 	Quadrant     int        `gorm:"default:0" json:"quadrant"`
+
+	// Add timestamp for GORM to handle internal housekeeping
+	CreatedAt time.Time
 }
 
 type CalendarEvent struct {
@@ -54,6 +59,6 @@ type CalendarEvent struct {
 	ColorID      string    `json:"colorId"`
 
 	// Add timestamps for GORM to handle internal housekeeping
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	CreatedAt time.Time `json:"-"`
+	UpdatedAt time.Time `json:"-"`
 }

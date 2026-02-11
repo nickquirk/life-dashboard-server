@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"time"
 
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
 	"github.com/nickquirk/life-dashboard-server/internal/repository"
@@ -23,7 +22,7 @@ type Service interface {
 	UpdateTask(ctx context.Context, userID uint, taskID string, req domain.UpdateTaskRequest) error
 	DeleteTask(ctx context.Context, userID uint, taskID string) error
 	// ------ Calendar ---------
-	GetCalendarEvents(ctx context.Context, userID uint, start, end time.Time) ([]domain.CalendarEvent, error)
+	GetCalendarEvents(ctx context.Context, req domain.GetCalendarEventsRequest) (domain.GetCalendarEventsResponse, error)
 }
 
 type service struct {

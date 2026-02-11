@@ -1,6 +1,8 @@
 package domain
 
-import "time"
+import (
+	"time"
+)
 
 // ------ User ---------
 type CreateUserRequest struct {
@@ -53,15 +55,11 @@ type UpdateTaskRequest struct {
 
 // ------ Calendar ---------
 type GetCalendarEventsRequest struct {
-	Start time.Time `json:"start"`
-	End   time.Time `json:"end"`
+	UserID uint      `json:"userId"`
+	Start  time.Time `json:"start"`
+	End    time.Time `json:"end"`
 }
 
 type GetCalendarEventsResponse struct {
-	ID       string    `json:"id"`
-	Title    string    `json:"title"`
-	Start    time.Time `json:"start"`
-	End      time.Time `json:"end"`
-	IsAllDay bool      `json:"is_all_day"`
-	ColorID  string    `json:"color_id"`
+	Events []CalendarEvent `json:"events"`
 }

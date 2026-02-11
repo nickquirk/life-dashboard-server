@@ -7,16 +7,16 @@ import (
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
 )
 
-func (s *service) GetCalendarEvents(ctx context.Context, userID uint, start, end time.Time) ([]domain.GetCalendarEventsResponse, error) {
+func (s *service) GetCalendarEvents(ctx context.Context, req domain.GetCalendarEventsRequest) (domain.GetCalendarEventsResponse, error) {
 	// Initialise Calendar service
-	svc, err := s.getGoogleCalendarService(ctx, userID)
+	svc, err := s.getGoogleCalendarService(ctx, req.UserID)
 	if err != nil {
-		return []domain.GetCalendarEventsResponse{}, err
+		return domain.GetCalendarEventsResponse{}, err
 	}
 
 	//filter to week that is viewed
-	tMin := start.Format(time.RFC3339)
-	tMax := end.Format(time.RFC3339)
+	tMin := req.Start.Format(time.RFC3339)
+	tMax := req.End.Format(time.RFC3339)
 
 	// hardcode to primary at the moment, this is the main cal for most people
 	gEvents, err := svc.Events.List("primary").
@@ -27,10 +27,10 @@ func (s *service) GetCalendarEvents(ctx context.Context, userID uint, start, end
 		Do()
 	if err != nil {
 		// could clean up tokens here?
-		return nil, err
+		return domain.GetCalendarEventsResponse{}, err
 	}
-	// map to domain
-	var dto []domain.GetCalendarEventsResponse
+
+	var events []domain.CalendarEvent
 
 	for _, item := range gEvents.Items {
 		var startTime, endTime time.Time
@@ -45,14 +45,19 @@ func (s *service) GetCalendarEvents(ctx context.Context, userID uint, start, end
 			isAllDay = true
 		}
 
-		dto = {
+		events = append(events, domain.CalendarEvent{
 			ID:       item.Id,
 			Title:    item.Summary,
 			Start:    startTime,
 			End:      endTime,
 			IsAllDay: isAllDay,
 			ColorID:  item.ColorId,
-		}
+		})
 	}
+
+	dto := domain.GetCalendarEventsResponse{
+		Events: events,
+	}
+
 	return dto, nil
 }
