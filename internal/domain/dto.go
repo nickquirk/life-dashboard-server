@@ -78,9 +78,23 @@ type CreateZoneRequest struct {
 }
 
 type CreateZoneResponse struct {
-	ID        uint   `json:"id"`
-	Label     string `json:"label"`
-	StartTime string `json:"startTime"`
-	EndTime   string `json:"endTime"`
-	Color     string `json:"color"`
+	ID uint `json:"id"`
+}
+
+type UpdateZoneRequest struct {
+	Label     *string `json:"label"`
+	StartTime *string `json:"startTime"`
+	EndTime   *string `json:"endTime"`
+	Color     *string `json:"color"`
+}
+
+// Could return 204 No Content?
+type UpdateZoneResponse struct {
+	ID        uint      `json:"id"`
+	UserID    uint      `json:"userId"`
+	Label     string    `json:"label"`
+	StartTime string    `json:"startTime"`
+	EndTime   string    `json:"endTime"`
+	Color     string    `json:"color"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }

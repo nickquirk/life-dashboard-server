@@ -21,10 +21,6 @@ func (s *service) CreateZone(ctx context.Context, req domain.CreateZoneRequest) 
 	}
 
 	return domain.CreateZoneResponse{
-		ID:        created.ID,
-		Label:     created.Label,
-		StartTime: created.StartTime,
-		EndTime:   created.EndTime,
-		Color:     created.Color,
+		ID: created.ID,
 	}, nil
 }
