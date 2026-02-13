@@ -72,3 +72,10 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`{"message": "Logged out"}`))
 }
+
+// Extract the user ID from the request context.
+// It returns (0, false) if the ID is missing or invalid.
+func (h *Handler) GetUserID(r *http.Request) (uint, bool) {
+	userID, ok := r.Context().Value(UserIDKey).(uint)
+	return userID, ok
+}

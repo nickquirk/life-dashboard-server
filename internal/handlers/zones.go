@@ -8,9 +8,7 @@ import (
 )
 
 func (h *Handler) createZone(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	// refactor into helper getUserIDFromConfig
-	userID, ok := ctx.Value(UserIDKey).(uint)
+	userID, ok := h.GetUserID(r)
 	if !ok {
 		http.Error(w, "User not found", http.StatusUnauthorized)
 		return
@@ -25,7 +23,28 @@ func (h *Handler) createZone(w http.ResponseWriter, r *http.Request) {
 
 	req.UserID = userID
 
-	resp, err := h.Service.CreateZone(ctx, req)
+	resp, err := h.Service.CreateZone(req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
+func (h *Handler) getZones(w http.ResponseWriter, r *http.Request) {
+	userID, ok := h.GetUserID(r)
+	if !ok {
+		http.Error(w, "User not found", http.StatusUnauthorized)
+		return
+	}
+
+	var req = domain.GetZonesRequest{
+		UserID: userID,
+	}
+
+	resp, err := h.Service.GetZones(req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

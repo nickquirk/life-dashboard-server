@@ -14,6 +14,7 @@ type GormZoneRepository struct {
 	Db *gorm.DB
 }
 
+// populate with a pointer *domain.Zone
 func (r *GormZoneRepository) Create(zone domain.Zone) (domain.Zone, error) {
 	err := r.Db.Create(&zone).Error
 	return zone, err

@@ -24,7 +24,8 @@ type Service interface {
 	// ------ Calendar ---------
 	GetCalendarEvents(ctx context.Context, req domain.GetCalendarEventsRequest) (domain.GetCalendarEventsResponse, error)
 	// ------ Zones ---------
-	CreateZone(ctx context.Context, req domain.CreateZoneRequest) (domain.CreateZoneResponse, error)
+	CreateZone(req domain.CreateZoneRequest) (domain.CreateZoneResponse, error)
+	GetZones(req domain.GetZonesRequest) (domain.GetZonesResponse, error)
 }
 
 type service struct {

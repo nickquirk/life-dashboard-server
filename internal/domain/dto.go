@@ -69,6 +69,14 @@ type GetCalendarEventsResponse struct {
 
 // ------ Zone ---------
 
+type GetZonesRequest struct {
+	UserID uint `json:"userId"`
+}
+
+type GetZonesResponse struct {
+	Zones []Zone `json:"zones"`
+}
+
 type CreateZoneRequest struct {
 	UserID    uint   `json:"userId"`
 	Label     string `json:"label"`
