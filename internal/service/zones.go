@@ -7,20 +7,12 @@ import (
 )
 
 func (s *service) CreateZone(ctx context.Context, req domain.CreateZoneRequest) (domain.CreateZoneResponse, error) {
-	newZone := domain.Zone{
-		UserID:    req.UserID,
-		Label:     req.Label,
-		StartTime: req.StartTime,
-		EndTime:   req.EndTime,
-		Color:     req.Color,
-	}
-
-	created, err := s.zoneRepo.Create(newZone)
+	zone, err := s.zoneRepo.Create(req)
 	if err != nil {
 		return domain.CreateZoneResponse{}, err
 	}
 
 	return domain.CreateZoneResponse{
-		ID: created.ID,
+		ID: zone.ID,
 	}, nil
 }
