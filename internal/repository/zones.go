@@ -3,6 +3,7 @@ package repository
 import (
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type ZoneRepository interface {
@@ -32,6 +33,7 @@ func (r *GormZoneRepository) Update(userID uint, zoneID uint, updates map[string
 	// Ensure the zone belongs to the user before updating
 	var zone domain.Zone
 	result := r.Db.Model(&zone).
+		Clauses(clause.Returning{}).
 		Where("id = ? AND user_id = ?", zoneID, userID).
 		Updates(updates)
 
