@@ -62,3 +62,12 @@ type CalendarEvent struct {
 	CreatedAt time.Time `json:"-"`
 	UpdatedAt time.Time `json:"-"`
 }
+
+type Zone struct {
+	gorm.Model
+	UserID    uint   `gorm:"index;not null" json:"-"` // Foreign key to User
+	Label     string `json:"label"`
+	StartTime string `json:"startTime"` // Format: "HH:mm"
+	EndTime   string `json:"endTime"`   // Format: "HH:mm"
+	Color     string `json:"color"`     // e.g., "slate", "blue"
+}

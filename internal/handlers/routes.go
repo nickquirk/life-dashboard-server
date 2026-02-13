@@ -51,6 +51,7 @@ func GetRoutes(mx *chi.Mux, h *Handler) {
 			auth.Delete("/tasks/{id}", h.deleteTask)
 			// Calendar Events
 			auth.Get("/calendar/events", h.getCalendarEvents)
+			// Calendar Zones
 		})
 	})
 }

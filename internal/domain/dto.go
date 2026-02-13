@@ -5,6 +5,7 @@ import (
 )
 
 // ------ User ---------
+
 type CreateUserRequest struct {
 	Email        string    `json:"email"`
 	Picture      string    `json:"picture"`
@@ -31,6 +32,7 @@ type GetUserResponse struct {
 }
 
 // ------ Task ---------
+
 type CreateTaskRequest struct {
 	Title      string `json:"title"`
 	Parent     string `json:"parent,omitempty"`   // Optional: ID of the parent task
@@ -54,6 +56,7 @@ type UpdateTaskRequest struct {
 }
 
 // ------ Calendar ---------
+
 type GetCalendarEventsRequest struct {
 	UserID uint      `json:"userId"`
 	Start  time.Time `json:"start"`
@@ -62,4 +65,21 @@ type GetCalendarEventsRequest struct {
 
 type GetCalendarEventsResponse struct {
 	Events []CalendarEvent `json:"events"`
+}
+
+// ------ Zone ---------
+
+type CreateZoneRequest struct {
+	Label     string `json:"label"`
+	StartTime string `json:"startTime"`
+	EndTime   string `json:"endTime"`
+	Color     string `json:"color"`
+}
+
+type ZoneResponse struct {
+	ID        uint   `json:"id"`
+	Label     string `json:"label"`
+	StartTime string `json:"startTime"`
+	EndTime   string `json:"endTime"`
+	Color     string `json:"color"`
 }
