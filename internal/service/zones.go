@@ -42,6 +42,43 @@ func (s *service) GetZones(req domain.GetZonesRequest) (domain.GetZonesResponse,
 	return response, nil
 }
 
+func (s *service) UpdateZone(req domain.UpdateZoneRequest) (domain.UpdateZoneResponse, error) {
+	updates := make(map[string]interface{})
+
+	if req.Label != nil {
+		updates["label"] = *req.Label
+	}
+	if req.StartTime != nil {
+		updates["start_time"] = *req.StartTime
+	}
+	if req.EndTime != nil {
+		updates["end_time"] = *req.EndTime
+	}
+	if req.Color != nil {
+		updates["color"] = *req.Color
+	}
+
+	if len(updates) == 0 {
+		return domain.UpdateZoneResponse{}, nil
+	}
+
+	zone, err := s.zoneRepo.Update(req.UserID, req.ID, updates)
+	if err != nil {
+		return domain.UpdateZoneResponse{}, err
+	}
+
+	return domain.UpdateZoneResponse{
+		ID:        zone.ID,
+		UserID:    zone.UserID,
+		Label:     zone.Label,
+		StartTime: zone.StartTime,
+		EndTime:   zone.EndTime,
+		Color:     zone.Color,
+		UpdatedAt: zone.UpdatedAt,
+	}, nil
+
+}
+
 func (s *service) DeleteZone(req domain.DeleteZonesRequest) (domain.DeleteZonesResponse, error) {
 	err := s.zoneRepo.Delete(req.UserID, req.ID)
 	if err != nil {

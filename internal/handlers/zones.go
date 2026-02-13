@@ -58,6 +58,43 @@ func (h *Handler) getZones(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resp)
 }
 
+func (h *Handler) updateZone(w http.ResponseWriter, r *http.Request) {
+	userID, ok := h.GetUserID(r)
+	if !ok {
+		http.Error(w, "User not found", http.StatusUnauthorized)
+		return
+	}
+
+	zoneIDStr := chi.URLParam(r, "id")
+
+	// Parse string to uint64, then cast to uint
+	parsedID, err := strconv.ParseUint(zoneIDStr, 10, 32)
+	if err != nil {
+		http.Error(w, "Invalid zone ID format", http.StatusBadRequest)
+		return
+	}
+	zoneID := uint(parsedID)
+
+	var req domain.UpdateZoneRequest
+	err = json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	req.ID = zoneID
+	req.UserID = userID
+
+	resp, err := h.Service.UpdateZone(req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
 func (h *Handler) deleteZone(w http.ResponseWriter, r *http.Request) {
 	userID, ok := h.GetUserID(r)
 	if !ok {

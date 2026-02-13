@@ -26,6 +26,7 @@ type Service interface {
 	// ------ Zones ---------
 	CreateZone(req domain.CreateZoneRequest) (domain.CreateZoneResponse, error)
 	GetZones(req domain.GetZonesRequest) (domain.GetZonesResponse, error)
+	UpdateZone(req domain.UpdateZoneRequest) (domain.UpdateZoneResponse, error)
 	DeleteZone(req domain.DeleteZonesRequest) (domain.DeleteZonesResponse, error)
 }
 

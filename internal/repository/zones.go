@@ -8,6 +8,7 @@ import (
 type ZoneRepository interface {
 	Create(domain.Zone) (domain.Zone, error)
 	GetByUserID(userID uint) ([]domain.Zone, error)
+	Update(userID uint, zoneID uint, updates map[string]interface{}) (domain.Zone, error)
 	Delete(userID uint, zoneID uint) error
 }
 
@@ -25,6 +26,22 @@ func (r *GormZoneRepository) GetByUserID(userID uint) ([]domain.Zone, error) {
 	var zones []domain.Zone
 	err := r.Db.Where("user_id = ?", userID).Find(&zones).Error
 	return zones, err
+}
+
+func (r *GormZoneRepository) Update(userID uint, zoneID uint, updates map[string]interface{}) (domain.Zone, error) {
+	// Ensure the zone belongs to the user before updating
+	var zone domain.Zone
+	result := r.Db.Model(&zone).
+		Where("id = ? AND user_id = ?", zoneID, userID).
+		Updates(updates)
+
+	if result.Error != nil {
+		return domain.Zone{}, result.Error
+	}
+	if result.RowsAffected == 0 {
+		return domain.Zone{}, gorm.ErrRecordNotFound
+	}
+	return zone, nil
 }
 
 func (r *GormZoneRepository) Delete(userID uint, zoneID uint) error {

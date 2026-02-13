@@ -90,6 +90,8 @@ type CreateZoneResponse struct {
 }
 
 type UpdateZoneRequest struct {
+	ID        uint    `json:"-"`
+	UserID    uint    `json:"-"`
 	Label     *string `json:"label"`
 	StartTime *string `json:"startTime"`
 	EndTime   *string `json:"endTime"`
