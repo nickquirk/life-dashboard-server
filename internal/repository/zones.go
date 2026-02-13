@@ -7,7 +7,7 @@ import (
 
 type ZoneRepository interface {
 	Create(domain.Zone) (domain.Zone, error)
-	//Update(domain.Zone) (domain.Zone, error)
+	GetByUserID(userID uint) ([]domain.Zone, error)
 }
 
 type GormZoneRepository struct {
@@ -16,12 +16,11 @@ type GormZoneRepository struct {
 
 func (r *GormZoneRepository) Create(zone domain.Zone) (domain.Zone, error) {
 	err := r.Db.Create(&zone).Error
-	if err != nil {
-		return domain.Zone{}, err
-	}
 	return zone, err
 }
 
-// func (r *GormZoneRepository) Update(zone domain.Zone) (domain.Zone, error) {
-
-// }
+func (r *GormZoneRepository) GetByUserID(userID uint) ([]domain.Zone, error) {
+	var zones []domain.Zone
+	err := r.Db.Where("user_id = ?", userID).Find(&zones).Error
+	return zones, err
+}
