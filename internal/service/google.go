@@ -49,3 +49,11 @@ func (s *service) getGoogleCalendarService(ctx context.Context, userID uint) (*c
 	}
 	return calendar.NewService(ctx, option.WithHTTPClient(client))
 }
+
+func (s *service) getZonesService(ctx context.Context, userID uint) (*calendar.Service, error) {
+	client, err := s.getAuthenticatedClient(ctx, userID)
+	if err != nil {
+		return &calendar.Service{}, fmt.Errorf("failed to create zones service: %w", err)
+	}
+	return calendar.NewService(ctx, option.WithHTTPClient(client))
+}

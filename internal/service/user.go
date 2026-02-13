@@ -1,6 +1,8 @@
 package service
 
-import "github.com/nickquirk/life-dashboard-server/internal/domain"
+import (
+	"github.com/nickquirk/life-dashboard-server/internal/domain"
+)
 
 func (s service) CreateUser(user domain.CreateUserRequest) (domain.CreateUserResponse, error) {
 	resp, err := s.userRepo.Create(user)

@@ -23,12 +23,15 @@ type Service interface {
 	DeleteTask(ctx context.Context, userID uint, taskID string) error
 	// ------ Calendar ---------
 	GetCalendarEvents(ctx context.Context, req domain.GetCalendarEventsRequest) (domain.GetCalendarEventsResponse, error)
+	// ------ Zones ---------
+	CreateZone(ctx context.Context, req domain.CreateZoneRequest) (domain.CreateZoneResponse, error)
 }
 
 type service struct {
 	userRepo     repository.UserRepository
 	taskRepo     repository.TaskRepository
 	calendarRepo repository.CalendarRepository
+	zoneRepo     repository.ZoneRepository
 }
 
 // service handler
@@ -43,5 +46,6 @@ func NewService(db *gorm.DB) Service {
 		calendarRepo: &repository.GormCalendarRepository{
 			Db: db,
 		},
+		zoneRepo: &repository.GormZoneRepository{Db: db},
 	}
 }

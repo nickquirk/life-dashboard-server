@@ -52,6 +52,7 @@ func GetRoutes(mx *chi.Mux, h *Handler) {
 			// Calendar Events
 			auth.Get("/calendar/events", h.getCalendarEvents)
 			// Calendar Zones
+			auth.Post("/zones", h.createZone)
 		})
 	})
 }
