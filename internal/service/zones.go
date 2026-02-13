@@ -41,3 +41,14 @@ func (s *service) GetZones(req domain.GetZonesRequest) (domain.GetZonesResponse,
 	}
 	return response, nil
 }
+
+func (s *service) DeleteZone(req domain.DeleteZonesRequest) (domain.DeleteZonesResponse, error) {
+	err := s.zoneRepo.Delete(req.UserID, req.ID)
+	if err != nil {
+		return domain.DeleteZonesResponse{}, err
+	}
+
+	return domain.DeleteZonesResponse{
+		Message: "Zone deleted successfully",
+	}, nil
+}

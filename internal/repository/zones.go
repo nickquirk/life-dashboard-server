@@ -8,6 +8,7 @@ import (
 type ZoneRepository interface {
 	Create(domain.Zone) (domain.Zone, error)
 	GetByUserID(userID uint) ([]domain.Zone, error)
+	Delete(userID uint, zoneID uint) error
 }
 
 type GormZoneRepository struct {
@@ -24,4 +25,15 @@ func (r *GormZoneRepository) GetByUserID(userID uint) ([]domain.Zone, error) {
 	var zones []domain.Zone
 	err := r.Db.Where("user_id = ?", userID).Find(&zones).Error
 	return zones, err
+}
+
+func (r *GormZoneRepository) Delete(userID uint, zoneID uint) error {
+	result := r.Db.Where("id = ? AND user_id = ?", zoneID, userID).Delete(&domain.Zone{})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }

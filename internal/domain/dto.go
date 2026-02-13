@@ -106,3 +106,12 @@ type UpdateZoneResponse struct {
 	Color     string    `json:"color"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }
+
+type DeleteZonesRequest struct {
+	ID     uint `json:"id"`
+	UserID uint `json:"userId"`
+}
+
+type DeleteZonesResponse struct {
+	Message string `json:"message"`
+}

@@ -26,6 +26,7 @@ type Service interface {
 	// ------ Zones ---------
 	CreateZone(req domain.CreateZoneRequest) (domain.CreateZoneResponse, error)
 	GetZones(req domain.GetZonesRequest) (domain.GetZonesResponse, error)
+	DeleteZone(req domain.DeleteZonesRequest) (domain.DeleteZonesResponse, error)
 }
 
 type service struct {
