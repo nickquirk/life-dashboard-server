@@ -63,9 +63,7 @@ func (r *GormTaskRepository) UpsertTasks(tasks []domain.Task) error {
 	if len(tasks) == 0 {
 		return nil
 	}
-	// Update title, status, due, notes, updated when conflict occurs
-	// For now, let's assume we overwrite standard fields but we need to be careful not to wipe Quadrant
-	// if we aren't setting it in the incoming struct.
+
 	return r.Db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "id"}},
 		DoUpdates: clause.AssignmentColumns([]string{"title", "status", "due", "notes", "updated", "task_list_id"}),
