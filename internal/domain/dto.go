@@ -78,11 +78,12 @@ type GetZonesResponse struct {
 }
 
 type CreateZoneRequest struct {
-	UserID    uint   `json:"userId"`
-	Label     string `json:"label"`
-	StartTime string `json:"startTime"`
-	EndTime   string `json:"endTime"`
-	Color     string `json:"color"`
+	UserID     uint   `json:"userId"`
+	Label      string `json:"label"`
+	StartTime  string `json:"startTime"`
+	EndTime    string `json:"endTime"`
+	Color      string `json:"color"`
+	DaysActive []uint `json:"daysActive"`
 }
 
 type CreateZoneResponse struct {

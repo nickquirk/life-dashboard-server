@@ -65,9 +65,10 @@ type CalendarEvent struct {
 
 type Zone struct {
 	gorm.Model
-	UserID    uint   `gorm:"index;not null" json:"-"` // Foreign key to User
-	Label     string `json:"label"`
-	StartTime string `json:"startTime"` // Format: "HH:mm"
-	EndTime   string `json:"endTime"`   // Format: "HH:mm"
-	Color     string `json:"color"`     // e.g., "slate", "blue"
+	UserID     uint   `gorm:"index;not null" json:"id"` // Foreign key to User
+	Label      string `json:"label"`
+	StartTime  string `json:"startTime"`                                   // Format: "HH:mm"
+	EndTime    string `json:"endTime"`                                     // Format: "HH:mm"
+	Color      string `json:"color"`                                       // e.g., "slate", "blue"
+	DaysActive []uint `json:"daysActive,omitempty" gorm:"serializer:json"` // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
 }
