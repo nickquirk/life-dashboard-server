@@ -14,7 +14,6 @@ import (
 	"github.com/nickquirk/life-dashboard-server/internal/config"
 	"github.com/nickquirk/life-dashboard-server/internal/db"
 	"github.com/nickquirk/life-dashboard-server/internal/handlers"
-	"github.com/nickquirk/life-dashboard-server/internal/poller"
 	"gorm.io/gorm"
 )
 
@@ -26,7 +25,7 @@ type Application struct {
 
 // NewApplication is the constructor invoked by dig.
 // It performs the "Wiring" phase (routes, configs).
-func NewApplication(cfg config.Config, r *chi.Mux, h *handlers.Handler, gormDB *gorm.DB, p *poller.Poller) *Application {
+func NewApplication(cfg config.Config, r *chi.Mux, h *handlers.Handler, gormDB *gorm.DB) *Application {
 	// Initialize routes (modifies the router in-place)
 	handlers.GetRoutes(r, h)
 
