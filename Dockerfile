@@ -1,0 +1,18 @@
+# Build Stage
+FROM golang:1.23-alpine AS builder
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+# Build the Go binary
+RUN go build -o main ./cmd/http
+
+# Run Stage
+FROM alpine:latest
+WORKDIR /root/
+COPY --from=builder /app/main .
+# Copy config if strictly necessary, but prefer ENV vars
+# COPY --from=builder /app/.env . 
+
+EXPOSE 8080
+CMD ["./main"]
