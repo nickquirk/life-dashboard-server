@@ -50,7 +50,11 @@ func (a *Application) Run() error {
 	db.InitMigration(a.DB)
 
 	// Configure HTTP Server
-	port := a.Config.GetAsString("service.port")
+	port := os.Getenv("PORT")
+	if port == "" {
+		// falback to config
+		port = a.Config.GetAsString("service.port")
+	}
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%s", port),
 		Handler:      a.Router,

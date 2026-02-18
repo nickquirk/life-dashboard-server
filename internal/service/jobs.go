@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sync"
 	"time"
 )
 
@@ -18,42 +19,56 @@ func (s *service) SyncAllUsers(ctx context.Context) error {
 
 	log.Printf("[Job] Found %d users to sync", len(userIDs))
 
-	var success, errors int
+	maxConcurrency := 5 // Sync 5 users at a time
+	sem := make(chan struct{}, maxConcurrency)
+	var wg sync.WaitGroup
 
-	// 2. Iterate and sync each user
-	for _, userID := range userIDs {
-		// Create a separate timeout for each user so one slow sync doesn't kill the whole job immediately
-		userCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
-
-		err := s.syncSingleUser(userCtx, userID)
-		cancel() // Clean up context immediately
-
-		if err != nil {
-			log.Printf("[Job] Error syncing user %d: %v", userID, err)
-			errors++
-			continue
+	// Loop and Launch
+	for _, id := range userIDs {
+		// Check if the parent context (request) is cancelled
+		if ctx.Err() != nil {
+			break
 		}
-		success++
+
+		wg.Add(1)
+		sem <- struct{}{} // Acquire token (blocks if 5 are already running)
+
+		go func(uid uint) {
+			defer wg.Done()
+			defer func() { <-sem }() // Release token
+
+			// Create a specialized context for this user's work
+			// This ensures one user timing out doesn't kill the whole job
+			userCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+			defer cancel()
+
+			if err := s.syncSingleUser(userCtx, uid); err != nil {
+				log.Printf("[Job] Error syncing user %d: %v", uid, err)
+			}
+		}(id)
 	}
 
-	log.Printf("[Job] Sync complete. Success: %d, Errors: %d", success, errors)
+	// Wait for all to finish before returning
+	wg.Wait()
+
+	log.Println("[Job] Global sync complete")
 	return nil
 }
 
 // syncSingleUser handles the logic for a single user (Lists + Tasks)
 func (s *service) syncSingleUser(ctx context.Context, userID uint) error {
-	// A. Sync Task Lists (Google -> DB)
+	// Sync Task Lists (Google -> DB)
 	if err := s.SyncTaskLists(ctx, userID); err != nil {
 		return fmt.Errorf("sync task lists: %w", err)
 	}
 
-	// B. Fetch the updated lists from DB
+	// Fetch the updated lists from DB
 	lists, err := s.GetTaskLists(userID)
 	if err != nil {
 		return fmt.Errorf("get task lists: %w", err)
 	}
 
-	// C. Sync Tasks for each list
+	// Sync Tasks for each list
 	for _, list := range lists {
 		// Check context before starting next list (in case of timeout/shutdown)
 		if ctx.Err() != nil {
