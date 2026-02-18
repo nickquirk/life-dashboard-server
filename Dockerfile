@@ -9,6 +9,7 @@ RUN go build -o main ./cmd/http
 
 # Run Stage
 FROM alpine:latest
+RUN apk --no-cache add ca-certificates
 WORKDIR /root/
 COPY --from=builder /app/main .
 # Copy config if strictly necessary, but prefer ENV vars
