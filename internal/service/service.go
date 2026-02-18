@@ -12,6 +12,7 @@ type Service interface {
 	// ------ User ---------
 	CreateUser(user domain.CreateUserRequest) (domain.CreateUserResponse, error)
 	GetUser(domain.GetUserRequest) (domain.GetUserResponse, error)
+	SyncAllUsers(ctx context.Context) error
 	// ------ Lists ---------
 	SyncTaskLists(ctx context.Context, userID uint) error
 	GetTaskLists(userID uint) ([]domain.TaskList, error)

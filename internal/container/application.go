@@ -38,7 +38,6 @@ func NewApplication(cfg config.Config, r *chi.Mux, h *handlers.Handler, gormDB *
 	return &Application{
 		Config: cfg,
 		Router: r,
-		Poller: p,
 		DB:     gormDB,
 	}
 }
@@ -49,9 +48,6 @@ func (a *Application) Run() error {
 	// Run Migrations (Fail fast if DB is down)
 	log.Println("Running database migrations...")
 	db.InitMigration(a.DB)
-
-	// Start Background Workers
-	a.Poller.Start()
 
 	// Configure HTTP Server
 	port := a.Config.GetAsString("service.port")
@@ -75,10 +71,8 @@ func (a *Application) Run() error {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Println("Shutting down...")
-
 	// Graceful Shutdown Sequence
-	a.Poller.Stop() // Stop accepting new background work
+	log.Println("Shutting down...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()

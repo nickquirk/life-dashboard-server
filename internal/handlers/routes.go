@@ -28,7 +28,8 @@ func GetRoutes(mx *chi.Mux, h *Handler) {
 	mx.Get("/", helloWorld)
 	mx.Route("/api", func(r chi.Router) {
 		// Public API routes
-
+		// Sync users
+		r.Post("/jobs/sync", h.handleGlobalSync)
 		// Google OAuth2
 		r.Group(func(public chi.Router) {
 			public.Get("/auth/google-login", h.googleLogin)

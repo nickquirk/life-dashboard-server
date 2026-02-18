@@ -12,6 +12,7 @@ type GormUserRepository struct {
 type UserRepository interface {
 	Create(domain.CreateUserRequest) (domain.CreateUserResponse, error)
 	Get(domain.GetUserRequest) (domain.GetUserResponse, error)
+	GetUsersWithRefreshTokens() ([]uint, error)
 }
 
 func (r GormUserRepository) Create(c domain.CreateUserRequest) (domain.CreateUserResponse, error) {
@@ -79,4 +80,19 @@ func (r GormUserRepository) Get(g domain.GetUserRequest) (domain.GetUserResponse
 		RefreshToken: user.RefreshToken,
 		TokenExpiry:  user.TokenExpiry,
 	}, nil
+}
+
+func (r GormUserRepository) GetUsersWithRefreshTokens() ([]uint, error) {
+	var userIDs []uint
+
+	// Query the "users" table for non-empty refresh tokens
+	err := r.Db.Table("users").
+		Where("refresh_token IS NOT NULL AND refresh_token != ''").
+		Pluck("id", &userIDs).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return userIDs, nil
 }
