@@ -91,23 +91,25 @@ type CreateZoneResponse struct {
 }
 
 type UpdateZoneRequest struct {
-	ID        uint    `json:"-"`
-	UserID    uint    `json:"-"`
-	Label     *string `json:"label"`
-	StartTime *string `json:"startTime"`
-	EndTime   *string `json:"endTime"`
-	Color     *string `json:"color"`
+	ID         uint    `json:"-"`
+	UserID     uint    `json:"-"`
+	Label      *string `json:"label"`
+	StartTime  *string `json:"startTime"`
+	EndTime    *string `json:"endTime"`
+	Color      *string `json:"color"`
+	DaysActive []uint  `json:"daysActive"`
 }
 
 // Could return 204 No Content?
 type UpdateZoneResponse struct {
-	ID        uint      `json:"id"`
-	UserID    uint      `json:"userId"`
-	Label     string    `json:"label"`
-	StartTime string    `json:"startTime"`
-	EndTime   string    `json:"endTime"`
-	Color     string    `json:"color"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	ID         uint      `json:"id"`
+	UserID     uint      `json:"userId"`
+	Label      string    `json:"label"`
+	StartTime  string    `json:"startTime"`
+	EndTime    string    `json:"endTime"`
+	Color      string    `json:"color"`
+	DaysActive []uint    `json:"daysActive"`
+	UpdatedAt  time.Time `json:"updatedAt"`
 }
 
 type DeleteZonesRequest struct {

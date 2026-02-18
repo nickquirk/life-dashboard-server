@@ -1,6 +1,8 @@
 package service
 
 import (
+	"encoding/json"
+
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
 )
 
@@ -47,6 +49,7 @@ func (s *service) GetZones(req domain.GetZonesRequest) (domain.GetZonesResponse,
 func (s *service) UpdateZone(req domain.UpdateZoneRequest) (domain.UpdateZoneResponse, error) {
 	updates := make(map[string]interface{})
 
+	// Use DB keys
 	if req.Label != nil {
 		updates["label"] = *req.Label
 	}
@@ -59,6 +62,14 @@ func (s *service) UpdateZone(req domain.UpdateZoneRequest) (domain.UpdateZoneRes
 	if req.Color != nil {
 		updates["color"] = *req.Color
 	}
+	// manually serialise so that its in the right form for the db
+	if req.DaysActive != nil {
+		jsonData, err := json.Marshal(req.DaysActive)
+		if err != nil {
+			return domain.UpdateZoneResponse{}, err
+		}
+		updates["days_active"] = string(jsonData)
+	}
 
 	if len(updates) == 0 {
 		return domain.UpdateZoneResponse{}, nil
@@ -70,13 +81,14 @@ func (s *service) UpdateZone(req domain.UpdateZoneRequest) (domain.UpdateZoneRes
 	}
 
 	return domain.UpdateZoneResponse{
-		ID:        zone.ID,
-		UserID:    zone.UserID,
-		Label:     zone.Label,
-		StartTime: zone.StartTime,
-		EndTime:   zone.EndTime,
-		Color:     zone.Color,
-		UpdatedAt: zone.UpdatedAt,
+		ID:         zone.ID,
+		UserID:     zone.UserID,
+		Label:      zone.Label,
+		StartTime:  zone.StartTime,
+		EndTime:    zone.EndTime,
+		Color:      zone.Color,
+		DaysActive: zone.DaysActive,
+		UpdatedAt:  zone.UpdatedAt,
 	}, nil
 
 }
