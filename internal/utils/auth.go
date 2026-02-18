@@ -16,11 +16,6 @@ func GetClient(config *oauth2.Config) (*http.Client, error) {
 	// The file user.json stores the user's access and refresh tokens, and is
 	// created automatically when the authorization flow completes for the first
 	// time.
-
-	//TODO
-	// get id/email of user
-	// get user from db
-
 	user, err := GetUserFromFile("user.json")
 	if err != nil {
 		fmt.Printf("Error: %s\n", err)
@@ -34,26 +29,6 @@ func GetClient(config *oauth2.Config) (*http.Client, error) {
 	}
 
 	return config.Client(context.Background(), tok), nil
-}
-
-func SaveUserToFile(path string, user domain.User) error {
-	fmt.Printf("Saving user file to: %s\n", path)
-	jsonData, err := json.Marshal(user)
-	if err != nil {
-		return err
-	}
-	// Write JSON data to file
-	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	_, err = f.Write(jsonData)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 // Retrieve user data from a JSON file

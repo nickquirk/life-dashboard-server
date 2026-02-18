@@ -18,11 +18,9 @@ import (
 	"gorm.io/gorm"
 )
 
-// Application holds the "wired" dependencies of your system
 type Application struct {
 	Config config.Config
 	Router *chi.Mux
-	Poller *poller.Poller
 	DB     *gorm.DB
 }
 

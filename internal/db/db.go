@@ -26,8 +26,16 @@ func InitDb() (*gorm.DB, error) {
 		pass := os.Getenv("DB_PASS")
 		host := os.Getenv("DB_HOST")
 		dbName := os.Getenv("DB_NAME")
-
-		dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8mb4&parseTime=True&loc=Local", user, pass, host, dbName)
+		var dsn string
+		if os.Getenv("DB_SOCKET") != "" {
+			// Unix Socket connection (Standard for Cloud Run)
+			dsn = fmt.Sprintf("%s:%s@unix(%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
+				user, pass, os.Getenv("DB_SOCKET"), dbName)
+		} else {
+			// TCP connection (Local or Private IP)
+			dsn = fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
+				user, pass, host, dbName)
+		}
 		dialector = mysql.Open(dsn)
 	case "sqlite":
 		log.Println("Connecting to SQLite (Local Mode)...")
