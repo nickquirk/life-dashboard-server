@@ -42,9 +42,21 @@ func NewApplication(cfg config.Config, r *chi.Mux, h *handlers.Handler, gormDB *
 // Run executes the "Startup" phase (migrations, server, background jobs)
 // and handles the "Shutdown" phase.
 func (a *Application) Run() error {
-	// Run Migrations (Fail fast if DB is down)
-	log.Println("Running database migrations...")
-	db.InitMigration(a.DB)
+	// Check if we are running as a dedicated Migration Job
+	if os.Getenv("MIGRATE_ONLY") == "true" {
+		log.Println("Job mode detected: Running database migrations...")
+		db.InitMigration(a.DB)
+		log.Println("Migrations complete. Exiting gracefully.")
+		return nil // Exit the application, do NOT start the server
+	}
+
+	// If we are not in prod auto-migrate on startup
+	if os.Getenv("ENV") != "prod" {
+		log.Println("Local mode detected: Running database migrations...")
+		db.InitMigration(a.DB)
+	} else {
+		log.Println("Prod mode detected: Skipping startup migrations.")
+	}
 
 	// Configure HTTP Server
 	port := os.Getenv("PORT")
@@ -82,6 +94,6 @@ func (a *Application) Run() error {
 		return fmt.Errorf("server forced to shutdown: %w", err)
 	}
 
-	log.Println("Server exited properly")
+	log.Println("Server exited gracefully")
 	return nil
 }

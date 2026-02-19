@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -21,8 +23,10 @@ import (
 // reauthorise in cookie?
 
 func (h *Handler) googleLogin(w http.ResponseWriter, r *http.Request) {
+	oauthstate := generateStateOauthCookie(w)
+
 	url := config.GoogleConfiguration.GoogleLoginConfig.AuthCodeURL(
-		os.Getenv("STATE"),
+		oauthstate,
 		oauth2.AccessTypeOffline,
 		oauth2.SetAuthURLParam("prompt", "consent"),
 	)
@@ -31,13 +35,33 @@ func (h *Handler) googleLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
-	params := r.URL.Query()
-	state := params["state"][0]
-	if state != os.Getenv("STATE") {
-		http.Error(w, "Google Auth states do not match", http.StatusInternalServerError)
-		log.Println("Google Auth states do not match")
+	oauthStateCookie, err := r.Cookie("oauthstate")
+	if err != nil {
+		http.Error(w, "OAuth state cookie missing", http.StatusBadRequest)
+		log.Println("OAuth state cookie missing:", err)
 		return
 	}
+
+	params := r.URL.Query()
+	state := params["state"][0]
+
+	if state != oauthStateCookie.Value {
+		http.Error(w, "Google Auth states do not match", http.StatusUnauthorized)
+		log.Println("Google Auth states do not match. Potential CSRF attack.")
+		return
+	}
+
+	// Clear state cookie now that its been used
+	clearCookie := http.Cookie{
+		Name:     "oauthstate",
+		Value:    "",
+		MaxAge:   -1, // Deletes the cookie
+		HttpOnly: true,
+		Secure:   os.Getenv("ENV") == "prod",
+		SameSite: http.SameSiteLaxMode,
+		Path:     "/",
+	}
+	http.SetCookie(w, &clearCookie)
 
 	code := params["code"][0]
 	googleConfig := config.GetGoogleConfig()
@@ -105,4 +129,24 @@ func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &cookie)
 	clientURL := os.Getenv("CLIENT_URL")
 	http.Redirect(w, r, clientURL+"/?view=triage", http.StatusTemporaryRedirect)
+}
+
+// Helper to generate a random state and set it as a cookie
+func generateStateOauthCookie(w http.ResponseWriter) string {
+	b := make([]byte, 16)
+	rand.Read(b)
+	state := base64.URLEncoding.EncodeToString(b)
+
+	cookie := http.Cookie{
+		Name:     "oauthstate",
+		Value:    state,
+		MaxAge:   int(10 * 60),               // 10 minutes is plenty of time to log in
+		HttpOnly: true,                       // Protects against XSS
+		Secure:   os.Getenv("ENV") == "prod", // Secure over HTTPS in prod
+		SameSite: http.SameSiteLaxMode,       // Required for the cross-site redirect callback
+		Path:     "/",
+	}
+	http.SetCookie(w, &cookie)
+
+	return state
 }
