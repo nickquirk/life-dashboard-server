@@ -11,7 +11,7 @@ func init() {
 	err := godotenv.Load(".env")
 
 	if err != nil {
-		log.Fatal("Warning: .env file not found, using system environment")
+		log.Println("Warning: .env file not found, using system environment")
 	}
 }
 
