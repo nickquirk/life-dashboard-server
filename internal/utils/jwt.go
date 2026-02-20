@@ -3,6 +3,7 @@ package utils
 import (
 	"errors"
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -10,9 +11,9 @@ import (
 
 // Helper to prevent 401 Aunauthorised errors due to secret being empty
 func getSecret() []byte {
-	secret := os.Getenv("SECRET")
+	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
-		return []byte("default-dev-secret") // Fallback for safety in dev
+		log.Fatalf("JWT_SECRET not set")
 	}
 	return []byte(secret)
 }
