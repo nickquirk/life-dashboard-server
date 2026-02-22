@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
 	"gorm.io/driver/mysql"
@@ -45,7 +46,29 @@ func InitDb() (*gorm.DB, error) {
 		log.Fatalf("Unsupported DB_CONNECTION: %s. Use 'sqlite' or 'mysql'.", dbConn)
 	}
 
-	return gorm.Open(dialector, &gorm.Config{})
+	// Open the DB connection
+	db, err := gorm.Open(dialector, &gorm.Config{})
+	if err != nil {
+		return nil, err
+	}
+
+	// Retrieve the underlying sql.DB object to configure connection pooling
+	sqlDB, err := db.DB()
+	if err == nil {
+		// Set maximum number of connections in the idle connection pool.
+		sqlDB.SetMaxIdleConns(2)
+
+		// Set maximum number of open connections to the database.
+		// Crucial for Cloud Run to prevent connection exhaustion.
+		sqlDB.SetMaxOpenConns(5)
+
+		// Set maximum amount of time a connection may be reused.
+		sqlDB.SetConnMaxLifetime(time.Hour)
+	} else {
+		log.Printf("Warning: Failed to retrieve underlying sql.DB to set connection pool: %v", err)
+	}
+
+	return db, nil
 }
 
 func InitMigration(db *gorm.DB) {
