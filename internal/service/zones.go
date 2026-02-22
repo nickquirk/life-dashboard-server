@@ -34,8 +34,8 @@ func (s *service) GetZones(req domain.GetZonesRequest) (domain.GetZonesResponse,
 
 	var response domain.GetZonesResponse
 	for _, z := range zones {
-		response.Zones = append(response.Zones, domain.Zone{
-			Model:      z.Model, // This includes ID, CreatedAt, etc.
+		response.Zones = append(response.Zones, domain.ZoneResponse{
+			ID:         z.ID,
 			Label:      z.Label,
 			StartTime:  z.StartTime,
 			EndTime:    z.EndTime,

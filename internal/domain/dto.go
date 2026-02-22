@@ -38,6 +38,28 @@ type UserProfileResponse struct {
 
 // ------ Task ---------
 
+type TaskListResponse struct {
+	ID    string         `json:"id"`
+	Title string         `json:"title"`
+	Tasks []TaskResponse `json:"tasks,omitempty"`
+}
+
+type TaskResponse struct {
+	ID           string          `json:"id"`
+	Parent       *string         `json:"parent,omitempty"`
+	TaskListID   string          `json:"taskListId"`
+	Title        string          `json:"title"`
+	Status       string          `json:"status"`
+	Due          *time.Time      `json:"due,omitempty"`
+	Notes        string          `json:"notes"`
+	Updated      string          `json:"updated"`
+	DurationMins int             `json:"durationMins"`
+	Date         *time.Time      `json:"date,omitempty"`
+	Subtasks     []TaskResponse  `json:"subtasks,omitempty"`
+	IsRepeating  bool            `json:"isRepeating"`
+	Quadrant     int             `json:"quadrant"`
+}
+
 type CreateTaskRequest struct {
 	Title      string `json:"title"`
 	Parent     string `json:"parent,omitempty"`   // Optional: ID of the parent task
@@ -74,12 +96,21 @@ type GetCalendarEventsResponse struct {
 
 // ------ Zone ---------
 
+type ZoneResponse struct {
+	ID         uint   `json:"id"`
+	Label      string `json:"label"`
+	StartTime  string `json:"startTime"`
+	EndTime    string `json:"endTime"`
+	Color      string `json:"color"`
+	DaysActive []uint `json:"daysActive"`
+}
+
 type GetZonesRequest struct {
 	UserID uint `json:"userId"`
 }
 
 type GetZonesResponse struct {
-	Zones []Zone `json:"zones"`
+	Zones []ZoneResponse `json:"zones"`
 }
 
 type CreateZoneRequest struct {

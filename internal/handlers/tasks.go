@@ -8,6 +8,38 @@ import (
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
 )
 
+func toTaskResponse(t domain.Task) domain.TaskResponse {
+	resp := domain.TaskResponse{
+		ID:           t.ID,
+		Parent:       t.Parent,
+		TaskListID:   t.TaskListID,
+		Title:        t.Title,
+		Status:       t.Status,
+		Due:          t.Due,
+		Notes:        t.Notes,
+		Updated:      t.Updated,
+		DurationMins: t.DurationMins,
+		Date:         t.Date,
+		IsRepeating:  t.IsRepeating,
+		Quadrant:     t.Quadrant,
+	}
+	for _, s := range t.Subtasks {
+		resp.Subtasks = append(resp.Subtasks, toTaskResponse(s))
+	}
+	return resp
+}
+
+func toTaskListResponse(tl domain.TaskList) domain.TaskListResponse {
+	resp := domain.TaskListResponse{
+		ID:    tl.ID,
+		Title: tl.Title,
+	}
+	for _, t := range tl.Tasks {
+		resp.Tasks = append(resp.Tasks, toTaskResponse(t))
+	}
+	return resp
+}
+
 // GET /api/tasks
 func (h *Handler) getTaskLists(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -24,8 +56,13 @@ func (h *Handler) getTaskLists(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	resp := make([]domain.TaskListResponse, len(lists))
+	for i, l := range lists {
+		resp[i] = toTaskListResponse(l)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(lists); err != nil {
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 		return
 	}
@@ -74,7 +111,7 @@ func (h *Handler) createTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(task)
+	json.NewEncoder(w).Encode(toTaskResponse(task))
 }
 
 // GET /api/tasks/{taskListId}
@@ -88,8 +125,13 @@ func (h *Handler) getTasksInList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	resp := make([]domain.TaskResponse, len(tasks))
+	for i, t := range tasks {
+		resp[i] = toTaskResponse(t)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(tasks)
+	json.NewEncoder(w).Encode(resp)
 }
 
 // POST /api/tasks/{taskListId}/sync - New Endpoint
