@@ -23,8 +23,22 @@ func (h *Handler) getCalendarEvents(w http.ResponseWriter, r *http.Request) {
 	startStr := r.URL.Query().Get("start")
 	endStr := r.URL.Query().Get("end")
 
-	start, _ := time.Parse(time.RFC3339, startStr)
-	end, _ := time.Parse(time.RFC3339, endStr)
+	if startStr == "" || endStr == "" {
+		http.Error(w, "Missing required query params: start and end", http.StatusBadRequest)
+		return
+	}
+
+	start, err := time.Parse(time.RFC3339, startStr)
+	if err != nil {
+		http.Error(w, "Invalid start param, expected RFC3339 format", http.StatusBadRequest)
+		return
+	}
+
+	end, err := time.Parse(time.RFC3339, endStr)
+	if err != nil {
+		http.Error(w, "Invalid end param, expected RFC3339 format", http.StatusBadRequest)
+		return
+	}
 
 	dto := domain.GetCalendarEventsRequest{
 		UserID: userID,
