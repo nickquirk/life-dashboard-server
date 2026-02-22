@@ -1,17 +1,19 @@
 package handlers
 
 import (
+	"fmt"
 	"os"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 )
 
-func GetRoutes(mx *chi.Mux, h *Handler) {
+func GetRoutes(mx *chi.Mux, h *Handler) error {
 	clientUrl := os.Getenv("CLIENT_URL")
 	if clientUrl == "" {
-		panic("cannot find CLIENT_URL in .env")
+		return fmt.Errorf("CLIENT_URL environment variable is required but not set")
 	}
 	// Middleware
 	mx.Use(middleware.Logger)
@@ -25,11 +27,13 @@ func GetRoutes(mx *chi.Mux, h *Handler) {
 	}))
 
 	// Public Routes
+	// Health
 	mx.Get("/healthz", h.health)
 	mx.Get("/readyz", h.ready)
+
 	mx.Route("/api", func(r chi.Router) {
-		// Sync users
-		r.Post("/jobs/sync", h.handleGlobalSync)
+		// Sync users with extended timout
+		r.With(WithExtendedTimeout(10*time.Minute)).Post("/jobs/sync", h.handleGlobalSync)
 		// Google OAuth2
 		r.Group(func(public chi.Router) {
 			public.Get("/auth/google-login", h.googleLogin)
@@ -59,4 +63,5 @@ func GetRoutes(mx *chi.Mux, h *Handler) {
 			auth.Delete("/zones/{id}", h.deleteZone)
 		})
 	})
+	return nil
 }

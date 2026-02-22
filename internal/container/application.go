@@ -27,7 +27,9 @@ type Application struct {
 // It performs the "Wiring" phase (routes, configs).
 func NewApplication(cfg config.Config, r *chi.Mux, h *handlers.Handler, gormDB *gorm.DB) *Application {
 	// Initialize routes (modifies the router in-place)
-	handlers.GetRoutes(r, h)
+	if err := handlers.GetRoutes(r, h); err != nil {
+		log.Fatalf("Failed to initialize routes: %v", err)
+	}
 
 	// Initialize Google Config
 	config.GetGoogleConfig()
