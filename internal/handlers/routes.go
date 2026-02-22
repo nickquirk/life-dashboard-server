@@ -39,6 +39,7 @@ func GetRoutes(mx *chi.Mux, h *Handler) error {
 			public.Get("/auth/google-login", h.googleLogin)
 			public.Get("/auth/google-callback", h.googleCallback)
 			public.Post("/auth/logout", h.logout)
+			public.Post("/auth/refresh", h.refreshToken)
 		})
 		// Private API Routes (Authenticated)
 		r.Group(func(auth chi.Router) {

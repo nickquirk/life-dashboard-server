@@ -17,6 +17,8 @@ type UserRepository interface {
 	Create(domain.CreateUserRequest) (domain.CreateUserResponse, error)
 	Get(domain.GetUserRequest) (domain.GetUserResponse, error)
 	GetUsersWithRefreshTokens() ([]uint, error)
+	UpdateAppRefreshToken(userID uint, hashedToken string) error
+	GetAppRefreshToken(userID uint) (string, error)
 }
 
 func (r GormUserRepository) Create(c domain.CreateUserRequest) (domain.CreateUserResponse, error) {
@@ -124,4 +126,17 @@ func (r GormUserRepository) GetUsersWithRefreshTokens() ([]uint, error) {
 	}
 
 	return userIDs, nil
+}
+
+func (r GormUserRepository) UpdateAppRefreshToken(userID uint, hashedToken string) error {
+	return r.Db.Model(&domain.User{}).Where("id = ?", userID).Update("app_refresh_token", hashedToken).Error
+}
+
+func (r GormUserRepository) GetAppRefreshToken(userID uint) (string, error) {
+	var token string
+	err := r.Db.Model(&domain.User{}).Where("id = ?", userID).Pluck("app_refresh_token", &token).Error
+	if err != nil {
+		return "", err
+	}
+	return token, nil
 }

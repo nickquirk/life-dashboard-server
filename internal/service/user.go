@@ -19,3 +19,11 @@ func (s service) GetUser(user domain.GetUserRequest) (domain.GetUserResponse, er
 	}
 	return resp, nil
 }
+
+func (s service) UpdateAppRefreshToken(userID uint, hashedToken string) error {
+	return s.userRepo.UpdateAppRefreshToken(userID, hashedToken)
+}
+
+func (s service) GetAppRefreshToken(userID uint) (string, error) {
+	return s.userRepo.GetAppRefreshToken(userID)
+}

@@ -116,16 +116,41 @@ func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cookie := http.Cookie{
-		Name:     "life-dashboard",
-		Value:    tok,
-		HttpOnly: true,                       // Vital: prevents XSS attacks stealing tokens
-		Secure:   os.Getenv("ENV") == "prod", // Only send over HTTPS in prod
-		SameSite: http.SameSiteLaxMode,
-		Path:     "/",
+	// Generate app-level refresh token
+	rawRefreshToken, err := utils.GenerateRefreshToken()
+	if err != nil {
+		log.Printf("Failed to generate refresh token: %v", err)
+		http.Error(w, "Authentication failed", http.StatusInternalServerError)
+		return
+	}
+	hashedRefreshToken := utils.HashRefreshToken(rawRefreshToken)
+	if err := h.Service.UpdateAppRefreshToken(user.Id, hashedRefreshToken); err != nil {
+		log.Printf("Failed to store refresh token: %v", err)
+		http.Error(w, "Authentication failed", http.StatusInternalServerError)
+		return
 	}
 
-	http.SetCookie(w, &cookie)
+	isProd := os.Getenv("ENV") == "prod"
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "life-dashboard",
+		Value:    tok,
+		HttpOnly: true,
+		Secure:   isProd,
+		SameSite: http.SameSiteLaxMode,
+		Path:     "/",
+	})
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "life-dashboard-refresh",
+		Value:    rawRefreshToken,
+		HttpOnly: true,
+		Secure:   isProd,
+		SameSite: http.SameSiteLaxMode,
+		Path:     "/",
+		MaxAge:   30 * 24 * 60 * 60, // 30 days
+	})
+
 	clientURL := os.Getenv("CLIENT_URL")
 	http.Redirect(w, r, clientURL+"/?view=triage", http.StatusTemporaryRedirect)
 }
