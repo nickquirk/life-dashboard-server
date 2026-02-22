@@ -53,8 +53,13 @@ func (h *Handler) syncTaskLists(w http.ResponseWriter, r *http.Request) {
 // POST /api/tasks/{taskListId}
 func (h *Handler) createTask(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	userID, ok := ctx.Value(UserIDKey).(uint)
+	if !ok {
+		http.Error(w, "User not found", http.StatusUnauthorized)
+		return
+	}
+
 	taskListID := chi.URLParam(r, "taskListId")
-	userID := ctx.Value(UserIDKey).(uint)
 
 	var req domain.CreateTaskRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
