@@ -9,6 +9,8 @@ import (
 )
 
 type Service interface {
+	// ------ Health ---------
+	Ping() error
 	// ------ User ---------
 	CreateUser(user domain.CreateUserRequest) (domain.CreateUserResponse, error)
 	GetUser(domain.GetUserRequest) (domain.GetUserResponse, error)
@@ -32,15 +34,25 @@ type Service interface {
 }
 
 type service struct {
+	db           *gorm.DB
 	userRepo     repository.UserRepository
 	taskRepo     repository.TaskRepository
 	calendarRepo repository.CalendarRepository
 	zoneRepo     repository.ZoneRepository
 }
 
+func (s service) Ping() error {
+	sqlDB, err := s.db.DB()
+	if err != nil {
+		return err
+	}
+	return sqlDB.Ping()
+}
+
 // service handler
 func NewService(db *gorm.DB) Service {
 	return &service{
+		db: db,
 		userRepo: repository.GormUserRepository{
 			Db: db,
 		},

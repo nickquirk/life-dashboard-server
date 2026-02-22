@@ -8,10 +8,6 @@ import (
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
 )
 
-func helloWorld(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Hello World!\n"))
-}
-
 // GET /api/tasks
 func (h *Handler) getTaskLists(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
