@@ -65,7 +65,7 @@ type CalendarEvent struct {
 
 type Zone struct {
 	gorm.Model
-	UserID     uint   `gorm:"index;not null" json:"id"` // Foreign key to User
+	UserID     uint   `gorm:"index;not null" json:"userId"` // Foreign key to User
 	Label      string `json:"label"`
 	StartTime  string `json:"startTime"`                         // Format: "HH:mm"
 	EndTime    string `json:"endTime"`                           // Format: "HH:mm"
