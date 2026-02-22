@@ -53,7 +53,10 @@ func (h *Handler) GetUserHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Write JSON response
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	json.NewEncoder(w).Encode(domain.UserProfileResponse{
+		Email:   resp.Email,
+		Picture: resp.Picture,
+	})
 }
 
 func (h *Handler) getCurrentUser(w http.ResponseWriter, r *http.Request) {
@@ -75,5 +78,8 @@ func (h *Handler) getCurrentUser(w http.ResponseWriter, r *http.Request) {
 
 	// Return JSON
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	json.NewEncoder(w).Encode(domain.UserProfileResponse{
+		Email:   resp.Email,
+		Picture: resp.Picture,
+	})
 }

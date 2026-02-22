@@ -31,6 +31,11 @@ type GetUserResponse struct {
 	TokenExpiry  time.Time `json:"token_expiry"`
 }
 
+type UserProfileResponse struct {
+	Email   string `json:"email"`
+	Picture string `json:"picture"`
+}
+
 // ------ Task ---------
 
 type CreateTaskRequest struct {
