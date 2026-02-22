@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 
+	"github.com/nickquirk/life-dashboard-server/internal/crypto"
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
 	"github.com/nickquirk/life-dashboard-server/internal/repository"
 	"gorm.io/gorm"
@@ -50,11 +51,12 @@ func (s service) Ping() error {
 }
 
 // service handler
-func NewService(db *gorm.DB) Service {
+func NewService(db *gorm.DB, encryptor crypto.TokenEncryptor) Service {
 	return &service{
 		db: db,
 		userRepo: repository.GormUserRepository{
-			Db: db,
+			Db:        db,
+			Encryptor: encryptor,
 		},
 		taskRepo: &repository.GormTaskRepository{
 			Db: db,

@@ -1,12 +1,16 @@
 package repository
 
 import (
+	"fmt"
+
+	"github.com/nickquirk/life-dashboard-server/internal/crypto"
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
 	"gorm.io/gorm"
 )
 
 type GormUserRepository struct {
-	Db *gorm.DB
+	Db        *gorm.DB
+	Encryptor crypto.TokenEncryptor
 }
 
 type UserRepository interface {
@@ -18,14 +22,20 @@ type UserRepository interface {
 func (r GormUserRepository) Create(c domain.CreateUserRequest) (domain.CreateUserResponse, error) {
 	var user domain.User
 
+	// Encrypt tokens before any DB write
+	encAccessToken, err := r.Encryptor.Encrypt(c.AccessToken)
+	if err != nil {
+		return domain.CreateUserResponse{}, fmt.Errorf("failed to encrypt access token: %w", err)
+	}
+
 	// 1. Check if the user already exists by Email
-	err := r.Db.Where("email = ?", c.Email).First(&user).Error
+	err = r.Db.Where("email = ?", c.Email).First(&user).Error
 
 	if err == nil {
 		// --- USER EXISTS: UPDATE ---
 
 		// Update standard fields
-		user.AccessToken = c.AccessToken
+		user.AccessToken = encAccessToken
 		user.TokenExpiry = c.TokenExpiry
 		user.Picture = c.Picture
 
@@ -33,7 +43,11 @@ func (r GormUserRepository) Create(c domain.CreateUserRequest) (domain.CreateUse
 		// (Sometimes Google returns an empty string for refresh_token on re-login
 		// if the user didn't manually revoke access or use prompt=consent)
 		if c.RefreshToken != "" {
-			user.RefreshToken = c.RefreshToken
+			encRefreshToken, err := r.Encryptor.Encrypt(c.RefreshToken)
+			if err != nil {
+				return domain.CreateUserResponse{}, fmt.Errorf("failed to encrypt refresh token: %w", err)
+			}
+			user.RefreshToken = encRefreshToken
 		}
 
 		// Save changes
@@ -46,11 +60,16 @@ func (r GormUserRepository) Create(c domain.CreateUserRequest) (domain.CreateUse
 	}
 
 	// --- USER NEW: CREATE ---
+	encRefreshToken, err := r.Encryptor.Encrypt(c.RefreshToken)
+	if err != nil {
+		return domain.CreateUserResponse{}, fmt.Errorf("failed to encrypt refresh token: %w", err)
+	}
+
 	newUser := domain.User{
 		Email:        c.Email,
 		Picture:      c.Picture,
-		AccessToken:  c.AccessToken,
-		RefreshToken: c.RefreshToken,
+		AccessToken:  encAccessToken,
+		RefreshToken: encRefreshToken,
 		TokenExpiry:  c.TokenExpiry,
 	}
 
@@ -73,11 +92,21 @@ func (r GormUserRepository) Get(g domain.GetUserRequest) (domain.GetUserResponse
 		return domain.GetUserResponse{}, result.Error
 	}
 
+	// Decrypt tokens after reading from DB
+	accessToken, err := r.Encryptor.Decrypt(user.AccessToken)
+	if err != nil {
+		return domain.GetUserResponse{}, fmt.Errorf("failed to decrypt access token: %w", err)
+	}
+	refreshToken, err := r.Encryptor.Decrypt(user.RefreshToken)
+	if err != nil {
+		return domain.GetUserResponse{}, fmt.Errorf("failed to decrypt refresh token: %w", err)
+	}
+
 	return domain.GetUserResponse{
 		Email:        user.Email,
 		Picture:      user.Picture,
-		AccessToken:  user.AccessToken,
-		RefreshToken: user.RefreshToken,
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
 		TokenExpiry:  user.TokenExpiry,
 	}, nil
 }
