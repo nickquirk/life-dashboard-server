@@ -42,7 +42,7 @@ func (h *Handler) syncTaskLists(w http.ResponseWriter, r *http.Request) {
 
 	// SLOW SYNC
 	if err := h.Service.SyncTaskLists(ctx, userID); err != nil {
-		http.Error(w, "Sync failed: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Failed to sync task lists", http.StatusInternalServerError)
 		return
 	}
 
@@ -64,7 +64,7 @@ func (h *Handler) createTask(w http.ResponseWriter, r *http.Request) {
 
 	task, err := h.Service.CreateTask(ctx, userID, taskListID, req)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Failed to create task", http.StatusInternalServerError)
 		return
 	}
 
@@ -102,7 +102,7 @@ func (h *Handler) syncTasksInList(w http.ResponseWriter, r *http.Request) {
 	err := h.Service.SyncTasks(ctx, userID, taskListID)
 	if err != nil {
 		// Log error in production
-		http.Error(w, "Sync failed: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Failed to sync tasks", http.StatusInternalServerError)
 		return
 	}
 
@@ -127,7 +127,7 @@ func (h *Handler) updateTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.Service.UpdateTask(ctx, userID, taskID, req); err != nil {
-		http.Error(w, "Failed to update task: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Failed to update task", http.StatusInternalServerError)
 		return
 	}
 
@@ -147,7 +147,7 @@ func (h *Handler) deleteTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.Service.DeleteTask(ctx, userID, taskID); err != nil {
-		http.Error(w, "Failed to delete task: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Failed to delete task", http.StatusInternalServerError)
 		return
 	}
 

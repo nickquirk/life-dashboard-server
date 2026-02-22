@@ -34,7 +34,7 @@ func (h *Handler) getCalendarEvents(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.Service.GetCalendarEvents(ctx, dto)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Failed to fetch calendar events", http.StatusInternalServerError)
 		return
 	}
 

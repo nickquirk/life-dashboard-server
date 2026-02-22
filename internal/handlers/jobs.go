@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 	"os"
 )
@@ -17,7 +18,8 @@ func (h *Handler) handleGlobalSync(w http.ResponseWriter, r *http.Request) {
 	// Cloud Run can kill requests after 60 mins, but usually keep this shorter
 	err := h.Service.SyncAllUsers(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("Global sync failed: %v", err)
+		http.Error(w, "Sync failed", http.StatusInternalServerError)
 		return
 	}
 

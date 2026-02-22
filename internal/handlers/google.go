@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -104,16 +103,16 @@ func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 	// Save user to DB
 	user, err := h.CreateUser(userData)
 	if err != nil {
-		errMessage := fmt.Sprintf("Failed to save user to database - %s", err)
-		http.Error(w, errMessage, http.StatusInternalServerError)
+		log.Printf("Failed to save user to database: %v", err)
+		http.Error(w, "Failed to save user", http.StatusInternalServerError)
 		return
 	}
 
 	// save id and email in JWT
 	tok, err := utils.GenerateToken(user.Id, userData.Email)
 	if err != nil {
-		errMessage := fmt.Sprintf("Failed to generate JWT - %s", err)
-		http.Error(w, errMessage, http.StatusInternalServerError)
+		log.Printf("Failed to generate JWT: %v", err)
+		http.Error(w, "Authentication failed", http.StatusInternalServerError)
 		return
 	}
 

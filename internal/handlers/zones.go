@@ -29,7 +29,7 @@ func (h *Handler) createZone(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.Service.CreateZone(req)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Failed to create zone", http.StatusInternalServerError)
 		return
 	}
 
@@ -50,7 +50,7 @@ func (h *Handler) getZones(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.Service.GetZones(req)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Failed to fetch zones", http.StatusInternalServerError)
 		return
 	}
 
@@ -87,7 +87,7 @@ func (h *Handler) updateZone(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.Service.UpdateZone(req)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Failed to update zone", http.StatusInternalServerError)
 		return
 	}
 
@@ -121,7 +121,7 @@ func (h *Handler) deleteZone(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Zone not found", http.StatusNotFound)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Failed to delete zone", http.StatusInternalServerError)
 		return
 	}
 
