@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"net/http"
+	"os"
 
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
 	"github.com/nickquirk/life-dashboard-server/internal/utils"
@@ -66,6 +67,8 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		MaxAge:   -1, // Tell browser to delete it
 		HttpOnly: true,
+		Secure:   os.Getenv("ENV") == "prod",
+		SameSite: http.SameSiteLaxMode,
 	}
 
 	http.SetCookie(w, &cookie)

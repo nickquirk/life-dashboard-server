@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -22,7 +23,7 @@ func GenerateToken(id uint, email string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"id":    id,
 		"email": email,
-		// "exp":   time.Now().Add(time.Hour * 6).Unix(),
+		"exp":   time.Now().Add(time.Hour * 6).Unix(),
 	})
 	return token.SignedString(getSecret())
 }

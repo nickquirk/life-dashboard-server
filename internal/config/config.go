@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/knadh/koanf/parsers/json"
@@ -58,7 +59,6 @@ func (k *koanfConfig) GetAsString(key string) string {
 	return k.conf.String(key)
 }
 
-// LoadConfig replaces the old "NewApp"
 func LoadConfig() Config {
 	// Determine Path
 	configPath := os.Getenv("CONFIG_PATH")
@@ -71,17 +71,26 @@ func LoadConfig() Config {
 		conf: koanf.New("."),
 	}
 
-	// Load
-	// Note: You can add logic here to switch between JSON/YAML based on extension if you want
-	f := file.Provider(configPath)
-	if err := k.conf.Load(f, yaml.Parser()); err != nil {
-		// Fail fast if config is missing
-		panic(fmt.Sprintf("Failed to load config file at %s: %v", configPath, err))
-	}
+	// Check if the file exists before attempting to load it
+	if _, err := os.Stat(configPath); err == nil {
+		f := file.Provider(configPath)
+		if err := k.conf.Load(f, yaml.Parser()); err != nil {
+			panic(fmt.Sprintf("Failed to load config file at %s: %v", configPath, err))
+		}
 
-	// Validate
-	if k.GetAsString("app.name") == "" {
-		panic("Missing app.name in the config file")
+		// Validate
+		if k.GetAsString("app.name") == "" {
+			panic("Missing app.name in the config file")
+		}
+	} else {
+		// File does not exist.
+		// If in production, log a warning and rely on environment variables.
+		if os.Getenv("ENV") == "prod" {
+			log.Printf("Warning: Config file '%s' not found. Relying on environment variables.", configPath)
+		} else {
+			// If we are developing locally, failing fast is still helpful
+			panic(fmt.Sprintf("Config file not found at %s. Please create one.", configPath))
+		}
 	}
 
 	return k
