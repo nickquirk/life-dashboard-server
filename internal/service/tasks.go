@@ -105,12 +105,18 @@ func (s *service) CreateTask(ctx context.Context, userID uint, taskListID string
 	return newTask, nil
 }
 
-func (s *service) GetTasks(ctx context.Context, taskListID string) ([]domain.Task, error) {
-	// Directly return what we have in db. No Google API calls.
+func (s *service) GetTasks(ctx context.Context, userID uint, taskListID string) ([]domain.Task, error) {
+	if err := s.taskRepo.VerifyTaskListOwner(userID, taskListID); err != nil {
+		return nil, fmt.Errorf("task list not found: %w", err)
+	}
 	return s.taskRepo.GetTasks(taskListID)
 }
 
 func (s *service) SyncTasks(ctx context.Context, userID uint, taskListID string) error {
+	if err := s.taskRepo.VerifyTaskListOwner(userID, taskListID); err != nil {
+		return fmt.Errorf("task list not found: %w", err)
+	}
+
 	// Connect to Google
 	srv, err := s.getGoogleTaskService(ctx, userID)
 	if err != nil {

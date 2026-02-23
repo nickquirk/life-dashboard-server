@@ -116,10 +116,16 @@ func (h *Handler) createTask(w http.ResponseWriter, r *http.Request) {
 
 // GET /api/tasks/{taskListId}
 func (h *Handler) getTasksInList(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	userID, ok := ctx.Value(UserIDKey).(uint)
+	if !ok {
+		http.Error(w, "User not found", http.StatusUnauthorized)
+		return
+	}
+
 	taskListID := chi.URLParam(r, "taskListId")
 
-	// Just read from DB
-	tasks, err := h.Service.GetTasks(r.Context(), taskListID)
+	tasks, err := h.Service.GetTasks(ctx, userID, taskListID)
 	if err != nil {
 		http.Error(w, "Failed to fetch tasks", http.StatusInternalServerError)
 		return

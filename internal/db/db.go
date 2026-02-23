@@ -8,7 +8,6 @@ import (
 
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
 	"gorm.io/driver/mysql"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -38,10 +37,6 @@ func InitDb() (*gorm.DB, error) {
 				user, pass, host, dbName)
 		}
 		dialector = mysql.Open(dsn)
-	case "sqlite":
-		slog.Info("connecting to database", "driver", "sqlite")
-		// SQLite creates a file named 'gorm.db' in the current directory.
-		dialector = sqlite.Open("gorm.db")
 	default:
 		slog.Error("unsupported DB_CONNECTION", "value", dbConn)
 		os.Exit(1)

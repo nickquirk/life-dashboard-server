@@ -18,6 +18,7 @@ type TaskRepository interface {
 	GetTaskLists(userID uint) ([]domain.TaskList, error)
 	GetTaskList(listID string) (domain.TaskList, error)
 	UpdateListLastSync(listID string, t time.Time) error
+	VerifyTaskListOwner(userID uint, taskListID string) error
 	// Tasks
 	CreateTask(task domain.Task) error
 	GetTasks(taskListID string) ([]domain.Task, error)
@@ -57,6 +58,12 @@ func (r *GormTaskRepository) GetTaskList(listID string) (domain.TaskList, error)
 func (r *GormTaskRepository) UpdateListLastSync(listID string, t time.Time) error {
 	// Find task list and update last sync
 	return r.Db.Model(&domain.TaskList{}).Where("id = ?", listID).Update("last_sync", t).Error
+}
+
+func (r *GormTaskRepository) VerifyTaskListOwner(userID uint, taskListID string) error {
+	var list domain.TaskList
+	result := r.Db.Where("id = ? AND user_id = ?", taskListID, userID).First(&list)
+	return result.Error // gorm.ErrRecordNotFound when the list doesn't belong to this user
 }
 
 func (r *GormTaskRepository) UpsertTasks(tasks []domain.Task) error {
