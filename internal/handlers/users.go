@@ -20,7 +20,7 @@ type Handler struct {
 func (h *Handler) CreateUser(user domain.CreateUserRequest) (domain.CreateUserResponse, error) {
 	resp, err := h.Service.CreateUser(user)
 	if err != nil {
-		slog.Error("error creating user", err)
+		slog.Error("error creating user", "error", err)
 		return domain.CreateUserResponse{}, errors.New("error creating user")
 	}
 	return resp, nil

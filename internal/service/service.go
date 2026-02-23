@@ -45,6 +45,12 @@ type service struct {
 	zoneRepo     repository.ZoneRepository
 }
 
+// NewServiceWithRepos creates a Service with injected repositories (useful for testing).
+func NewServiceWithRepos(userRepo repository.UserRepository, taskRepo repository.TaskRepository,
+	calendarRepo repository.CalendarRepository, zoneRepo repository.ZoneRepository) Service {
+	return &service{userRepo: userRepo, taskRepo: taskRepo, calendarRepo: calendarRepo, zoneRepo: zoneRepo}
+}
+
 func (s service) Ping() error {
 	sqlDB, err := s.db.DB()
 	if err != nil {
