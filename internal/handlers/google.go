@@ -45,8 +45,12 @@ func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	params := r.URL.Query()
-	state := params["state"][0]
+	state := r.URL.Query().Get("state")
+	if state == "" {
+		http.Error(w, "State param not set or empty", http.StatusUnauthorized)
+		slog.Error("state param not set or empty", "error", err)
+		return
+	}
 
 	if state != oauthStateCookie.Value {
 		http.Error(w, "Google Auth states do not match", http.StatusUnauthorized)
@@ -97,6 +101,7 @@ func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 	err = json.Unmarshal(body, &userData)
 	if err != nil {
 		http.Error(w, "Failed to unmarshal user data", http.StatusInternalServerError)
+		slog.Error("failed to unmarshal user data", "error", err)
 		return
 	}
 
@@ -136,4 +141,3 @@ func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 	clientURL := os.Getenv("CLIENT_URL")
 	http.Redirect(w, r, clientURL+"/?view=triage", http.StatusTemporaryRedirect)
 }
-
