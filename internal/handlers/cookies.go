@@ -96,3 +96,31 @@ func (cc CookieConfig) ExpireOAuthStateCookie() *http.Cookie {
 		Domain:   cc.Domain,
 	}
 }
+
+// NewRefreshCookie creates the refresh token cookie ("life-dashboard-refresh").
+func (cc CookieConfig) NewRefreshCookie(token string) *http.Cookie {
+	return &http.Cookie{
+		Name:     "life-dashboard-refresh",
+		Value:    token,
+		Path:     "/",
+		MaxAge:   30 * 24 * 60 * 60, // 30 days
+		HttpOnly: true,
+		Secure:   cc.Secure,
+		SameSite: cc.SameSite,
+		Domain:   cc.Domain,
+	}
+}
+
+// ExpireRefreshCookie returns a cookie that tells the browser to delete the refresh token.
+func (cc CookieConfig) ExpireRefreshCookie() *http.Cookie {
+	return &http.Cookie{
+		Name:     "life-dashboard-refresh",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   cc.Secure,
+		SameSite: cc.SameSite,
+		Domain:   cc.Domain,
+	}
+}

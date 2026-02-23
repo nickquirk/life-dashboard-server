@@ -16,8 +16,17 @@ import (
 	"golang.org/x/oauth2"
 )
 
+// generateStateOauthCookie creates a random OAuth state and sets it as a cookie via CookieConfig.
+func (h *Handler) generateStateOauthCookie(w http.ResponseWriter) string {
+	b := make([]byte, 16)
+	rand.Read(b)
+	state := base64.URLEncoding.EncodeToString(b)
+	http.SetCookie(w, h.Cookies.NewOAuthStateCookie(state))
+	return state
+}
+
 func (h *Handler) googleLogin(w http.ResponseWriter, r *http.Request) {
-	oauthstate := generateStateOauthCookie(w)
+	oauthstate := h.generateStateOauthCookie(w)
 
 	url := config.GoogleConfiguration.GoogleLoginConfig.AuthCodeURL(
 		oauthstate,
@@ -46,18 +55,14 @@ func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Clear state cookie now that its been used
-	clearCookie := http.Cookie{
-		Name:     "oauthstate",
-		Value:    "",
-		MaxAge:   -1, // Deletes the cookie
-		HttpOnly: true,
-		Secure:   os.Getenv("ENV") == "prod",
-		SameSite: http.SameSiteLaxMode,
-		Path:     "/",
-	}
-	http.SetCookie(w, &clearCookie)
+	http.SetCookie(w, h.Cookies.ExpireOAuthStateCookie())
 
-	code := params["code"][0]
+	code := r.URL.Query().Get("code")
+	if code == "" {
+		http.Error(w, "Missing authorization code", http.StatusBadRequest)
+		slog.Error("missing authorization code", "error", err)
+		return
+	}
 	googleConfig := config.GetGoogleConfig()
 	ctx := context.Background()
 
@@ -125,47 +130,10 @@ func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isProd := os.Getenv("ENV") == "prod"
-
-	http.SetCookie(w, &http.Cookie{
-		Name:     "life-dashboard",
-		Value:    tok,
-		HttpOnly: true,
-		Secure:   isProd,
-		SameSite: http.SameSiteLaxMode,
-		Path:     "/",
-	})
-
-	http.SetCookie(w, &http.Cookie{
-		Name:     "life-dashboard-refresh",
-		Value:    rawRefreshToken,
-		HttpOnly: true,
-		Secure:   isProd,
-		SameSite: http.SameSiteLaxMode,
-		Path:     "/",
-		MaxAge:   30 * 24 * 60 * 60, // 30 days
-	})
+	http.SetCookie(w, h.Cookies.NewSessionCookie(tok))
+	http.SetCookie(w, h.Cookies.NewRefreshCookie(rawRefreshToken))
 
 	clientURL := os.Getenv("CLIENT_URL")
 	http.Redirect(w, r, clientURL+"/?view=triage", http.StatusTemporaryRedirect)
 }
 
-// Helper to generate a random state and set it as a cookie
-func generateStateOauthCookie(w http.ResponseWriter) string {
-	b := make([]byte, 16)
-	rand.Read(b)
-	state := base64.URLEncoding.EncodeToString(b)
-
-	cookie := http.Cookie{
-		Name:     "oauthstate",
-		Value:    state,
-		MaxAge:   int(10 * 60),               // 10 minutes is plenty of time to log in
-		HttpOnly: true,                       // Protects against XSS
-		Secure:   os.Getenv("ENV") == "prod", // Secure over HTTPS in prod
-		SameSite: http.SameSiteLaxMode,       // Required for the cross-site redirect callback
-		Path:     "/",
-	}
-	http.SetCookie(w, &cookie)
-
-	return state
-}

@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
-	"os"
 
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
 	"github.com/nickquirk/life-dashboard-server/internal/utils"
@@ -36,29 +35,8 @@ func (h *Handler) GetClient(config *oauth2.Config) (*http.Client, error) {
 }
 
 func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
-	isProd := os.Getenv("ENV") == "prod"
-
-	// Clear JWT cookie
-	http.SetCookie(w, &http.Cookie{
-		Name:     "life-dashboard",
-		Value:    "",
-		Path:     "/",
-		MaxAge:   -1,
-		HttpOnly: true,
-		Secure:   isProd,
-		SameSite: http.SameSiteLaxMode,
-	})
-
-	// Clear refresh token cookie
-	http.SetCookie(w, &http.Cookie{
-		Name:     "life-dashboard-refresh",
-		Value:    "",
-		Path:     "/",
-		MaxAge:   -1,
-		HttpOnly: true,
-		Secure:   isProd,
-		SameSite: http.SameSiteLaxMode,
-	})
+	http.SetCookie(w, h.Cookies.ExpireSessionCookie())
+	http.SetCookie(w, h.Cookies.ExpireRefreshCookie())
 
 	// Best-effort: invalidate refresh token in DB if we can identify the user
 	if jwtCookie, err := r.Cookie("life-dashboard"); err == nil {
@@ -136,26 +114,8 @@ func (h *Handler) refreshToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 7. Set both cookies
-	isProd := os.Getenv("ENV") == "prod"
-
-	http.SetCookie(w, &http.Cookie{
-		Name:     "life-dashboard",
-		Value:    newJWT,
-		HttpOnly: true,
-		Secure:   isProd,
-		SameSite: http.SameSiteLaxMode,
-		Path:     "/",
-	})
-
-	http.SetCookie(w, &http.Cookie{
-		Name:     "life-dashboard-refresh",
-		Value:    newRefreshToken,
-		HttpOnly: true,
-		Secure:   isProd,
-		SameSite: http.SameSiteLaxMode,
-		Path:     "/",
-		MaxAge:   30 * 24 * 60 * 60, // 30 days
-	})
+	http.SetCookie(w, h.Cookies.NewSessionCookie(newJWT))
+	http.SetCookie(w, h.Cookies.NewRefreshCookie(newRefreshToken))
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
