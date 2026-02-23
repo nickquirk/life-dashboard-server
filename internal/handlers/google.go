@@ -84,6 +84,9 @@ func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// to avoid leaking connections
+	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
 		http.Error(w, "Failed to fetch user info from Google", http.StatusInternalServerError)
 		slog.Error("failed to fetch user info from Google", "error", err)
