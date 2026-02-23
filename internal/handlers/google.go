@@ -6,7 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 
@@ -15,11 +15,6 @@ import (
 	"github.com/nickquirk/life-dashboard-server/internal/utils"
 	"golang.org/x/oauth2"
 )
-
-// TODO
-// break out user data fetch into separte function
-// state as random variable in cookie
-// reauthorise in cookie?
 
 func (h *Handler) googleLogin(w http.ResponseWriter, r *http.Request) {
 	oauthstate := generateStateOauthCookie(w)
@@ -37,7 +32,7 @@ func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 	oauthStateCookie, err := r.Cookie("oauthstate")
 	if err != nil {
 		http.Error(w, "OAuth state cookie missing", http.StatusBadRequest)
-		log.Println("OAuth state cookie missing:", err)
+		slog.Error("oauth state cookie missing", "error", err)
 		return
 	}
 
@@ -46,7 +41,7 @@ func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 
 	if state != oauthStateCookie.Value {
 		http.Error(w, "Google Auth states do not match", http.StatusUnauthorized)
-		log.Println("Google Auth states do not match. Potential CSRF attack.")
+		slog.Warn("oauth state mismatch, potential CSRF")
 		return
 	}
 
@@ -69,21 +64,21 @@ func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 	token, err := googleConfig.Exchange(ctx, code)
 	if err != nil {
 		http.Error(w, "Code-Token exchange failed", http.StatusInternalServerError)
-		log.Println("Error: ", err)
+		slog.Error("code-token exchange failed", "error", err)
 		return
 	}
 
 	resp, err := http.Get("https://www.googleapis.com/oauth2/v2/userinfo?access_token=" + token.AccessToken)
 	if err != nil {
 		http.Error(w, "User data fetch failed", http.StatusInternalServerError)
-		log.Println("Error: ", err)
+		slog.Error("user data fetch failed", "error", err)
 		return
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		http.Error(w, "Failed to parse Google response body", http.StatusInternalServerError)
-		log.Println("Error:", err)
+		slog.Error("failed to parse google response body", "error", err)
 		return
 	}
 
@@ -103,7 +98,7 @@ func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 	// Save user to DB
 	user, err := h.CreateUser(userData)
 	if err != nil {
-		log.Printf("Failed to save user to database: %v", err)
+		slog.Error("failed to save user to database", "error", err)
 		http.Error(w, "Failed to save user", http.StatusInternalServerError)
 		return
 	}
@@ -111,7 +106,7 @@ func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 	// save id and email in JWT
 	tok, err := utils.GenerateToken(user.Id, userData.Email)
 	if err != nil {
-		log.Printf("Failed to generate JWT: %v", err)
+		slog.Error("failed to generate JWT", "error", err)
 		http.Error(w, "Authentication failed", http.StatusInternalServerError)
 		return
 	}
@@ -119,13 +114,13 @@ func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 	// Generate app-level refresh token
 	rawRefreshToken, err := utils.GenerateRefreshToken()
 	if err != nil {
-		log.Printf("Failed to generate refresh token: %v", err)
+		slog.Error("failed to generate refresh token", "error", err)
 		http.Error(w, "Authentication failed", http.StatusInternalServerError)
 		return
 	}
 	hashedRefreshToken := utils.HashRefreshToken(rawRefreshToken)
 	if err := h.Service.UpdateAppRefreshToken(user.Id, hashedRefreshToken); err != nil {
-		log.Printf("Failed to store refresh token: %v", err)
+		slog.Error("failed to store refresh token", "error", err)
 		http.Error(w, "Authentication failed", http.StatusInternalServerError)
 		return
 	}

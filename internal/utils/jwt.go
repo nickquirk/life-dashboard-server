@@ -6,7 +6,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"time"
 
@@ -17,7 +17,8 @@ import (
 func getSecret() []byte {
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
-		log.Fatalf("JWT_SECRET not set")
+		slog.Error("JWT_SECRET not set")
+		os.Exit(1)
 	}
 	return []byte(secret)
 }

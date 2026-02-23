@@ -1,17 +1,20 @@
 package main
 
 import (
-	"log"
+	"log/slog"
+	"os"
 
 	"github.com/joho/godotenv"
 	"github.com/nickquirk/life-dashboard-server/internal/container"
 )
 
 func init() {
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
+
 	err := godotenv.Load(".env")
 
 	if err != nil {
-		log.Println("Warning: .env file not found, using system environment")
+		slog.Warn("env file not found, using system environment")
 	}
 }
 
@@ -23,6 +26,7 @@ func main() {
 	})
 
 	if err != nil {
-		log.Fatalf("Application failed to start: %v", err)
+		slog.Error("application failed to start", "error", err)
+		os.Exit(1)
 	}
 }

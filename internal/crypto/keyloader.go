@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"time"
 
@@ -17,7 +17,7 @@ import (
 // then falls back to GCP Secret Manager in production.
 func LoadEncryptionKey(gcpProjectID string) ([]byte, error) {
 	if envKey := os.Getenv("TOKEN_ENCRYPTION_KEY"); envKey != "" {
-		log.Println("Loading encryption key from environment variable")
+		slog.Info("loading encryption key", "source", "environment")
 		key, err := base64.StdEncoding.DecodeString(envKey)
 		if err != nil {
 			return nil, fmt.Errorf("failed to base64-decode TOKEN_ENCRYPTION_KEY: %w", err)
@@ -29,7 +29,7 @@ func LoadEncryptionKey(gcpProjectID string) ([]byte, error) {
 	}
 
 	if os.Getenv("ENV") == "prod" {
-		log.Println("Loading encryption key from GCP Secret Manager")
+		slog.Info("loading encryption key", "source", "gcp")
 		return fetchFromSecretManager(gcpProjectID, "token-encryption-key")
 	}
 

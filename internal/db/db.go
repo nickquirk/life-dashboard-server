@@ -2,7 +2,7 @@ package db
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"time"
 
@@ -22,7 +22,7 @@ func InitDb() (*gorm.DB, error) {
 
 	switch dbConn {
 	case "mysql":
-		log.Println("Connecting to MySQL (Production Mode)...")
+		slog.Info("connecting to database", "driver", "mysql")
 		user := os.Getenv("DB_USER")
 		pass := os.Getenv("DB_PASS")
 		host := os.Getenv("DB_HOST")
@@ -39,11 +39,12 @@ func InitDb() (*gorm.DB, error) {
 		}
 		dialector = mysql.Open(dsn)
 	case "sqlite":
-		log.Println("Connecting to SQLite (Local Mode)...")
+		slog.Info("connecting to database", "driver", "sqlite")
 		// SQLite creates a file named 'gorm.db' in the current directory.
 		dialector = sqlite.Open("gorm.db")
 	default:
-		log.Fatalf("Unsupported DB_CONNECTION: %s. Use 'sqlite' or 'mysql'.", dbConn)
+		slog.Error("unsupported DB_CONNECTION", "value", dbConn)
+		os.Exit(1)
 	}
 
 	// Open the DB connection
@@ -65,7 +66,7 @@ func InitDb() (*gorm.DB, error) {
 		// Set maximum amount of time a connection may be reused.
 		sqlDB.SetConnMaxLifetime(time.Hour)
 	} else {
-		log.Printf("Warning: Failed to retrieve underlying sql.DB to set connection pool: %v", err)
+		slog.Warn("failed to set connection pool", "error", err)
 	}
 
 	return db, nil

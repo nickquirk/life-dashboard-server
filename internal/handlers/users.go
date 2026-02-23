@@ -14,6 +14,7 @@ import (
 
 type Handler struct {
 	Service service.Service
+	Cookies CookieConfig
 }
 
 func (h *Handler) CreateUser(user domain.CreateUserRequest) (domain.CreateUserResponse, error) {

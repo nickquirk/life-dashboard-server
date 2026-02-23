@@ -2,7 +2,7 @@ package config
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 
 	"github.com/knadh/koanf/parsers/json"
@@ -86,7 +86,7 @@ func LoadConfig() Config {
 		// File does not exist.
 		// If in production, log a warning and rely on environment variables.
 		if os.Getenv("ENV") == "prod" {
-			log.Printf("Warning: Config file '%s' not found. Relying on environment variables.", configPath)
+			slog.Warn("config file not found, relying on environment variables", "path", configPath)
 		} else {
 			// If we are developing locally, failing fast is still helpful
 			panic(fmt.Sprintf("Config file not found at %s. Please create one.", configPath))

@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto/subtle"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 
@@ -115,7 +115,7 @@ func (h *Handler) refreshToken(w http.ResponseWriter, r *http.Request) {
 	// 5. Generate new JWT
 	newJWT, err := utils.GenerateToken(userID, user.Email)
 	if err != nil {
-		log.Printf("Failed to generate JWT during refresh: %v", err)
+		slog.Error("failed to generate JWT during refresh", "error", err)
 		http.Error(w, "Token refresh failed", http.StatusInternalServerError)
 		return
 	}
@@ -123,14 +123,14 @@ func (h *Handler) refreshToken(w http.ResponseWriter, r *http.Request) {
 	// 6. Rotate refresh token
 	newRefreshToken, err := utils.GenerateRefreshToken()
 	if err != nil {
-		log.Printf("Failed to generate refresh token during refresh: %v", err)
+		slog.Error("failed to generate refresh token during refresh", "error", err)
 		http.Error(w, "Token refresh failed", http.StatusInternalServerError)
 		return
 	}
 
 	newHash := utils.HashRefreshToken(newRefreshToken)
 	if err := h.Service.UpdateAppRefreshToken(userID, newHash); err != nil {
-		log.Printf("Failed to store rotated refresh token: %v", err)
+		slog.Error("failed to store rotated refresh token", "error", err)
 		http.Error(w, "Token refresh failed", http.StatusInternalServerError)
 		return
 	}

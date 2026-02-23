@@ -3,21 +3,21 @@ package service
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"sync"
 	"time"
 )
 
 // SyncAllUsers iterates through all users with a refresh token and syncs their data.
 func (s *service) SyncAllUsers(ctx context.Context) error {
-	log.Println("[Job] Starting global sync...")
+	slog.Info("starting global sync")
 
 	userIDs, err := s.userRepo.GetUsersWithRefreshTokens()
 	if err != nil {
 		return fmt.Errorf("failed to fetch users for sync: %w", err)
 	}
 
-	log.Printf("[Job] Found %d users to sync", len(userIDs))
+	slog.Info("found users to sync", "count", len(userIDs))
 
 	maxConcurrency := 5 // Sync 5 users at a time
 	sem := make(chan struct{}, maxConcurrency)
@@ -43,7 +43,7 @@ func (s *service) SyncAllUsers(ctx context.Context) error {
 			defer cancel()
 
 			if err := s.syncSingleUser(userCtx, uid); err != nil {
-				log.Printf("[Job] Error syncing user %d: %v", uid, err)
+				slog.Error("failed to sync user", "userID", uid, "error", err)
 			}
 		}(id)
 	}
@@ -51,7 +51,7 @@ func (s *service) SyncAllUsers(ctx context.Context) error {
 	// Wait for all to finish before returning
 	wg.Wait()
 
-	log.Println("[Job] Global sync complete")
+	slog.Info("global sync complete")
 	return nil
 }
 
@@ -77,7 +77,7 @@ func (s *service) syncSingleUser(ctx context.Context, userID uint) error {
 
 		if err := s.SyncTasks(ctx, userID, list.ID); err != nil {
 			// Log but continue to next list (don't fail the whole user for one list)
-			log.Printf("[Job] Warning: Failed to sync list %s for user %d: %v", list.ID, userID, err)
+			slog.Warn("failed to sync task list", "listID", list.ID, "userID", userID, "error", err)
 		}
 	}
 

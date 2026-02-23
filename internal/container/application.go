@@ -3,7 +3,7 @@ package container
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -28,7 +28,8 @@ type Application struct {
 func NewApplication(cfg config.Config, r *chi.Mux, h *handlers.Handler, gormDB *gorm.DB) *Application {
 	// Initialize routes (modifies the router in-place)
 	if err := handlers.GetRoutes(r, h); err != nil {
-		log.Fatalf("Failed to initialize routes: %v", err)
+		slog.Error("failed to initialize routes", "error", err)
+		os.Exit(1)
 	}
 
 	// Initialize Google Config
@@ -46,18 +47,18 @@ func NewApplication(cfg config.Config, r *chi.Mux, h *handlers.Handler, gormDB *
 func (a *Application) Run() error {
 	// Check if we are running as a dedicated Migration Job
 	if os.Getenv("MIGRATE_ONLY") == "true" {
-		log.Println("Job mode detected: Running database migrations...")
+		slog.Info("running database migrations", "mode", "job")
 		db.InitMigration(a.DB)
-		log.Println("Migrations complete. Exiting gracefully.")
+		slog.Info("migrations complete, exiting")
 		return nil // Exit the application, do NOT start the server
 	}
 
 	// If we are not in prod auto-migrate on startup
 	if os.Getenv("ENV") != "prod" {
-		log.Println("Local mode detected: Running database migrations...")
+		slog.Info("running database migrations", "mode", "local")
 		db.InitMigration(a.DB)
 	} else {
-		log.Println("Prod mode detected: Skipping startup migrations.")
+		slog.Info("skipping startup migrations", "mode", "prod")
 	}
 
 	// Configure HTTP Server
@@ -76,9 +77,10 @@ func (a *Application) Run() error {
 
 	// Start Server in Goroutine
 	go func() {
-		log.Printf("Server listening on port %s\n", port)
+		slog.Info("server listening", "port", port)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Server error: %v", err)
+			slog.Error("server error", "error", err)
+			os.Exit(1)
 		}
 	}()
 
@@ -88,7 +90,7 @@ func (a *Application) Run() error {
 	<-quit
 
 	// Graceful Shutdown Sequence
-	log.Println("Shutting down...")
+	slog.Info("shutting down")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -97,6 +99,6 @@ func (a *Application) Run() error {
 		return fmt.Errorf("server forced to shutdown: %w", err)
 	}
 
-	log.Println("Server exited gracefully")
+	slog.Info("server exited gracefully")
 	return nil
 }
