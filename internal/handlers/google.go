@@ -84,6 +84,12 @@ func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if resp.StatusCode != http.StatusOK {
+		http.Error(w, "Failed to fetch user info from Google", http.StatusInternalServerError)
+		slog.Error("failed to fetch user info from Google", "error", err)
+		return
+	}
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		http.Error(w, "Failed to parse Google response body", http.StatusInternalServerError)
