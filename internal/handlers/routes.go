@@ -32,8 +32,8 @@ func GetRoutes(mx *chi.Mux, h *Handler) error {
 	mx.Get("/readyz", h.ready)
 
 	mx.Route("/api", func(r chi.Router) {
-		// Sync users with extended timout
-		r.With(WithExtendedTimeout(10*time.Minute)).Post("/jobs/sync", h.handleGlobalSync)
+		// Sync users — OIDC (IAM) is the primary gate; shared secret is a secondary check inside the handler
+		r.With(AuthenticateOIDC, WithExtendedTimeout(10*time.Minute)).Post("/jobs/sync", h.handleGlobalSync)
 		// Google OAuth2
 		r.Group(func(public chi.Router) {
 			public.Get("/auth/google-login", h.googleLogin)
