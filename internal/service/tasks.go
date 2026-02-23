@@ -50,6 +50,10 @@ func (s *service) SyncTaskLists(ctx context.Context, userID uint) error {
 }
 
 func (s *service) CreateTask(ctx context.Context, userID uint, taskListID string, req domain.CreateTaskRequest) (domain.Task, error) {
+	if err := s.taskRepo.VerifyTaskListOwner(userID, taskListID); err != nil {
+		return domain.Task{}, fmt.Errorf("task list not found: %w", err)
+	}
+
 	srv, err := s.getGoogleTaskService(ctx, userID)
 	if err != nil {
 		return domain.Task{}, err
@@ -216,6 +220,11 @@ func (s *service) UpdateTask(ctx context.Context, userID uint, taskID string, re
 		return err
 	}
 
+	// Verify the task belongs to this user (via its task list)
+	if err := s.taskRepo.VerifyTaskListOwner(userID, task.TaskListID); err != nil {
+		return fmt.Errorf("task not found: %w", err)
+	}
+
 	// DETECT MOVE: If TaskListID is present and different, trigger the Move logic
 	if req.TaskListID != nil && *req.TaskListID != task.TaskListID {
 		return s.moveTask(ctx, userID, task, *req.TaskListID, req)
@@ -297,6 +306,11 @@ func (s *service) DeleteTask(ctx context.Context, userID uint, taskID string) er
 		return fmt.Errorf("task not found: %w", err)
 	}
 
+	// Verify the task belongs to this user (via its task list)
+	if err := s.taskRepo.VerifyTaskListOwner(userID, task.TaskListID); err != nil {
+		return fmt.Errorf("task not found: %w", err)
+	}
+
 	// Delete from Google Tasks API
 	srv, err := s.getGoogleTaskService(ctx, userID)
 	if err != nil {
@@ -327,6 +341,11 @@ func (s *service) isTokenError(err error) bool {
 
 // Private helper to handle the "Delete Old + Create New" dance
 func (s *service) moveTask(ctx context.Context, userID uint, currentTask domain.Task, newListID string, req domain.UpdateTaskRequest) error {
+	// Verify the user owns the destination list
+	if err := s.taskRepo.VerifyTaskListOwner(userID, newListID); err != nil {
+		return fmt.Errorf("destination task list not found: %w", err)
+	}
+
 	srv, err := s.getGoogleTaskService(ctx, userID)
 	if err != nil {
 		return err
