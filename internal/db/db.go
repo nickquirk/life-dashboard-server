@@ -14,7 +14,8 @@ import (
 func InitDb() (*gorm.DB, error) {
 	dbConn := os.Getenv("DB_CONNECTION")
 	if dbConn == "" {
-		dbConn = "sqlite" // Default to SQLite for local development
+		slog.Error("DB_CONNECTION environment variable is required")
+		os.Exit(1)
 	}
 
 	var dialector gorm.Dialector

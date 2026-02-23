@@ -1,6 +1,6 @@
 app:
   name: "life-dashboard-server"
 service:
-  port: "4000"
+  port: "8080"
 gcp: 
   project_id: life-dashboard

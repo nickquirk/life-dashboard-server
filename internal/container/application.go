@@ -71,7 +71,7 @@ func (a *Application) Run() error {
 		Addr:         fmt.Sprintf(":%s", port),
 		Handler:      a.Router,
 		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
+		WriteTimeout: 60 * time.Second,
 		IdleTimeout:  60 * time.Second,
 	}
 

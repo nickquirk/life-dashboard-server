@@ -11,10 +11,11 @@ import (
 func init() {
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
 
-	err := godotenv.Load(".env")
-
-	if err != nil {
-		slog.Warn("env file not found, using system environment")
+	if os.Getenv("ENV") != "prod" {
+		err := godotenv.Load(".env")
+		if err != nil {
+			slog.Warn("env file not found, using system environment")
+		}
 	}
 }
 
