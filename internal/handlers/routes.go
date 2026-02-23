@@ -3,7 +3,6 @@ package handlers
 import (
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -33,7 +32,15 @@ func GetRoutes(mx *chi.Mux, h *Handler) error {
 
 	mx.Route("/api", func(r chi.Router) {
 		// Sync users — OIDC (IAM) is the primary gate; shared secret is a secondary check inside the handler
-		r.With(AuthenticateOIDC, WithExtendedTimeout(10*time.Minute)).Post("/jobs/sync", h.handleGlobalSync)
+		r.Group(func(jobs chi.Router) {
+			jobs.Use(AuthenticateOIDC)
+
+			// Scheduler hits this to fan out tasks
+			jobs.Post("/jobs/sync/trigger", h.handleTriggerSync)
+
+			// Cloud Tasks hits this for each individual user
+			jobs.Post("/jobs/sync/worker", h.handleSyncWorker)
+		})
 		// Google OAuth2
 		r.Group(func(public chi.Router) {
 			public.Get("/auth/google-login", h.googleLogin)

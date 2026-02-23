@@ -17,9 +17,9 @@ require (
 require (
 	cloud.google.com/go/auth v0.18.1 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
+	cloud.google.com/go/cloudtasks v1.13.7 // indirect
 	cloud.google.com/go/iam v1.5.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/mattn/go-sqlite3 v1.14.32 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.61.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
@@ -63,5 +63,4 @@ require (
 	google.golang.org/grpc v1.78.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gorm.io/driver/mysql v1.6.0
-	gorm.io/driver/sqlite v1.6.0
 )

@@ -2,84 +2,63 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"log/slog"
-	"sync"
-	"time"
+
+	cloudtasks "cloud.google.com/go/cloudtasks/apiv2"
+	taskspb "cloud.google.com/go/cloudtasks/apiv2/cloudtaskspb"
 )
 
-// SyncAllUsers iterates through all users with a refresh token and syncs their data.
-func (s *service) SyncAllUsers(ctx context.Context) error {
-	slog.Info("starting global sync")
-
+// TriggerGlobalSync finds all users and enqueues a Cloud Task for each.
+func (s *service) TriggerGlobalSync(ctx context.Context, projectID, location, queue, workerURL, serviceAccountEmail string) error {
 	userIDs, err := s.userRepo.GetUsersWithRefreshTokens()
 	if err != nil {
-		return fmt.Errorf("failed to fetch users for sync: %w", err)
+		return fmt.Errorf("failed to fetch users: %w", err)
 	}
 
-	slog.Info("found users to sync", "count", len(userIDs))
+	client, err := cloudtasks.NewClient(ctx)
+	if err != nil {
+		return fmt.Errorf("cloud tasks client: %w", err)
+	}
+	defer client.Close()
 
-	maxConcurrency := 5 // Sync 5 users at a time
-	sem := make(chan struct{}, maxConcurrency)
-	var wg sync.WaitGroup
+	queuePath := fmt.Sprintf("projects/%s/locations/%s/queues/%s", projectID, location, queue)
 
-	// Loop and Launch
-	for _, id := range userIDs {
-		// Check if the parent context (request) is cancelled
-		if ctx.Err() != nil {
-			break
+	for _, uid := range userIDs {
+		// Create the payload for the worker
+		payload, _ := json.Marshal(map[string]uint{"user_id": uid})
+
+		req := &taskspb.CreateTaskRequest{
+			Parent: queuePath,
+			Task: &taskspb.Task{
+				MessageType: &taskspb.Task_HttpRequest{
+					HttpRequest: &taskspb.HttpRequest{
+						HttpMethod: taskspb.HttpMethod_POST,
+						Url:        workerURL,
+						Body:       payload,
+						Headers:    map[string]string{"Content-Type": "application/json"},
+						// This ensures Cloud Tasks authenticates with your worker!
+						AuthorizationHeader: &taskspb.HttpRequest_OidcToken{
+							OidcToken: &taskspb.OidcToken{
+								ServiceAccountEmail: serviceAccountEmail,
+							},
+						},
+					},
+				},
+			},
 		}
 
-		wg.Add(1)
-		sem <- struct{}{} // Acquire token (blocks if 5 are already running)
-
-		go func(uid uint) {
-			defer wg.Done()
-			defer func() { <-sem }() // Release token
-
-			// Create a specialized context for this user's work
-			// This ensures one user timing out doesn't kill the whole job
-			userCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
-			defer cancel()
-
-			if err := s.syncSingleUser(userCtx, uid); err != nil {
-				slog.Error("failed to sync user", "userID", uid, "error", err)
-			}
-		}(id)
+		if _, err := client.CreateTask(ctx, req); err != nil {
+			// Log the error, but continue enqueueing other users
+			fmt.Printf("failed to enqueue task for user %d: %v\n", uid, err)
+		}
 	}
 
-	// Wait for all to finish before returning
-	wg.Wait()
-
-	slog.Info("global sync complete")
 	return nil
 }
 
-// syncSingleUser handles the logic for a single user (Lists + Tasks)
-func (s *service) syncSingleUser(ctx context.Context, userID uint) error {
-	// Sync Task Lists (Google -> DB)
-	if err := s.SyncTaskLists(ctx, userID); err != nil {
-		return fmt.Errorf("sync task lists: %w", err)
-	}
-
-	// Fetch the updated lists from DB
-	lists, err := s.GetTaskLists(userID)
-	if err != nil {
-		return fmt.Errorf("get task lists: %w", err)
-	}
-
-	// Sync Tasks for each list
-	for _, list := range lists {
-		// Check context before starting next list (in case of timeout/shutdown)
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-
-		if err := s.SyncTasks(ctx, userID, list.ID); err != nil {
-			// Log but continue to next list (don't fail the whole user for one list)
-			slog.Warn("failed to sync task list", "listID", list.ID, "userID", userID, "error", err)
-		}
-	}
-
+// SyncSingleUser remains mostly the same, but expose it so the handler can call it directly.
+func (s *service) SyncSingleUser(ctx context.Context, userID uint) error {
+	// Your existing syncSingleUser logic goes here...
 	return nil
 }

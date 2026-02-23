@@ -3,7 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -20,8 +20,8 @@ type Handler struct {
 func (h *Handler) CreateUser(user domain.CreateUserRequest) (domain.CreateUserResponse, error) {
 	resp, err := h.Service.CreateUser(user)
 	if err != nil {
-		errorMessage := fmt.Sprint(err)
-		return domain.CreateUserResponse{}, errors.New(errorMessage)
+		slog.Error("error creating user", err)
+		return domain.CreateUserResponse{}, errors.New("error creating user")
 	}
 	return resp, nil
 }

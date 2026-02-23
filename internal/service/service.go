@@ -17,7 +17,8 @@ type Service interface {
 	GetUser(domain.GetUserRequest) (domain.GetUserResponse, error)
 	UpdateAppRefreshToken(userID uint, hashedToken string) error
 	GetAppRefreshToken(userID uint) (string, error)
-	SyncAllUsers(ctx context.Context) error
+	TriggerGlobalSync(ctx context.Context, projectID, location, queue, workerURL, serviceAccountEmail string) error
+	SyncSingleUser(ctx context.Context, userID uint) error
 	// ------ Lists ---------
 	SyncTaskLists(ctx context.Context, userID uint) error
 	GetTaskLists(userID uint) ([]domain.TaskList, error)
