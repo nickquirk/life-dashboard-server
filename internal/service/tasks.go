@@ -116,8 +116,6 @@ func (s *service) GetTasks(ctx context.Context, userID uint, taskListID string) 
 	return s.taskRepo.GetTasks(taskListID)
 }
 
-// internal/service/tasks.go
-
 func (s *service) SyncTasks(ctx context.Context, userID uint, taskListID string) error {
 	if err := s.taskRepo.VerifyTaskListOwner(userID, taskListID); err != nil {
 		return fmt.Errorf("task list not found: %w", err)
@@ -179,7 +177,7 @@ func (s *service) SyncTasks(ctx context.Context, userID uint, taskListID string)
 		activeIDs = append(activeIDs, item.Id)
 	}
 
-	// --- NEW: Topological Sort (Parents First) ---
+	// Topological Sort (Parents First)
 	var sortedTasks []domain.Task
 
 	for len(pendingMap) > 0 {
@@ -208,7 +206,6 @@ func (s *service) SyncTasks(ctx context.Context, userID uint, taskListID string)
 			}
 		}
 	}
-	// ----------------------------------------------
 
 	tx := s.taskRepo.BeginTx()
 	if tx.Error != nil {
@@ -224,7 +221,6 @@ func (s *service) SyncTasks(ctx context.Context, userID uint, taskListID string)
 	// Create a specialized repo that uses this transaction
 	txRepo := s.taskRepo.WithTx(tx)
 
-	// NEW: Use the `sortedTasks` slice instead of `domainTasks`
 	if err := txRepo.UpsertTasks(sortedTasks); err != nil {
 		tx.Rollback()
 		return err
