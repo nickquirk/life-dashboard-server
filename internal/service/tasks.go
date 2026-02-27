@@ -116,6 +116,8 @@ func (s *service) GetTasks(ctx context.Context, userID uint, taskListID string) 
 	return s.taskRepo.GetTasks(taskListID)
 }
 
+// internal/service/tasks.go
+
 func (s *service) SyncTasks(ctx context.Context, userID uint, taskListID string) error {
 	if err := s.taskRepo.VerifyTaskListOwner(userID, taskListID); err != nil {
 		return fmt.Errorf("task list not found: %w", err)
@@ -128,12 +130,9 @@ func (s *service) SyncTasks(ctx context.Context, userID uint, taskListID string)
 	}
 
 	// Fetch ONLY active tasks (ShowCompleted = false)
-	//    We want Google to tell us what is currently "Active"
 	gTasks, err := srv.Tasks.List(taskListID).ShowCompleted(false).ShowHidden(true).Do()
 	if err != nil {
 		if s.isTokenError(err) {
-			// TODO Clear invalid tokens in the db
-			//s.userRepo.ClearTokens(userID)
 			return errors.New("unauthorized: refresh token invalid")
 		}
 		return err
@@ -142,6 +141,7 @@ func (s *service) SyncTasks(ctx context.Context, userID uint, taskListID string)
 	// Map to Domain Models & Collect Active IDs
 	var domainTasks []domain.Task
 	var activeIDs []string
+	pendingMap := make(map[string]domain.Task) // NEW: Map for sorting
 
 	for _, item := range gTasks.Items {
 		// Catch if Google sends a stray completed one
@@ -159,24 +159,56 @@ func (s *service) SyncTasks(ctx context.Context, userID uint, taskListID string)
 
 		var parent *string
 		if item.Parent != "" {
-			// We capture the value in a new variable to get its address safely
 			val := item.Parent
 			parent = &val
 		}
 
-		domainTasks = append(domainTasks, domain.Task{
+		task := domain.Task{
 			ID:         item.Id,
 			Parent:     parent,
 			TaskListID: taskListID,
 			Title:      item.Title,
-			Status:     "needsAction", // Force status to active
+			Status:     "needsAction",
 			Notes:      item.Notes,
 			Updated:    item.Updated,
 			Due:        dueDate,
-		})
+		}
 
+		domainTasks = append(domainTasks, task)
+		pendingMap[task.ID] = task // Add to our map for sorting
 		activeIDs = append(activeIDs, item.Id)
 	}
+
+	// --- NEW: Topological Sort (Parents First) ---
+	var sortedTasks []domain.Task
+
+	for len(pendingMap) > 0 {
+		progress := false
+		for id, t := range pendingMap {
+			// A task is ready to be inserted if it has no parent,
+			// OR if its parent is NO LONGER in the pending map (meaning it was already sorted or isn't in this batch)
+			if t.Parent == nil {
+				sortedTasks = append(sortedTasks, t)
+				delete(pendingMap, id)
+				progress = true
+			} else if _, parentStillPending := pendingMap[*t.Parent]; !parentStillPending {
+				sortedTasks = append(sortedTasks, t)
+				delete(pendingMap, id)
+				progress = true
+			}
+		}
+
+		// Fallback for infinite loops (e.g. Google sends a child but the parent is completely missing)
+		if !progress {
+			for id, t := range pendingMap {
+				// To strictly prevent FK errors on orphaned tasks, nullify the parent
+				t.Parent = nil
+				sortedTasks = append(sortedTasks, t)
+				delete(pendingMap, id)
+			}
+		}
+	}
+	// ----------------------------------------------
 
 	tx := s.taskRepo.BeginTx()
 	if tx.Error != nil {
@@ -192,8 +224,8 @@ func (s *service) SyncTasks(ctx context.Context, userID uint, taskListID string)
 	// Create a specialized repo that uses this transaction
 	txRepo := s.taskRepo.WithTx(tx)
 
-	// Upsert the Active Tasks (Updates existing ones, inserts new ones)
-	if err := txRepo.UpsertTasks(domainTasks); err != nil {
+	// NEW: Use the `sortedTasks` slice instead of `domainTasks`
+	if err := txRepo.UpsertTasks(sortedTasks); err != nil {
 		tx.Rollback()
 		return err
 	}

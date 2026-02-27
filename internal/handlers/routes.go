@@ -31,16 +31,6 @@ func GetRoutes(mx *chi.Mux, h *Handler) error {
 	mx.Get("/readyz", h.ready)
 
 	mx.Route("/api", func(r chi.Router) {
-		// Sync users — OIDC (IAM) is the primary gate; shared secret is a secondary check inside the handler
-		r.Group(func(jobs chi.Router) {
-			jobs.Use(AuthenticateOIDC)
-
-			// Scheduler hits this to fan out tasks
-			jobs.Post("/jobs/sync/trigger", h.handleTriggerSync)
-
-			// Cloud Tasks hits this for each individual user
-			jobs.Post("/jobs/sync/worker", h.handleSyncWorker)
-		})
 		// Google OAuth2
 		r.Group(func(public chi.Router) {
 			public.Get("/auth/google-login", h.googleLogin)
