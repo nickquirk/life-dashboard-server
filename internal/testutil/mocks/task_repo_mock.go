@@ -10,20 +10,21 @@ import (
 
 // MockTaskRepository implements repository.TaskRepository with function fields.
 type MockTaskRepository struct {
-	UpsertTaskListsFunc           func([]domain.TaskList) error
-	GetTaskListsFunc              func(userID uint) ([]domain.TaskList, error)
-	GetTaskListFunc               func(listID string) (domain.TaskList, error)
-	UpdateListLastSyncFunc        func(listID string, t time.Time) error
-	VerifyTaskListOwnerFunc       func(userID uint, taskListID string) error
-	CreateTaskFunc                func(domain.Task) error
-	GetTasksFunc                  func(taskListID string) ([]domain.Task, error)
-	GetTaskByIDFunc               func(taskID string) (domain.Task, error)
-	UpsertTasksFunc               func([]domain.Task) error
-	UpdateTaskFunc                func(taskID string, updates map[string]interface{}) error
-	DeleteTaskFunc                func(taskID string) error
+	UpsertTaskListsFunc             func([]domain.TaskList) error
+	GetTaskListsFunc                func(userID uint) ([]domain.TaskList, error)
+	GetTaskListFunc                 func(listID string) (domain.TaskList, error)
+	UpdateListLastSyncFunc          func(listID string, t time.Time) error
+	VerifyTaskListOwnerFunc         func(userID uint, taskListID string) error
+	CreateTaskFunc                  func(domain.Task) error
+	GetTasksFunc                    func(taskListID string) ([]domain.Task, error)
+	GetTaskByIDFunc                 func(taskID string) (domain.Task, error)
+	UpsertTasksFunc                 func([]domain.Task) error
+	UpdateTaskFunc                  func(taskID string, updates map[string]interface{}) error
+	DeleteTaskFunc                  func(taskID string) error
+	DeleteTasksFunc                 func(taskIDs []string) error
 	MarkTasksCompletedExcludingFunc func(taskListID string, activeIDs []string) error
-	BeginTxFunc                   func() *gorm.DB
-	WithTxFunc                    func(tx *gorm.DB) repository.TaskRepository
+	BeginTxFunc                     func() *gorm.DB
+	WithTxFunc                      func(tx *gorm.DB) repository.TaskRepository
 }
 
 func (m *MockTaskRepository) UpsertTaskLists(lists []domain.TaskList) error {
@@ -99,6 +100,13 @@ func (m *MockTaskRepository) UpdateTask(taskID string, updates map[string]interf
 func (m *MockTaskRepository) DeleteTask(taskID string) error {
 	if m.DeleteTaskFunc != nil {
 		return m.DeleteTaskFunc(taskID)
+	}
+	return nil
+}
+
+func (m *MockTaskRepository) DeleteTasks(taskIDs []string) error {
+	if m.DeleteTasksFunc != nil {
+		return m.DeleteTasksFunc(taskIDs)
 	}
 	return nil
 }

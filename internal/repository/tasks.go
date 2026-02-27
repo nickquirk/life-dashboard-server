@@ -26,6 +26,7 @@ type TaskRepository interface {
 	UpsertTasks(tasks []domain.Task) error
 	UpdateTask(taskID string, updates map[string]interface{}) error
 	DeleteTask(taskID string) error
+	DeleteTasks(taskIDs []string) error
 	MarkTasksCompletedExcluding(taskListID string, activeIDs []string) error
 	// Transaction support
 	BeginTx() *gorm.DB
@@ -99,6 +100,13 @@ func (r *GormTaskRepository) UpdateTask(taskID string, updates map[string]interf
 
 func (r *GormTaskRepository) DeleteTask(taskID string) error {
 	return r.Db.Where("id = ?", taskID).Delete(&domain.Task{}).Error
+}
+
+func (r *GormTaskRepository) DeleteTasks(taskIDs []string) error {
+	if len(taskIDs) == 0 {
+		return nil
+	}
+	return r.Db.Where("id IN ?", taskIDs).Delete(&domain.Task{}).Error
 }
 
 func (r *GormTaskRepository) MarkTasksCompletedExcluding(taskListID string, activeIDs []string) error {
