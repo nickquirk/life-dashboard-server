@@ -17,11 +17,11 @@ type User struct {
 }
 
 type TaskList struct {
-	ID       string    `gorm:"primaryKey;size:255" json:"id"` // Google's ID
-	UserID   uint      `gorm:"index" json:"userId"`
-	Title    string    `json:"title"`
-	Updated  string    `json:"updated"`  // Google's timestamp
-	LastSync time.Time `json:"lastSync"` // local timestamp of last successful sync
+	ID       string     `gorm:"primaryKey;size:255" json:"id"` // Google's ID
+	UserID   uint       `gorm:"index" json:"userId"`
+	Title    string     `json:"title"`
+	Updated  string     `json:"updated"`  // Google's timestamp
+	LastSync *time.Time `json:"lastSync"` // local timestamp of last successful sync
 
 	// Relationships
 	// Added omitempty so this field is ignored if not preloaded

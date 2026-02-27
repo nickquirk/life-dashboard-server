@@ -40,7 +40,7 @@ func (r *GormTaskRepository) UpsertTaskLists(lists []domain.TaskList) error {
 	// Try to create these records. If a record with this ID already exists, update it with the new data instead of failing
 	return r.Db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "id"}}, // Google ID is primary
-		DoUpdates: clause.AssignmentColumns([]string{"title", "updated", "last_sync"}),
+		DoUpdates: clause.AssignmentColumns([]string{"title", "updated"}),
 	}).Create(&lists).Error
 }
 

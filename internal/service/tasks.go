@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"time"
 
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
@@ -25,6 +24,7 @@ func (s *service) SyncTaskLists(ctx context.Context, userID uint) error {
 		return err
 	}
 
+	// Fetch
 	gLists, err := srv.Tasklists.List().Do()
 	if err != nil {
 		if s.isTokenError(err) {
@@ -33,17 +33,18 @@ func (s *service) SyncTaskLists(ctx context.Context, userID uint) error {
 		return err
 	}
 
+	// Map
 	var domainLists []domain.TaskList
 	for _, item := range gLists.Items {
 		domainLists = append(domainLists, domain.TaskList{
-			ID:       item.Id,
-			UserID:   userID,
-			Title:    item.Title,
-			Updated:  item.Updated,
-			LastSync: time.Now(),
+			ID:      item.Id,
+			UserID:  userID,
+			Title:   item.Title,
+			Updated: item.Updated,
 		})
 	}
 
+	// Save (Command only, returns error)
 	return s.taskRepo.UpsertTaskLists(domainLists)
 }
 
@@ -61,38 +62,45 @@ func (s *service) CreateTask(ctx context.Context, userID uint, taskListID string
 		Title: req.Title,
 	}
 
+	// Prepare the Insert call
 	insertCall := srv.Tasks.Insert(taskListID, googleTask)
 
+	// Use the .Parent() method to set the query parameter
 	if req.Parent != "" {
 		insertCall = insertCall.Parent(req.Parent)
 	}
 
+	// If it's a subtask, set the parent
 	if req.Parent != "" {
 		googleTask.Parent = req.Parent
 	}
 
+	// Call Google API
 	createdGTask, err := insertCall.Do()
 	if err != nil {
 		return domain.Task{}, fmt.Errorf("google api insert failed: %w", err)
 	}
 
+	// Map response to Domain Model
 	newTask := domain.Task{
 		ID:         createdGTask.Id,
 		TaskListID: taskListID,
 		Title:      createdGTask.Title,
-		Status:     createdGTask.Status,
+		Status:     createdGTask.Status, // Usually "needsAction"
 		Updated:    createdGTask.Updated,
 		Notes:      createdGTask.Notes,
 	}
 
+	// If Google returned it, use it. If not, use what we requested.
 	if createdGTask.Parent != "" {
 		parent := createdGTask.Parent
 		newTask.Parent = &parent
 	} else if req.Parent != "" {
+		// Fallback: Google didn't echo it, but we know it belongs to this parent
 		parent := req.Parent
 		newTask.Parent = &parent
 	}
-
+	// Save to DB
 	if err := s.taskRepo.CreateTask(newTask); err != nil {
 		return domain.Task{}, err
 	}
@@ -107,34 +115,18 @@ func (s *service) GetTasks(ctx context.Context, userID uint, taskListID string) 
 	return s.taskRepo.GetTasks(taskListID)
 }
 
-// SyncTasks picks the right strategy based on whether we've synced this list before.
 func (s *service) SyncTasks(ctx context.Context, userID uint, taskListID string) error {
 	if err := s.taskRepo.VerifyTaskListOwner(userID, taskListID); err != nil {
 		return fmt.Errorf("task list not found: %w", err)
 	}
 
-	// Look up when we last synced this list
-	list, err := s.taskRepo.GetTaskList(taskListID)
-	if err != nil {
-		return fmt.Errorf("failed to get task list: %w", err)
-	}
-
+	// Connect to Google
 	srv, err := s.getGoogleTaskService(ctx, userID)
 	if err != nil {
 		return err
 	}
 
-	if list.LastSync.IsZero() {
-		return s.fullSync(srv, taskListID)
-	}
-	return s.incrementalSync(srv, taskListID, list.LastSync)
-}
-
-// fullSync fetches every active task from Google and replaces local state.
-// Used on the very first sync of a list (when LastSync is zero).
-func (s *service) fullSync(srv *tasks.Service, taskListID string) error {
-	slog.Debug("performing full sync", "listID", taskListID)
-
+	// Fetch ONLY active tasks (ShowCompleted = false)
 	gTasks, err := srv.Tasks.List(taskListID).ShowCompleted(false).ShowHidden(true).Do()
 	if err != nil {
 		if s.isTokenError(err) {
@@ -143,216 +135,110 @@ func (s *service) fullSync(srv *tasks.Service, taskListID string) error {
 		return err
 	}
 
-	domainTasks, activeIDs := mapGoogleTasks(gTasks.Items, taskListID)
-	sorted := topoSort(domainTasks)
-
-	// Transactional write: upsert all tasks, mark missing ones as completed
-	tx := s.taskRepo.BeginTx()
-	if tx.Error != nil {
-		return tx.Error
-	}
-
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-
-	txRepo := s.taskRepo.WithTx(tx)
-
-	if err := txRepo.UpsertTasks(sorted); err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	if err := txRepo.MarkTasksCompletedExcluding(taskListID, activeIDs); err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	if err := txRepo.UpdateListLastSync(taskListID, time.Now()); err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	return tx.Commit().Error
-}
-
-// incrementalSync fetches only tasks modified since lastSync.
-// Handles updates, completions, and deletions in a single pass.
-func (s *service) incrementalSync(srv *tasks.Service, taskListID string, lastSync time.Time) error {
-	slog.Debug("performing incremental sync", "listID", taskListID, "since", lastSync)
-
-	// Fetch changes since last sync.
-	// ShowCompleted=true  → catches tasks completed since lastSync
-	// ShowDeleted=true    → catches tasks deleted since lastSync (returned with Deleted=true)
-	// ShowHidden=true     → catches hidden tasks (same as before)
-	gTasks, err := srv.Tasks.List(taskListID).
-		UpdatedMin(lastSync.Format(time.RFC3339)).
-		ShowCompleted(true).
-		ShowDeleted(true).
-		ShowHidden(true).
-		Do()
-	if err != nil {
-		if s.isTokenError(err) {
-			return errors.New("unauthorized: refresh token invalid")
-		}
-		return err
-	}
-
-	// Nothing changed since last sync
-	if len(gTasks.Items) == 0 {
-		slog.Debug("incremental sync: no changes", "listID", taskListID)
-		return s.taskRepo.UpdateListLastSync(taskListID, time.Now())
-	}
-
-	// Separate the changes into three buckets
-	var toUpsert []domain.Task
-	var toDelete []string
-
-	for _, item := range gTasks.Items {
-		// Google returns deleted tasks with Deleted=true
-		if item.Deleted {
-			toDelete = append(toDelete, item.Id)
-			continue
-		}
-
-		task := mapSingleGoogleTask(item, taskListID)
-		toUpsert = append(toUpsert, task)
-	}
-
-	// Sort upserts so parents come before children (prevents FK errors)
-	sorted := topoSort(toUpsert)
-
-	slog.Debug("incremental sync delta",
-		"listID", taskListID,
-		"upserts", len(sorted),
-		"deletes", len(toDelete),
-	)
-
-	// Apply changes in a transaction
-	tx := s.taskRepo.BeginTx()
-	if tx.Error != nil {
-		return tx.Error
-	}
-
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-
-	txRepo := s.taskRepo.WithTx(tx)
-
-	if err := txRepo.DeleteTasks(toDelete); err != nil {
-		tx.Rollback()
-		return fmt.Errorf("failed to delete tasks: %w", err)
-	}
-
-	if err := txRepo.UpsertTasks(sorted); err != nil {
-		tx.Rollback()
-		return fmt.Errorf("failed to upsert tasks: %w", err)
-	}
-
-	if err := txRepo.UpdateListLastSync(taskListID, time.Now()); err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	return tx.Commit().Error
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-// mapSingleGoogleTask converts a single Google Task item to a domain.Task.
-func mapSingleGoogleTask(item *tasks.Task, taskListID string) domain.Task {
-	var dueDate *time.Time
-	if item.Due != "" {
-		parsed, err := time.Parse(time.RFC3339, item.Due)
-		if err == nil {
-			dueDate = &parsed
-		}
-	}
-
-	var parent *string
-	if item.Parent != "" {
-		val := item.Parent
-		parent = &val
-	}
-
-	return domain.Task{
-		ID:         item.Id,
-		Parent:     parent,
-		TaskListID: taskListID,
-		Title:      item.Title,
-		Status:     item.Status,
-		Notes:      item.Notes,
-		Updated:    item.Updated,
-		Due:        dueDate,
-	}
-}
-
-// mapGoogleTasks converts a slice of Google Task items to domain tasks,
-// filtering out completed tasks. Returns the domain tasks and their IDs.
-// Used only by fullSync where we want active tasks only.
-func mapGoogleTasks(items []*tasks.Task, taskListID string) ([]domain.Task, []string) {
+	// Map to Domain Models & Collect Active IDs
 	var domainTasks []domain.Task
 	var activeIDs []string
+	pendingMap := make(map[string]domain.Task) // NEW: Map for sorting
 
-	for _, item := range items {
+	for _, item := range gTasks.Items {
+		// Catch if Google sends a stray completed one
 		if item.Status != "needsAction" {
 			continue
 		}
 
-		task := mapSingleGoogleTask(item, taskListID)
+		var dueDate *time.Time
+		if item.Due != "" {
+			parsed, err := time.Parse(time.RFC3339, item.Due)
+			if err == nil {
+				dueDate = &parsed
+			}
+		}
+
+		var parent *string
+		if item.Parent != "" {
+			val := item.Parent
+			parent = &val
+		}
+
+		task := domain.Task{
+			ID:         item.Id,
+			Parent:     parent,
+			TaskListID: taskListID,
+			Title:      item.Title,
+			Status:     "needsAction",
+			Notes:      item.Notes,
+			Updated:    item.Updated,
+			Due:        dueDate,
+		}
+
 		domainTasks = append(domainTasks, task)
+		pendingMap[task.ID] = task // Add to our map for sorting
 		activeIDs = append(activeIDs, item.Id)
 	}
 
-	return domainTasks, activeIDs
-}
-
-// topoSort orders tasks so that parents are inserted before children.
-// Prevents FK constraint violations during upsert.
-func topoSort(tasks []domain.Task) []domain.Task {
-	if len(tasks) == 0 {
-		return tasks
-	}
-
-	pendingMap := make(map[string]domain.Task, len(tasks))
-	for _, t := range tasks {
-		pendingMap[t.ID] = t
-	}
-
-	var sorted []domain.Task
+	// Topological Sort (Parents First)
+	var sortedTasks []domain.Task
 
 	for len(pendingMap) > 0 {
 		progress := false
 		for id, t := range pendingMap {
+			// A task is ready to be inserted if it has no parent,
+			// OR if its parent is NO LONGER in the pending map (meaning it was already sorted or isn't in this batch)
 			if t.Parent == nil {
-				sorted = append(sorted, t)
+				sortedTasks = append(sortedTasks, t)
 				delete(pendingMap, id)
 				progress = true
 			} else if _, parentStillPending := pendingMap[*t.Parent]; !parentStillPending {
-				sorted = append(sorted, t)
+				sortedTasks = append(sortedTasks, t)
 				delete(pendingMap, id)
 				progress = true
 			}
 		}
 
-		// Break cycles: orphaned children whose parents aren't in this batch
+		// Fallback for infinite loops (e.g. Google sends a child but the parent is completely missing)
 		if !progress {
 			for id, t := range pendingMap {
+				// To strictly prevent FK errors on orphaned tasks, nullify the parent
 				t.Parent = nil
-				sorted = append(sorted, t)
+				sortedTasks = append(sortedTasks, t)
 				delete(pendingMap, id)
 			}
 		}
 	}
 
-	return sorted
+	tx := s.taskRepo.BeginTx()
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// Create a specialized repo that uses this transaction
+	txRepo := s.taskRepo.WithTx(tx)
+
+	if err := txRepo.UpsertTasks(sortedTasks); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Mark local tasks as 'completed' if they are missing from Google's active list
+	if err := txRepo.MarkTasksCompletedExcluding(taskListID, activeIDs); err != nil {
+		fmt.Printf("Error marking tasks completed: %v\n", err)
+		tx.Rollback()
+		return err
+	}
+
+	// Update Sync Time
+	if err := txRepo.UpdateListLastSync(taskListID, time.Now()); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit().Error
 }
 
 func (s *service) UpdateTask(ctx context.Context, userID uint, taskID string, req domain.UpdateTaskRequest) error {
@@ -361,17 +247,19 @@ func (s *service) UpdateTask(ctx context.Context, userID uint, taskID string, re
 		return err
 	}
 
+	// Verify the task belongs to this user (via its task list)
 	if err := s.taskRepo.VerifyTaskListOwner(userID, task.TaskListID); err != nil {
 		return fmt.Errorf("task not found: %w", err)
 	}
 
-	// DETECT MOVE
+	// DETECT MOVE: If TaskListID is present and different, trigger the Move logic
 	if req.TaskListID != nil && *req.TaskListID != task.TaskListID {
 		return s.moveTask(ctx, userID, task, *req.TaskListID, req)
 	}
 
 	updates := make(map[string]interface{})
 
+	// Handle Standard Fields
 	if req.Quadrant != nil {
 		updates["quadrant"] = *req.Quadrant
 	}
@@ -379,6 +267,7 @@ func (s *service) UpdateTask(ctx context.Context, userID uint, taskID string, re
 		updates["duration_mins"] = *req.DurationMins
 	}
 
+	// Handle Date/Time Logic, set or clear the date
 	if req.Date != nil {
 		if req.Date.Valid {
 			updates["date"] = req.Date.Time
@@ -387,6 +276,7 @@ func (s *service) UpdateTask(ctx context.Context, userID uint, taskID string, re
 		}
 	}
 
+	// Handle Google Sync
 	googleTask := &tasks.Task{}
 	shouldPatch := false
 
@@ -400,6 +290,7 @@ func (s *service) UpdateTask(ctx context.Context, userID uint, taskID string, re
 		updates["notes"] = *req.Notes
 		shouldPatch = true
 
+		// Force send an empty string if the notes field has been cleared otherwise 'omitempty' will remove it
 		if *req.Notes == "" {
 			googleTask.ForceSendFields = append(googleTask.ForceSendFields, "Notes")
 		}
@@ -422,11 +313,13 @@ func (s *service) UpdateTask(ctx context.Context, userID uint, taskID string, re
 			return fmt.Errorf("failed to get Google client: %w", err)
 		}
 
+		// Capture the response to get the official 'Updated' timestamp
 		updatedGTask, err := srv.Tasks.Patch(task.TaskListID, taskID, googleTask).Do()
 		if err != nil {
 			return fmt.Errorf("failed to sync to Google: %w", err)
 		}
 
+		// Update the local timestamp to match Google's server time immediately
 		updates["updated"] = updatedGTask.Updated
 	}
 
@@ -434,15 +327,18 @@ func (s *service) UpdateTask(ctx context.Context, userID uint, taskID string, re
 }
 
 func (s *service) DeleteTask(ctx context.Context, userID uint, taskID string) error {
+	// Get the task to find its taskListID
 	task, err := s.taskRepo.GetTaskByID(taskID)
 	if err != nil {
 		return fmt.Errorf("task not found: %w", err)
 	}
 
+	// Verify the task belongs to this user (via its task list)
 	if err := s.taskRepo.VerifyTaskListOwner(userID, task.TaskListID); err != nil {
 		return fmt.Errorf("task not found: %w", err)
 	}
 
+	// Delete from Google Tasks API
 	srv, err := s.getGoogleTaskService(ctx, userID)
 	if err != nil {
 		return fmt.Errorf("failed to get Google client: %w", err)
@@ -450,9 +346,11 @@ func (s *service) DeleteTask(ctx context.Context, userID uint, taskID string) er
 
 	err = srv.Tasks.Delete(task.TaskListID, taskID).Do()
 	if err != nil {
+		// Log but continue - task might already be deleted on Google's side
 		fmt.Printf("Warning: Could not delete from Google Tasks: %v\n", err)
 	}
 
+	// Delete from local database
 	if err := s.taskRepo.DeleteTask(taskID); err != nil {
 		return fmt.Errorf("failed to delete task from database: %w", err)
 	}
@@ -468,8 +366,9 @@ func (s *service) isTokenError(err error) bool {
 	return false
 }
 
-// moveTask handles the "Delete Old + Create New" dance
+// Private helper to handle the "Delete Old + Create New" dance
 func (s *service) moveTask(ctx context.Context, userID uint, currentTask domain.Task, newListID string, req domain.UpdateTaskRequest) error {
+	// Verify the user owns the destination list
 	if err := s.taskRepo.VerifyTaskListOwner(userID, newListID); err != nil {
 		return fmt.Errorf("destination task list not found: %w", err)
 	}
@@ -479,6 +378,7 @@ func (s *service) moveTask(ctx context.Context, userID uint, currentTask domain.
 		return err
 	}
 
+	// Merge current data with any updates in the request
 	title := currentTask.Title
 	if req.Title != nil {
 		title = *req.Title
@@ -489,11 +389,14 @@ func (s *service) moveTask(ctx context.Context, userID uint, currentTask domain.
 		notes = *req.Notes
 	}
 
+	// Default to CURRENT status, not "needsAction"
+	// This ensures that if you just move a task without changing status, it stays completed/active
 	status := currentTask.Status
 	if req.Status != nil {
 		status = *req.Status
 	}
 
+	// Create Google Object
 	googleTask := &tasks.Task{
 		Title:  title,
 		Notes:  notes,
@@ -503,26 +406,35 @@ func (s *service) moveTask(ctx context.Context, userID uint, currentTask domain.
 		googleTask.Due = req.Due.Format(time.RFC3339)
 	}
 
+	// Insert into NEW List on Google
 	newGTask, err := srv.Tasks.Insert(newListID, googleTask).Do()
 	if err != nil {
 		return fmt.Errorf("failed to create task in new list: %w", err)
 	}
 
+	// Delete from OLD List on Google
+	// We do this after successful insert to prevent data loss if insert fails
 	_ = srv.Tasks.Delete(currentTask.TaskListID, currentTask.ID).Do()
 
+	// Update Database (Atomic Swap)
+	// We delete the old record and create a new one because the Primary Key (Google ID) has changed.
+
+	// Prepare new domain task
 	newTask := domain.Task{
-		ID:           newGTask.Id,
-		TaskListID:   newListID,
-		Title:        newGTask.Title,
-		Status:       newGTask.Status,
-		Updated:      newGTask.Updated,
-		Notes:        newGTask.Notes,
+		ID:         newGTask.Id,
+		TaskListID: newListID,
+		Title:      newGTask.Title,
+		Status:     newGTask.Status,
+		Updated:    newGTask.Updated,
+		Notes:      newGTask.Notes,
+		// Carry over local-only fields
 		Quadrant:     currentTask.Quadrant,
 		DurationMins: currentTask.DurationMins,
 		IsRepeating:  currentTask.IsRepeating,
-		Date:         currentTask.Date,
+		Date:         currentTask.Date, // Default to old date
 	}
 
+	// Apply overrides for local fields from request
 	if req.Quadrant != nil {
 		newTask.Quadrant = *req.Quadrant
 	}
@@ -534,13 +446,18 @@ func (s *service) moveTask(ctx context.Context, userID uint, currentTask domain.
 		}
 	}
 
+	// Transaction to swap them
 	tx := s.taskRepo.BeginTx()
 
+	// Delete the old task ID
 	if err := tx.Where("id = ?", currentTask.ID).Delete(&domain.Task{}).Error; err != nil {
 		tx.Rollback()
 		return err
 	}
 
+	// Use Upsert (OnConflict) instead of Create
+	// If 'newTask.ID' happens to collide with an existing record (zombie data/race condition),
+	// this will overwrite it safely instead of crashing with UNIQUE constraint failed.
 	if err := tx.Clauses(clause.OnConflict{UpdateAll: true}).Create(&newTask).Error; err != nil {
 		tx.Rollback()
 		return err
