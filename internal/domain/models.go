@@ -41,7 +41,7 @@ type Task struct {
 	Updated      string     `json:"updated"` // Google's timestamp
 	DurationMins int        `json:"durationMins"`
 	Date         *time.Time `gorm:"type:datetime" json:"date,omitempty"`
-	Subtasks     []Task     `gorm:"foreignKey:Parent" json:"subtasks,omitempty"` // So we can preload subtasks
+	Subtasks     []Task     `gorm:"foreignKey:Parent;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"subtasks,omitempty"` // So we can preload subtasks
 	IsRepeating  bool       `json:"isRepeating"`
 	Quadrant     int        `gorm:"default:0" json:"quadrant"`
 
