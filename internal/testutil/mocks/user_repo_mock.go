@@ -4,11 +4,12 @@ import "github.com/nickquirk/life-dashboard-server/internal/domain"
 
 // MockUserRepository implements repository.UserRepository with function fields.
 type MockUserRepository struct {
-	CreateFunc                  func(domain.CreateUserRequest) (domain.CreateUserResponse, error)
-	GetFunc                     func(domain.GetUserRequest) (domain.GetUserResponse, error)
+	CreateFunc                    func(domain.CreateUserRequest) (domain.CreateUserResponse, error)
+	GetFunc                       func(domain.GetUserRequest) (domain.GetUserResponse, error)
 	GetUsersWithRefreshTokensFunc func() ([]uint, error)
-	UpdateAppRefreshTokenFunc   func(userID uint, hashedToken string) error
-	GetAppRefreshTokenFunc      func(userID uint) (string, error)
+	UpdateAppRefreshTokenFunc     func(userID uint, hashedToken string) error
+	GetAppRefreshTokenFunc        func(userID uint) (string, error)
+	DeleteUserAndDataFunc         func(userID uint) error
 }
 
 func (m *MockUserRepository) Create(req domain.CreateUserRequest) (domain.CreateUserResponse, error) {
@@ -44,4 +45,11 @@ func (m *MockUserRepository) GetAppRefreshToken(userID uint) (string, error) {
 		return m.GetAppRefreshTokenFunc(userID)
 	}
 	return "", nil
+}
+
+func (m *MockUserRepository) DeleteUserAndData(userID uint) error {
+	if m.DeleteUserAndDataFunc != nil {
+		return m.DeleteUserAndDataFunc(userID)
+	}
+	return nil
 }

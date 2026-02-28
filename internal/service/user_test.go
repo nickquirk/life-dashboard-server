@@ -96,6 +96,37 @@ func TestUpdateAppRefreshToken_Error(t *testing.T) {
 	assert.Error(t, err)
 }
 
+// --- DeleteAccount ---
+
+func TestDeleteAccount_Success(t *testing.T) {
+	called := false
+	repo := &mocks.MockUserRepository{
+		DeleteUserAndDataFunc: func(userID uint) error {
+			called = true
+			assert.Equal(t, uint(1), userID)
+			return nil
+		},
+	}
+	svc := newTestService(repo)
+
+	err := svc.DeleteAccount(1)
+	assert.NoError(t, err)
+	assert.True(t, called)
+}
+
+func TestDeleteAccount_RepoError(t *testing.T) {
+	repo := &mocks.MockUserRepository{
+		DeleteUserAndDataFunc: func(userID uint) error {
+			return errors.New("delete failed")
+		},
+	}
+	svc := newTestService(repo)
+
+	err := svc.DeleteAccount(1)
+	assert.Error(t, err)
+	assert.Equal(t, "delete failed", err.Error())
+}
+
 // --- GetAppRefreshToken ---
 
 func TestGetAppRefreshToken_Success(t *testing.T) {

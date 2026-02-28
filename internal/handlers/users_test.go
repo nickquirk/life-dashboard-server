@@ -66,3 +66,64 @@ func TestGetUserHTTP_NotFound(t *testing.T) {
 
 	assert.Equal(t, http.StatusNotFound, rr.Code)
 }
+
+// --- DeleteAccount ---
+
+func TestDeleteAccount_Success(t *testing.T) {
+	svc := &mocks.MockService{
+		DeleteAccountFunc: func(userID uint) error {
+			assert.Equal(t, uint(42), userID)
+			return nil
+		},
+	}
+	h := testHandler(svc)
+
+	r := httptest.NewRequest(http.MethodDelete, "/api/users/me", nil)
+	ctx := context.WithValue(r.Context(), UserIDKey, uint(42))
+	r = r.WithContext(ctx)
+	rr := httptest.NewRecorder()
+
+	h.deleteAccount(rr, r)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Contains(t, rr.Body.String(), "Account and all data deleted")
+
+	// Verify cookies are expired
+	cookies := rr.Result().Cookies()
+	var names []string
+	for _, c := range cookies {
+		names = append(names, c.Name)
+		assert.Equal(t, -1, c.MaxAge, "cookie %s should be expired", c.Name)
+	}
+	assert.Contains(t, names, "life-dashboard")
+	assert.Contains(t, names, "life-dashboard-refresh")
+}
+
+func TestDeleteAccount_NoContext(t *testing.T) {
+	h := testHandler(&mocks.MockService{})
+
+	r := httptest.NewRequest(http.MethodDelete, "/api/users/me", nil)
+	rr := httptest.NewRecorder()
+
+	h.deleteAccount(rr, r)
+
+	assert.Equal(t, http.StatusUnauthorized, rr.Code)
+}
+
+func TestDeleteAccount_ServiceError(t *testing.T) {
+	svc := &mocks.MockService{
+		DeleteAccountFunc: func(userID uint) error {
+			return errors.New("delete failed")
+		},
+	}
+	h := testHandler(svc)
+
+	r := httptest.NewRequest(http.MethodDelete, "/api/users/me", nil)
+	ctx := context.WithValue(r.Context(), UserIDKey, uint(1))
+	r = r.WithContext(ctx)
+	rr := httptest.NewRecorder()
+
+	h.deleteAccount(rr, r)
+
+	assert.Equal(t, http.StatusInternalServerError, rr.Code)
+}

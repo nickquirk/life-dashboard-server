@@ -28,6 +28,7 @@ type MockService struct {
 	GetZonesFunc            func(req domain.GetZonesRequest) (domain.GetZonesResponse, error)
 	UpdateZoneFunc          func(req domain.UpdateZoneRequest) (domain.UpdateZoneResponse, error)
 	DeleteZoneFunc          func(req domain.DeleteZonesRequest) (domain.DeleteZonesResponse, error)
+	DeleteAccountFunc       func(userID uint) error
 }
 
 func (m *MockService) Ping() error {
@@ -161,4 +162,11 @@ func (m *MockService) DeleteZone(req domain.DeleteZonesRequest) (domain.DeleteZo
 		return m.DeleteZoneFunc(req)
 	}
 	return domain.DeleteZonesResponse{}, nil
+}
+
+func (m *MockService) DeleteAccount(userID uint) error {
+	if m.DeleteAccountFunc != nil {
+		return m.DeleteAccountFunc(userID)
+	}
+	return nil
 }
