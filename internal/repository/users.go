@@ -154,31 +154,31 @@ func (r GormUserRepository) DeleteUserAndData(userID uint) error {
 		}
 	}()
 
-	// 1. Permanently delete Zones
+	// Permanently delete Zones
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&domain.Zone{}).Error; err != nil {
 		tx.Rollback()
 		return err
 	}
 
-	// 2a. Permanently delete SUBTASKS first (satisfies the self-referencing foreign key)
+	// Permanently delete SUBTASKS first (satisfies the self-referencing foreign key)
 	if err := tx.Exec("DELETE FROM tasks WHERE parent IS NOT NULL AND task_list_id IN (SELECT id FROM task_lists WHERE user_id = ?)", userID).Error; err != nil {
 		tx.Rollback()
 		return err
 	}
 
-	// 2b. Permanently delete PARENT TASKS
+	// Permanently delete PARENT TASKS
 	if err := tx.Exec("DELETE FROM tasks WHERE task_list_id IN (SELECT id FROM task_lists WHERE user_id = ?)", userID).Error; err != nil {
 		tx.Rollback()
 		return err
 	}
 
-	// 3. Permanently delete TaskLists
+	// Permanently delete TaskLists
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&domain.TaskList{}).Error; err != nil {
 		tx.Rollback()
 		return err
 	}
 
-	// 4. Permanently delete the User
+	// Permanently delete the User
 	if err := tx.Unscoped().Where("id = ?", userID).Delete(&domain.User{}).Error; err != nil {
 		tx.Rollback()
 		return err
