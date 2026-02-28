@@ -27,3 +27,7 @@ func (s service) UpdateAppRefreshToken(userID uint, hashedToken string) error {
 func (s service) GetAppRefreshToken(userID uint) (string, error) {
 	return s.userRepo.GetAppRefreshToken(userID)
 }
+
+func (s service) DeleteAccount(userID uint) error {
+	return s.userRepo.DeleteUserAndData(userID)
+}

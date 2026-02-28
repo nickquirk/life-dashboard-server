@@ -17,6 +17,7 @@ type Service interface {
 	GetUser(domain.GetUserRequest) (domain.GetUserResponse, error)
 	UpdateAppRefreshToken(userID uint, hashedToken string) error
 	GetAppRefreshToken(userID uint) (string, error)
+	DeleteAccount(userID uint) error
 	// ------ Lists ---------
 	SyncTaskLists(ctx context.Context, userID uint) error
 	GetTaskLists(userID uint) ([]domain.TaskList, error)

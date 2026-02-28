@@ -19,6 +19,7 @@ type UserRepository interface {
 	GetUsersWithRefreshTokens() ([]uint, error)
 	UpdateAppRefreshToken(userID uint, hashedToken string) error
 	GetAppRefreshToken(userID uint) (string, error)
+	DeleteUserAndData(userID uint) error
 }
 
 func (r GormUserRepository) Create(c domain.CreateUserRequest) (domain.CreateUserResponse, error) {
@@ -139,4 +140,44 @@ func (r GormUserRepository) GetAppRefreshToken(userID uint) (string, error) {
 		return "", err
 	}
 	return token, nil
+}
+
+func (r GormUserRepository) DeleteUserAndData(userID uint) error {
+	tx := r.Db.Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// Permanently delete Zones
+	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&domain.Zone{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Permanently delete Tasks
+	// Tasks belong to TaskLists, so we use a subquery to match the UserID
+	if err := tx.Exec("DELETE FROM tasks WHERE task_list_id IN (SELECT id FROM task_lists WHERE user_id = ?)", userID).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Permanently delete TaskLists
+	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&domain.TaskList{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Permanently delete the User
+	if err := tx.Unscoped().Where("id = ?", userID).Delete(&domain.User{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit().Error
 }

@@ -84,3 +84,24 @@ func (h *Handler) getCurrentUser(w http.ResponseWriter, r *http.Request) {
 		Picture: resp.Picture,
 	})
 }
+
+func (h *Handler) deleteAccount(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	userID, ok := ctx.Value(UserIDKey).(uint)
+	if !ok {
+		http.Error(w, "User not found in context", http.StatusUnauthorized)
+		return
+	}
+
+	if err := h.Service.DeleteAccount(userID); err != nil {
+		http.Error(w, "Failed to delete account", http.StatusInternalServerError)
+		return
+	}
+
+	// Expire cookies exactly like the logout handler does
+	http.SetCookie(w, h.Cookies.ExpireSessionCookie())
+	http.SetCookie(w, h.Cookies.ExpireRefreshCookie())
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"message":"Account and all data deleted"}`))
+}
