@@ -21,20 +21,24 @@ This is a backend service built in Go to interact with the Google ecosystem, all
 ## Architecture
 
 The application is heavily structured around the Onion/Clean Architecture pattern to ensure modularity and ease of testing:
+
 * **`cmd/http`**: Application entry point and initialization.
+
 * **`internal/domain`**: Core database models and Data Transfer Objects (DTOs).
+
 * **`internal/repository`**: Data persistence layer interacting with the SQL database.
+
 * **`internal/service`**: Core business logic and external Google API communication.
+
 * **`internal/handlers`**: HTTP handlers, Chi routing, and middleware (including OIDC validation for Cloud Run).
 
 ## Setup & Configuration
 
-The server relies on a mix of environment variables and a YAML configuration file. By default, it looks for `config.dev.yaml` locally. 
+The server relies on a mix of environment variables and a YAML configuration file. By default, it looks for `config.dev.yaml` locally.
 
 Create a `.env` file in the root directory for your secrets (see `.env.example`  for an example).
 
-## Running the Application Locally:
-
+## Running the Application Locally
 
 ```Bash
 go run ./cmd/http
