@@ -60,6 +60,8 @@ func GetRoutes(mx *chi.Mux, h *Handler) error {
 			auth.Post("/zones", h.createZone)
 			auth.Patch("/zones/{id}", h.updateZone)
 			auth.Delete("/zones/{id}", h.deleteZone)
+			// Feedback
+			auth.Post("/feedback", h.createFeedback)
 		})
 	})
 	return nil

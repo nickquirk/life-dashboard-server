@@ -73,4 +73,5 @@ func InitMigration(db *gorm.DB) {
 	db.AutoMigrate(domain.TaskList{})
 	db.AutoMigrate(domain.Task{})
 	db.AutoMigrate(domain.Zone{})
+	db.AutoMigrate(&domain.Feedback{})
 }

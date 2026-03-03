@@ -47,7 +47,7 @@ func (cc CookieConfig) NewSessionCookie(token string) *http.Cookie {
 		Name:     "life-dashboard",
 		Value:    token,
 		Path:     "/",
-		MaxAge:   6 * 60 * 60, // 6 hours, matching your JWT expiry
+		MaxAge:   30 * 24 * 60 * 60, // 30 Days
 		HttpOnly: true,
 		Secure:   cc.Secure,
 		SameSite: cc.SameSite,

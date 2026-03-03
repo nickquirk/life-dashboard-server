@@ -34,6 +34,8 @@ type Service interface {
 	GetZones(req domain.GetZonesRequest) (domain.GetZonesResponse, error)
 	UpdateZone(req domain.UpdateZoneRequest) (domain.UpdateZoneResponse, error)
 	DeleteZone(req domain.DeleteZonesRequest) (domain.DeleteZonesResponse, error)
+	// ------ Feedback ---------
+	CreateFeedback(req domain.CreateFeedbackRequest) (domain.CreateFeedbackResponse, error)
 }
 
 type service struct {
@@ -42,12 +44,13 @@ type service struct {
 	taskRepo     repository.TaskRepository
 	calendarRepo repository.CalendarRepository
 	zoneRepo     repository.ZoneRepository
+	feedbackRepo repository.FeedbackRepository
 }
 
-// NewServiceWithRepos creates a Service with injected repositories (useful for testing).
+// NewServiceWithRepos creates a Service with injected repositories
 func NewServiceWithRepos(userRepo repository.UserRepository, taskRepo repository.TaskRepository,
-	calendarRepo repository.CalendarRepository, zoneRepo repository.ZoneRepository) Service {
-	return &service{userRepo: userRepo, taskRepo: taskRepo, calendarRepo: calendarRepo, zoneRepo: zoneRepo}
+	calendarRepo repository.CalendarRepository, zoneRepo repository.ZoneRepository, feedbackRepo repository.FeedbackRepository) Service {
+	return &service{userRepo: userRepo, taskRepo: taskRepo, calendarRepo: calendarRepo, zoneRepo: zoneRepo, feedbackRepo: feedbackRepo}
 }
 
 func (s service) Ping() error {
@@ -72,6 +75,7 @@ func NewService(db *gorm.DB, encryptor crypto.TokenEncryptor) Service {
 		calendarRepo: &repository.GormCalendarRepository{
 			Db: db,
 		},
-		zoneRepo: &repository.GormZoneRepository{Db: db},
+		zoneRepo:     &repository.GormZoneRepository{Db: db},
+		feedbackRepo: &repository.GormFeedbackRepository{Db: db},
 	}
 }

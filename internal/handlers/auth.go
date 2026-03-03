@@ -50,7 +50,7 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) refreshToken(w http.ResponseWriter, r *http.Request) {
-	// 1. Get user ID from the expired JWT
+	// Get user ID from the expired JWT
 	jwtCookie, err := r.Cookie("life-dashboard")
 	if err != nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -63,14 +63,14 @@ func (h *Handler) refreshToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 2. Get the refresh token from cookie
+	//  Get the refresh token from cookie
 	refreshCookie, err := r.Cookie("life-dashboard-refresh")
 	if err != nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	// 3. Validate refresh token against stored hash
+	// Validate refresh token against stored hash
 	providedHash := utils.HashRefreshToken(refreshCookie.Value)
 	storedHash, err := h.Service.GetAppRefreshToken(userID)
 	if err != nil || storedHash == "" {
@@ -83,14 +83,14 @@ func (h *Handler) refreshToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 4. Get user info for new JWT claims
+	// Get user info for new JWT claims
 	user, err := h.Service.GetUser(domain.GetUserRequest{Id: userID})
 	if err != nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	// 5. Generate new JWT
+	// Generate new JWT
 	newJWT, err := utils.GenerateToken(userID, user.Email)
 	if err != nil {
 		slog.Error("failed to generate JWT during refresh", "error", err)
@@ -98,7 +98,7 @@ func (h *Handler) refreshToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 6. Rotate refresh token
+	// Rotate refresh token
 	newRefreshToken, err := utils.GenerateRefreshToken()
 	if err != nil {
 		slog.Error("failed to generate refresh token during refresh", "error", err)
@@ -113,7 +113,7 @@ func (h *Handler) refreshToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 7. Set both cookies
+	// Set both cookies
 	http.SetCookie(w, h.Cookies.NewSessionCookie(newJWT))
 	http.SetCookie(w, h.Cookies.NewRefreshCookie(newRefreshToken))
 

@@ -45,19 +45,19 @@ type TaskListResponse struct {
 }
 
 type TaskResponse struct {
-	ID           string          `json:"id"`
-	Parent       *string         `json:"parent,omitempty"`
-	TaskListID   string          `json:"taskListId"`
-	Title        string          `json:"title"`
-	Status       string          `json:"status"`
-	Due          *time.Time      `json:"due,omitempty"`
-	Notes        string          `json:"notes"`
-	Updated      string          `json:"updated"`
-	DurationMins int             `json:"durationMins"`
-	Date         *time.Time      `json:"date,omitempty"`
-	Subtasks     []TaskResponse  `json:"subtasks,omitempty"`
-	IsRepeating  bool            `json:"isRepeating"`
-	Quadrant     int             `json:"quadrant"`
+	ID           string         `json:"id"`
+	Parent       *string        `json:"parent,omitempty"`
+	TaskListID   string         `json:"taskListId"`
+	Title        string         `json:"title"`
+	Status       string         `json:"status"`
+	Due          *time.Time     `json:"due,omitempty"`
+	Notes        string         `json:"notes"`
+	Updated      string         `json:"updated"`
+	DurationMins int            `json:"durationMins"`
+	Date         *time.Time     `json:"date,omitempty"`
+	Subtasks     []TaskResponse `json:"subtasks,omitempty"`
+	IsRepeating  bool           `json:"isRepeating"`
+	Quadrant     int            `json:"quadrant"`
 }
 
 type CreateTaskRequest struct {
@@ -65,8 +65,6 @@ type CreateTaskRequest struct {
 	Parent     string `json:"parent,omitempty"`   // Optional: ID of the parent task
 	PreviousID string `json:"previous,omitempty"` // Optional: ID of task to insert after (for ordering)
 }
-
-//!  Create Response DTOs
 
 type UpdateTaskRequest struct {
 	// Local fields
@@ -155,4 +153,14 @@ type DeleteZonesRequest struct {
 
 type DeleteZonesResponse struct {
 	Message string `json:"message"`
+}
+
+type CreateFeedbackRequest struct {
+	UserID  uint   `json:"-"`
+	Message string `json:"message"`
+	Type    string `json:"type"` // e.g., "bug", "feature request"
+}
+
+type CreateFeedbackResponse struct {
+	ID uint `json:"id"`
 }

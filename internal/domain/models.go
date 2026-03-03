@@ -73,3 +73,10 @@ type Zone struct {
 	Color      string `json:"color"`                             // e.g., "slate", "blue"
 	DaysActive []uint `json:"daysActive" gorm:"serializer:json"` // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
 }
+
+type Feedback struct {
+	gorm.Model
+	UserID  uint   `gorm:"index;not null" json:"userId"`
+	Message string `json:"message"`
+	Type    string `json:"type"` // e.g., "bug", "feature request"
+}
