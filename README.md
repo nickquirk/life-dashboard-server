@@ -31,17 +31,7 @@ The application is heavily structured around the Onion/Clean Architecture patter
 
 The server relies on a mix of environment variables and a YAML configuration file. By default, it looks for `config.dev.yaml` locally. 
 
-Create a `.env` file in the root directory for your secrets (see `.env.example` below).
-
-Your base configuration file (`config.example.yaml`) should look like this:
-```yaml
-app:
-  name: "life-dashboard-server"
-service:
-  port: "8080"
-gcp: 
-  project_id: life-dashboard
-```
+Create a `.env` file in the root directory for your secrets (see `.env.example`  for an example).
 
 ## Running the Application Locally:
 
@@ -55,31 +45,4 @@ A multi-stage Dockerfile is included for generating a minimal, statically linked
 ```Bash
 docker build -t life-dashboard-server .
 docker run -p 8080:8080 --env-file .env life-dashboard-server
-```
-### Optional `.env.example` file
-You can save this as `.env.example` in the root of your repository so other developers know what to populate:
-
-```env
-# Database Configuration
-DB_CONNECTION=mysql
-DB_USER=root
-DB_PASS=secret
-DB_HOST=127.0.0.1:3306
-DB_NAME=life_dashboard
-# DB_SOCKET=/cloudsql/project:region:instance # Use this for Cloud Run
-
-# Application Secrets
-JWT_SECRET=your_32_character_secret_key
-TOKEN_ENCRYPTION_KEY=your_base64_encoded_32_byte_key
-CLIENT_URL=http://localhost:3000
-
-# Google OAuth
-GOOGLE_CLIENT_ID=your_client_id
-GOOGLE_CLIENT_SECRET=your_client_secret
-REDIRECT_URL=http://localhost:8080/api/auth/google-callback
-
-# Environment setup
-ENV=dev # Set to 'prod' for secure cookies and GCP Secret Manager fallback
-CROSS_ORIGIN=true
-# COOKIE_DOMAIN=.yourdomain.com
 ```
