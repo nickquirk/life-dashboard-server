@@ -31,6 +31,10 @@ type GetUserResponse struct {
 	TokenExpiry  time.Time `json:"token_expiry"`
 }
 
+type GetCurrentUserIDResponse struct {
+	Id uint `json:"id"`
+}
+
 type UserProfileResponse struct {
 	Email   string `json:"email"`
 	Picture string `json:"picture"`
@@ -156,9 +160,10 @@ type DeleteZonesResponse struct {
 }
 
 type CreateFeedbackRequest struct {
-	UserID  uint   `json:"-"`
-	Message string `json:"message"`
-	Type    string `json:"type"` // e.g., "bug", "feature request"
+	UserID  uint    `json:"userId"`
+	Type    string  `json:"type"`              // e.g., "bug", "feature request"
+	AppArea *string `json:"appArea,omitempty"` // e.g "auth", "drag and drop"
+	Message string  `json:"message"`
 }
 
 type CreateFeedbackResponse struct {

@@ -62,10 +62,9 @@ func (h *Handler) GetUserHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) getCurrentUser(w http.ResponseWriter, r *http.Request) {
 	// Get UserID from context (set by Authenticate middleware)
-	ctx := r.Context()
-	userID, ok := ctx.Value(UserIDKey).(uint)
+	userID, ok := h.GetUserID(r)
 	if !ok {
-		http.Error(w, "User not found in context", http.StatusUnauthorized)
+		http.Error(w, "User not found", http.StatusUnauthorized)
 		return
 	}
 
@@ -82,6 +81,18 @@ func (h *Handler) getCurrentUser(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(domain.UserProfileResponse{
 		Email:   resp.Email,
 		Picture: resp.Picture,
+	})
+}
+
+func (h *Handler) getCurrentUserID(w http.ResponseWriter, r *http.Request) {
+	userID, ok := h.GetUserID(r)
+	if !ok {
+		http.Error(w, "User not found", http.StatusUnauthorized)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(domain.GetCurrentUserIDResponse{
+		Id: userID,
 	})
 }
 

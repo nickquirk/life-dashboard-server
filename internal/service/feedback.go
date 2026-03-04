@@ -5,8 +5,9 @@ import "github.com/nickquirk/life-dashboard-server/internal/domain"
 func (s *service) CreateFeedback(req domain.CreateFeedbackRequest) (domain.CreateFeedbackResponse, error) {
 	feedback := domain.Feedback{
 		UserID:  req.UserID,
-		Message: req.Message,
 		Type:    req.Type,
+		AppArea: req.AppArea,
+		Message: req.Message,
 	}
 
 	resp, err := s.feedbackRepo.CreateFeedback(feedback)

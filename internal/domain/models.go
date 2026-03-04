@@ -76,7 +76,8 @@ type Zone struct {
 
 type Feedback struct {
 	gorm.Model
-	UserID  uint   `gorm:"index;not null" json:"userId"`
-	Message string `json:"message"`
-	Type    string `json:"type"` // e.g., "bug", "feature request"
+	UserID  uint    `gorm:"index;not null" json:"userId"`
+	Type    string  `json:"type"`    // e.g., "bug", "feature request"
+	AppArea *string `json:"appArea"` // Which area of the app the feedback is about
+	Message string  `json:"message"`
 }
