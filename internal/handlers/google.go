@@ -148,5 +148,5 @@ func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, h.Cookies.NewRefreshCookie(rawRefreshToken))
 
 	clientURL := os.Getenv("CLIENT_URL")
-	http.Redirect(w, r, clientURL+"/?view=triage", http.StatusTemporaryRedirect)
+	http.Redirect(w, r, clientURL, http.StatusTemporaryRedirect)
 }
