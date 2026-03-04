@@ -11,7 +11,7 @@ import (
 )
 
 func newZoneService(zoneRepo *mocks.MockZoneRepository) Service {
-	return NewServiceWithRepos(nil, nil, nil, zoneRepo)
+	return NewServiceWithRepos(nil, nil, nil, zoneRepo, nil)
 }
 
 // --- CreateZone ---

@@ -46,7 +46,7 @@ func TestSessionCookie(t *testing.T) {
 
 	assert.Equal(t, "life-dashboard", c.Name)
 	assert.Equal(t, "jwt-token-value", c.Value)
-	assert.Equal(t, 6*60*60, c.MaxAge)
+	assert.Equal(t, 30*24*60*60, c.MaxAge)
 	assert.True(t, c.HttpOnly)
 	assert.True(t, c.Secure)
 	assert.Equal(t, http.SameSiteNoneMode, c.SameSite)

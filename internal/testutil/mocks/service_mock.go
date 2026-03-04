@@ -29,6 +29,7 @@ type MockService struct {
 	UpdateZoneFunc          func(req domain.UpdateZoneRequest) (domain.UpdateZoneResponse, error)
 	DeleteZoneFunc          func(req domain.DeleteZonesRequest) (domain.DeleteZonesResponse, error)
 	DeleteAccountFunc       func(userID uint) error
+	CreateFeedbackFunc func(req domain.CreateFeedbackRequest) (domain.CreateFeedbackResponse, error)
 }
 
 func (m *MockService) Ping() error {
@@ -170,3 +171,11 @@ func (m *MockService) DeleteAccount(userID uint) error {
 	}
 	return nil
 }
+
+func (m *MockService) CreateFeedback(req domain.CreateFeedbackRequest) (domain.CreateFeedbackResponse, error) {
+	if m.CreateFeedbackFunc != nil {
+		return m.CreateFeedbackFunc(req)
+	}
+	return domain.CreateFeedbackResponse{}, nil
+}
+

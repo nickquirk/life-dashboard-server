@@ -44,6 +44,8 @@ func GetRoutes(mx *chi.Mux, h *Handler) error {
 			// auth
 			auth.Get("/auth/me", h.getCurrentUser)
 			auth.Delete("/users/me", h.deleteAccount)
+			// User
+
 			// Task List
 			auth.Get("/tasks", h.getTaskLists)
 			auth.Post("/tasks/sync", h.syncTaskLists)
