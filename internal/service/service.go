@@ -19,14 +19,14 @@ type Service interface {
 	GetAppRefreshToken(userID uint) (string, error)
 	DeleteAccount(userID uint) error
 	// ------ Lists ---------
-	SyncTaskLists(ctx context.Context, userID uint) error
-	GetTaskLists(userID uint) ([]domain.TaskList, error)
+	SyncTaskLists(ctx context.Context, req domain.SyncTaskListsRequest) (domain.SyncTaskListsResponse, error)
+	GetTaskLists(req domain.GetTaskListsRequest) (domain.GetTaskListsResponse, error)
 	// ------ Tasks ---------
-	CreateTask(ctx context.Context, userID uint, taskListID string, req domain.CreateTaskRequest) (domain.Task, error)
-	GetTasks(ctx context.Context, userID uint, taskListID string) ([]domain.Task, error)
-	SyncTasks(ctx context.Context, userID uint, taskListID string) error
-	UpdateTask(ctx context.Context, userID uint, taskID string, req domain.UpdateTaskRequest) error
-	DeleteTask(ctx context.Context, userID uint, taskID string) error
+	CreateTask(ctx context.Context, req domain.CreateTaskRequest) (domain.CreateTaskResponse, error)
+	GetTasks(ctx context.Context, req domain.GetTasksRequest) (domain.GetTasksResponse, error)
+	SyncTasks(ctx context.Context, req domain.SyncTasksRequest) (domain.SyncTasksResponse, error)
+	UpdateTask(ctx context.Context, req domain.UpdateTaskRequest) (domain.UpdateTaskResponse, error)
+	DeleteTask(ctx context.Context, req domain.DeleteTaskRequest) (domain.DeleteTaskResponse, error)
 	// ------ Calendar ---------
 	GetCalendarEvents(ctx context.Context, req domain.GetCalendarEventsRequest) (domain.GetCalendarEventsResponse, error)
 	// ------ Zones ---------

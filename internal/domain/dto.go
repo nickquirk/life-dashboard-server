@@ -64,13 +64,55 @@ type TaskResponse struct {
 	Quadrant     int            `json:"quadrant"`
 }
 
+type GetTaskListsRequest struct {
+	UserID uint `json:"-"`
+}
+
+type GetTaskListsResponse struct {
+	TaskLists []TaskListResponse `json:"taskLists"`
+}
+
+type SyncTaskListsRequest struct {
+	UserID uint `json:"-"`
+}
+
+type SyncTaskListsResponse struct {
+	Message string `json:"message"`
+}
+
 type CreateTaskRequest struct {
+	UserID     uint   `json:"-"`
+	TaskListID string `json:"-"`
 	Title      string `json:"title"`
 	Parent     string `json:"parent,omitempty"`   // Optional: ID of the parent task
 	PreviousID string `json:"previous,omitempty"` // Optional: ID of task to insert after (for ordering)
 }
 
+type CreateTaskResponse struct {
+	TaskResponse
+}
+
+type GetTasksRequest struct {
+	UserID     uint   `json:"-"`
+	TaskListID string `json:"-"`
+}
+
+type GetTasksResponse struct {
+	Tasks []TaskResponse `json:"tasks"`
+}
+
+type SyncTasksRequest struct {
+	UserID     uint   `json:"-"`
+	TaskListID string `json:"-"`
+}
+
+type SyncTasksResponse struct {
+	Message string `json:"message"`
+}
+
 type UpdateTaskRequest struct {
+	UserID uint   `json:"-"`
+	TaskID string `json:"-"`
 	// Local fields
 	// Using pointers to distinguish between Update to 0 and don't update (nil)
 	Title        *string       `json:"title"`
@@ -82,6 +124,19 @@ type UpdateTaskRequest struct {
 	// Google Fields
 	Status *string    `json:"status"` // "needsAction" or "completed"
 	Due    *time.Time `json:"due"`
+}
+
+type UpdateTaskResponse struct {
+	Message string `json:"message"`
+}
+
+type DeleteTaskRequest struct {
+	UserID uint   `json:"-"`
+	TaskID string `json:"-"`
+}
+
+type DeleteTaskResponse struct {
+	Message string `json:"message"`
 }
 
 // ------ Calendar ---------

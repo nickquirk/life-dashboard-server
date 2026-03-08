@@ -25,10 +25,10 @@ func TestService_GetTaskLists_Success(t *testing.T) {
 	}
 	svc := newTaskService(repo)
 
-	lists, err := svc.GetTaskLists(1)
+	resp, err := svc.GetTaskLists(domain.GetTaskListsRequest{UserID: 1})
 	require.NoError(t, err)
-	assert.Len(t, lists, 1)
-	assert.Equal(t, "My Tasks", lists[0].Title)
+	assert.Len(t, resp.TaskLists, 1)
+	assert.Equal(t, "My Tasks", resp.TaskLists[0].Title)
 }
 
 func TestService_GetTaskLists_Error(t *testing.T) {
@@ -39,7 +39,7 @@ func TestService_GetTaskLists_Error(t *testing.T) {
 	}
 	svc := newTaskService(repo)
 
-	_, err := svc.GetTaskLists(1)
+	_, err := svc.GetTaskLists(domain.GetTaskListsRequest{UserID: 1})
 	assert.Error(t, err)
 }
 
@@ -56,10 +56,10 @@ func TestService_GetTasks_Success(t *testing.T) {
 	}
 	svc := newTaskService(repo)
 
-	tasks, err := svc.GetTasks(context.Background(), 1, "list1")
+	resp, err := svc.GetTasks(context.Background(), domain.GetTasksRequest{UserID: 1, TaskListID: "list1"})
 	require.NoError(t, err)
-	assert.Len(t, tasks, 1)
-	assert.Equal(t, "Task 1", tasks[0].Title)
+	assert.Len(t, resp.Tasks, 1)
+	assert.Equal(t, "Task 1", resp.Tasks[0].Title)
 }
 
 func TestService_GetTasks_OwnershipFailure(t *testing.T) {
@@ -74,7 +74,7 @@ func TestService_GetTasks_OwnershipFailure(t *testing.T) {
 	}
 	svc := newTaskService(repo)
 
-	_, err := svc.GetTasks(context.Background(), 1, "not-my-list")
+	_, err := svc.GetTasks(context.Background(), domain.GetTasksRequest{UserID: 1, TaskListID: "not-my-list"})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "task list not found")
 }

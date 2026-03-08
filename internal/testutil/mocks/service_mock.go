@@ -16,13 +16,13 @@ type MockService struct {
 	GetAppRefreshTokenFunc  func(userID uint) (string, error)
 	TriggerGlobalSyncFunc   func(ctx context.Context, projectID, location, queue, workerURL, serviceAccountEmail string) error
 	SyncSingleUserFunc      func(ctx context.Context, userID uint) error
-	SyncTaskListsFunc       func(ctx context.Context, userID uint) error
-	GetTaskListsFunc        func(userID uint) ([]domain.TaskList, error)
-	CreateTaskFunc          func(ctx context.Context, userID uint, taskListID string, req domain.CreateTaskRequest) (domain.Task, error)
-	GetTasksFunc            func(ctx context.Context, userID uint, taskListID string) ([]domain.Task, error)
-	SyncTasksFunc           func(ctx context.Context, userID uint, taskListID string) error
-	UpdateTaskFunc          func(ctx context.Context, userID uint, taskID string, req domain.UpdateTaskRequest) error
-	DeleteTaskFunc          func(ctx context.Context, userID uint, taskID string) error
+	SyncTaskListsFunc       func(ctx context.Context, req domain.SyncTaskListsRequest) (domain.SyncTaskListsResponse, error)
+	GetTaskListsFunc        func(req domain.GetTaskListsRequest) (domain.GetTaskListsResponse, error)
+	CreateTaskFunc          func(ctx context.Context, req domain.CreateTaskRequest) (domain.CreateTaskResponse, error)
+	GetTasksFunc            func(ctx context.Context, req domain.GetTasksRequest) (domain.GetTasksResponse, error)
+	SyncTasksFunc           func(ctx context.Context, req domain.SyncTasksRequest) (domain.SyncTasksResponse, error)
+	UpdateTaskFunc          func(ctx context.Context, req domain.UpdateTaskRequest) (domain.UpdateTaskResponse, error)
+	DeleteTaskFunc          func(ctx context.Context, req domain.DeleteTaskRequest) (domain.DeleteTaskResponse, error)
 	GetCalendarEventsFunc   func(ctx context.Context, req domain.GetCalendarEventsRequest) (domain.GetCalendarEventsResponse, error)
 	CreateZoneFunc          func(req domain.CreateZoneRequest) (domain.CreateZoneResponse, error)
 	GetZonesFunc            func(req domain.GetZonesRequest) (domain.GetZonesResponse, error)
@@ -83,53 +83,53 @@ func (m *MockService) SyncSingleUser(ctx context.Context, userID uint) error {
 	return nil
 }
 
-func (m *MockService) SyncTaskLists(ctx context.Context, userID uint) error {
+func (m *MockService) SyncTaskLists(ctx context.Context, req domain.SyncTaskListsRequest) (domain.SyncTaskListsResponse, error) {
 	if m.SyncTaskListsFunc != nil {
-		return m.SyncTaskListsFunc(ctx, userID)
+		return m.SyncTaskListsFunc(ctx, req)
 	}
-	return nil
+	return domain.SyncTaskListsResponse{}, nil
 }
 
-func (m *MockService) GetTaskLists(userID uint) ([]domain.TaskList, error) {
+func (m *MockService) GetTaskLists(req domain.GetTaskListsRequest) (domain.GetTaskListsResponse, error) {
 	if m.GetTaskListsFunc != nil {
-		return m.GetTaskListsFunc(userID)
+		return m.GetTaskListsFunc(req)
 	}
-	return nil, nil
+	return domain.GetTaskListsResponse{}, nil
 }
 
-func (m *MockService) CreateTask(ctx context.Context, userID uint, taskListID string, req domain.CreateTaskRequest) (domain.Task, error) {
+func (m *MockService) CreateTask(ctx context.Context, req domain.CreateTaskRequest) (domain.CreateTaskResponse, error) {
 	if m.CreateTaskFunc != nil {
-		return m.CreateTaskFunc(ctx, userID, taskListID, req)
+		return m.CreateTaskFunc(ctx, req)
 	}
-	return domain.Task{}, nil
+	return domain.CreateTaskResponse{}, nil
 }
 
-func (m *MockService) GetTasks(ctx context.Context, userID uint, taskListID string) ([]domain.Task, error) {
+func (m *MockService) GetTasks(ctx context.Context, req domain.GetTasksRequest) (domain.GetTasksResponse, error) {
 	if m.GetTasksFunc != nil {
-		return m.GetTasksFunc(ctx, userID, taskListID)
+		return m.GetTasksFunc(ctx, req)
 	}
-	return nil, nil
+	return domain.GetTasksResponse{}, nil
 }
 
-func (m *MockService) SyncTasks(ctx context.Context, userID uint, taskListID string) error {
+func (m *MockService) SyncTasks(ctx context.Context, req domain.SyncTasksRequest) (domain.SyncTasksResponse, error) {
 	if m.SyncTasksFunc != nil {
-		return m.SyncTasksFunc(ctx, userID, taskListID)
+		return m.SyncTasksFunc(ctx, req)
 	}
-	return nil
+	return domain.SyncTasksResponse{}, nil
 }
 
-func (m *MockService) UpdateTask(ctx context.Context, userID uint, taskID string, req domain.UpdateTaskRequest) error {
+func (m *MockService) UpdateTask(ctx context.Context, req domain.UpdateTaskRequest) (domain.UpdateTaskResponse, error) {
 	if m.UpdateTaskFunc != nil {
-		return m.UpdateTaskFunc(ctx, userID, taskID, req)
+		return m.UpdateTaskFunc(ctx, req)
 	}
-	return nil
+	return domain.UpdateTaskResponse{}, nil
 }
 
-func (m *MockService) DeleteTask(ctx context.Context, userID uint, taskID string) error {
+func (m *MockService) DeleteTask(ctx context.Context, req domain.DeleteTaskRequest) (domain.DeleteTaskResponse, error) {
 	if m.DeleteTaskFunc != nil {
-		return m.DeleteTaskFunc(ctx, userID, taskID)
+		return m.DeleteTaskFunc(ctx, req)
 	}
-	return nil
+	return domain.DeleteTaskResponse{}, nil
 }
 
 func (m *MockService) GetCalendarEvents(ctx context.Context, req domain.GetCalendarEventsRequest) (domain.GetCalendarEventsResponse, error) {

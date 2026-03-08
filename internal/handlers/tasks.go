@@ -8,38 +8,6 @@ import (
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
 )
 
-func toTaskResponse(t domain.Task) domain.TaskResponse {
-	resp := domain.TaskResponse{
-		ID:           t.ID,
-		Parent:       t.Parent,
-		TaskListID:   t.TaskListID,
-		Title:        t.Title,
-		Status:       t.Status,
-		Due:          t.Due,
-		Notes:        t.Notes,
-		Updated:      t.Updated,
-		DurationMins: t.DurationMins,
-		Date:         t.Date,
-		IsRepeating:  t.IsRepeating,
-		Quadrant:     t.Quadrant,
-	}
-	for _, s := range t.Subtasks {
-		resp.Subtasks = append(resp.Subtasks, toTaskResponse(s))
-	}
-	return resp
-}
-
-func toTaskListResponse(tl domain.TaskList) domain.TaskListResponse {
-	resp := domain.TaskListResponse{
-		ID:    tl.ID,
-		Title: tl.Title,
-	}
-	for _, t := range tl.Tasks {
-		resp.Tasks = append(resp.Tasks, toTaskResponse(t))
-	}
-	return resp
-}
-
 // GET /api/tasks
 func (h *Handler) getTaskLists(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -49,20 +17,14 @@ func (h *Handler) getTaskLists(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// FAST READ
-	lists, err := h.Service.GetTaskLists(userID)
+	resp, err := h.Service.GetTaskLists(domain.GetTaskListsRequest{UserID: userID})
 	if err != nil {
 		http.Error(w, "Failed to fetch lists", http.StatusInternalServerError)
 		return
 	}
 
-	resp := make([]domain.TaskListResponse, len(lists))
-	for i, l := range lists {
-		resp[i] = toTaskListResponse(l)
-	}
-
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(resp); err != nil {
+	if err := json.NewEncoder(w).Encode(resp.TaskLists); err != nil {
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 		return
 	}
@@ -77,14 +39,14 @@ func (h *Handler) syncTaskLists(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// SLOW SYNC
-	if err := h.Service.SyncTaskLists(ctx, userID); err != nil {
+	resp, err := h.Service.SyncTaskLists(ctx, domain.SyncTaskListsRequest{UserID: userID})
+	if err != nil {
 		http.Error(w, "Failed to sync task lists", http.StatusInternalServerError)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"status":"synced"}`))
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 }
 
 // POST /api/tasks/{taskListId}
@@ -103,15 +65,17 @@ func (h *Handler) createTask(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid body", http.StatusBadRequest)
 		return
 	}
+	req.UserID = userID
+	req.TaskListID = taskListID
 
-	task, err := h.Service.CreateTask(ctx, userID, taskListID, req)
+	resp, err := h.Service.CreateTask(ctx, req)
 	if err != nil {
 		http.Error(w, "Failed to create task", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(toTaskResponse(task))
+	json.NewEncoder(w).Encode(resp.TaskResponse)
 }
 
 // GET /api/tasks/{taskListId}
@@ -125,19 +89,14 @@ func (h *Handler) getTasksInList(w http.ResponseWriter, r *http.Request) {
 
 	taskListID := chi.URLParam(r, "taskListId")
 
-	tasks, err := h.Service.GetTasks(ctx, userID, taskListID)
+	resp, err := h.Service.GetTasks(ctx, domain.GetTasksRequest{UserID: userID, TaskListID: taskListID})
 	if err != nil {
 		http.Error(w, "Failed to fetch tasks", http.StatusInternalServerError)
 		return
 	}
 
-	resp := make([]domain.TaskResponse, len(tasks))
-	for i, t := range tasks {
-		resp[i] = toTaskResponse(t)
-	}
-
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	json.NewEncoder(w).Encode(resp.Tasks)
 }
 
 // POST /api/tasks/{taskListId}/sync - New Endpoint
@@ -151,16 +110,14 @@ func (h *Handler) syncTasksInList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Perform the heavy lifting
-	err := h.Service.SyncTasks(ctx, userID, taskListID)
+	resp, err := h.Service.SyncTasks(ctx, domain.SyncTasksRequest{UserID: userID, TaskListID: taskListID})
 	if err != nil {
-		// Log error in production
 		http.Error(w, "Failed to sync tasks", http.StatusInternalServerError)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"status": "synced"}`))
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 }
 
 func (h *Handler) updateTask(w http.ResponseWriter, r *http.Request) {
@@ -178,14 +135,17 @@ func (h *Handler) updateTask(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
+	req.UserID = userID
+	req.TaskID = taskID
 
-	if err := h.Service.UpdateTask(ctx, userID, taskID, req); err != nil {
+	resp, err := h.Service.UpdateTask(ctx, req)
+	if err != nil {
 		http.Error(w, "Failed to update task", http.StatusInternalServerError)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"message":"Task updated"}`))
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 }
 
 // DELETE /api/tasks/{id}
@@ -199,11 +159,12 @@ func (h *Handler) deleteTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.Service.DeleteTask(ctx, userID, taskID); err != nil {
+	resp, err := h.Service.DeleteTask(ctx, domain.DeleteTaskRequest{UserID: userID, TaskID: taskID})
+	if err != nil {
 		http.Error(w, "Failed to delete task", http.StatusInternalServerError)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"message":"Task deleted"}`))
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 }

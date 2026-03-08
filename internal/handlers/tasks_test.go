@@ -33,11 +33,13 @@ func withUserAndChi(r *http.Request, userID uint, key, val string) *http.Request
 
 func TestGetTaskLists_Success(t *testing.T) {
 	svc := &mocks.MockService{
-		GetTaskListsFunc: func(userID uint) ([]domain.TaskList, error) {
-			return []domain.TaskList{
-				{ID: "list1", Title: "My Tasks", Tasks: []domain.Task{
-					{ID: "t1", Title: "Do laundry", Status: "needsAction"},
-				}},
+		GetTaskListsFunc: func(req domain.GetTaskListsRequest) (domain.GetTaskListsResponse, error) {
+			return domain.GetTaskListsResponse{
+				TaskLists: []domain.TaskListResponse{
+					{ID: "list1", Title: "My Tasks", Tasks: []domain.TaskResponse{
+						{ID: "t1", Title: "Do laundry", Status: "needsAction"},
+					}},
+				},
 			}, nil
 		},
 	}
@@ -65,8 +67,8 @@ func TestGetTaskLists_NoUser(t *testing.T) {
 
 func TestGetTaskLists_ServiceError(t *testing.T) {
 	svc := &mocks.MockService{
-		GetTaskListsFunc: func(userID uint) ([]domain.TaskList, error) {
-			return nil, errors.New("db error")
+		GetTaskListsFunc: func(req domain.GetTaskListsRequest) (domain.GetTaskListsResponse, error) {
+			return domain.GetTaskListsResponse{}, errors.New("db error")
 		},
 	}
 	h := testHandler(svc)
@@ -83,8 +85,8 @@ func TestGetTaskLists_ServiceError(t *testing.T) {
 
 func TestSyncTaskLists_Success(t *testing.T) {
 	svc := &mocks.MockService{
-		SyncTaskListsFunc: func(ctx context.Context, userID uint) error {
-			return nil
+		SyncTaskListsFunc: func(ctx context.Context, req domain.SyncTaskListsRequest) (domain.SyncTaskListsResponse, error) {
+			return domain.SyncTaskListsResponse{Message: "synced"}, nil
 		},
 	}
 	h := testHandler(svc)
@@ -100,8 +102,8 @@ func TestSyncTaskLists_Success(t *testing.T) {
 
 func TestSyncTaskLists_Error(t *testing.T) {
 	svc := &mocks.MockService{
-		SyncTaskListsFunc: func(ctx context.Context, userID uint) error {
-			return errors.New("sync failed")
+		SyncTaskListsFunc: func(ctx context.Context, req domain.SyncTaskListsRequest) (domain.SyncTaskListsResponse, error) {
+			return domain.SyncTaskListsResponse{}, errors.New("sync failed")
 		},
 	}
 	h := testHandler(svc)
@@ -118,8 +120,10 @@ func TestSyncTaskLists_Error(t *testing.T) {
 
 func TestCreateTask_Success(t *testing.T) {
 	svc := &mocks.MockService{
-		CreateTaskFunc: func(ctx context.Context, userID uint, taskListID string, req domain.CreateTaskRequest) (domain.Task, error) {
-			return domain.Task{ID: "new-task", Title: req.Title, Status: "needsAction"}, nil
+		CreateTaskFunc: func(ctx context.Context, req domain.CreateTaskRequest) (domain.CreateTaskResponse, error) {
+			return domain.CreateTaskResponse{
+				TaskResponse: domain.TaskResponse{ID: "new-task", Title: req.Title, Status: "needsAction"},
+			}, nil
 		},
 	}
 	h := testHandler(svc)
@@ -147,8 +151,8 @@ func TestCreateTask_BadBody(t *testing.T) {
 
 func TestCreateTask_ServiceError(t *testing.T) {
 	svc := &mocks.MockService{
-		CreateTaskFunc: func(ctx context.Context, userID uint, taskListID string, req domain.CreateTaskRequest) (domain.Task, error) {
-			return domain.Task{}, errors.New("google error")
+		CreateTaskFunc: func(ctx context.Context, req domain.CreateTaskRequest) (domain.CreateTaskResponse, error) {
+			return domain.CreateTaskResponse{}, errors.New("google error")
 		},
 	}
 	h := testHandler(svc)
@@ -166,8 +170,10 @@ func TestCreateTask_ServiceError(t *testing.T) {
 
 func TestGetTasksInList_Success(t *testing.T) {
 	svc := &mocks.MockService{
-		GetTasksFunc: func(ctx context.Context, userID uint, taskListID string) ([]domain.Task, error) {
-			return []domain.Task{{ID: "t1", Title: "Task 1", Status: "needsAction"}}, nil
+		GetTasksFunc: func(ctx context.Context, req domain.GetTasksRequest) (domain.GetTasksResponse, error) {
+			return domain.GetTasksResponse{
+				Tasks: []domain.TaskResponse{{ID: "t1", Title: "Task 1", Status: "needsAction"}},
+			}, nil
 		},
 	}
 	h := testHandler(svc)
@@ -183,8 +189,8 @@ func TestGetTasksInList_Success(t *testing.T) {
 
 func TestGetTasksInList_Error(t *testing.T) {
 	svc := &mocks.MockService{
-		GetTasksFunc: func(ctx context.Context, userID uint, taskListID string) ([]domain.Task, error) {
-			return nil, errors.New("error")
+		GetTasksFunc: func(ctx context.Context, req domain.GetTasksRequest) (domain.GetTasksResponse, error) {
+			return domain.GetTasksResponse{}, errors.New("error")
 		},
 	}
 	h := testHandler(svc)
@@ -201,8 +207,8 @@ func TestGetTasksInList_Error(t *testing.T) {
 
 func TestSyncTasksInList_Success(t *testing.T) {
 	svc := &mocks.MockService{
-		SyncTasksFunc: func(ctx context.Context, userID uint, taskListID string) error {
-			return nil
+		SyncTasksFunc: func(ctx context.Context, req domain.SyncTasksRequest) (domain.SyncTasksResponse, error) {
+			return domain.SyncTasksResponse{Message: "synced"}, nil
 		},
 	}
 	h := testHandler(svc)
@@ -218,8 +224,8 @@ func TestSyncTasksInList_Success(t *testing.T) {
 
 func TestSyncTasksInList_Error(t *testing.T) {
 	svc := &mocks.MockService{
-		SyncTasksFunc: func(ctx context.Context, userID uint, taskListID string) error {
-			return errors.New("sync failed")
+		SyncTasksFunc: func(ctx context.Context, req domain.SyncTasksRequest) (domain.SyncTasksResponse, error) {
+			return domain.SyncTasksResponse{}, errors.New("sync failed")
 		},
 	}
 	h := testHandler(svc)
@@ -237,10 +243,10 @@ func TestSyncTasksInList_Error(t *testing.T) {
 func TestUpdateTask_Success(t *testing.T) {
 	title := "Updated Title"
 	svc := &mocks.MockService{
-		UpdateTaskFunc: func(ctx context.Context, userID uint, taskID string, req domain.UpdateTaskRequest) error {
-			require.Equal(t, "task1", taskID)
+		UpdateTaskFunc: func(ctx context.Context, req domain.UpdateTaskRequest) (domain.UpdateTaskResponse, error) {
+			require.Equal(t, "task1", req.TaskID)
 			require.Equal(t, &title, req.Title)
-			return nil
+			return domain.UpdateTaskResponse{Message: "Task updated"}, nil
 		},
 	}
 	h := testHandler(svc)
@@ -269,8 +275,8 @@ func TestUpdateTask_BadBody(t *testing.T) {
 func TestUpdateTask_ServiceError(t *testing.T) {
 	title := "Updated"
 	svc := &mocks.MockService{
-		UpdateTaskFunc: func(ctx context.Context, userID uint, taskID string, req domain.UpdateTaskRequest) error {
-			return errors.New("update failed")
+		UpdateTaskFunc: func(ctx context.Context, req domain.UpdateTaskRequest) (domain.UpdateTaskResponse, error) {
+			return domain.UpdateTaskResponse{}, errors.New("update failed")
 		},
 	}
 	h := testHandler(svc)
@@ -288,8 +294,8 @@ func TestUpdateTask_ServiceError(t *testing.T) {
 
 func TestDeleteTask_Success(t *testing.T) {
 	svc := &mocks.MockService{
-		DeleteTaskFunc: func(ctx context.Context, userID uint, taskID string) error {
-			return nil
+		DeleteTaskFunc: func(ctx context.Context, req domain.DeleteTaskRequest) (domain.DeleteTaskResponse, error) {
+			return domain.DeleteTaskResponse{Message: "Task deleted"}, nil
 		},
 	}
 	h := testHandler(svc)
@@ -305,8 +311,8 @@ func TestDeleteTask_Success(t *testing.T) {
 
 func TestDeleteTask_Error(t *testing.T) {
 	svc := &mocks.MockService{
-		DeleteTaskFunc: func(ctx context.Context, userID uint, taskID string) error {
-			return errors.New("delete failed")
+		DeleteTaskFunc: func(ctx context.Context, req domain.DeleteTaskRequest) (domain.DeleteTaskResponse, error) {
+			return domain.DeleteTaskResponse{}, errors.New("delete failed")
 		},
 	}
 	h := testHandler(svc)

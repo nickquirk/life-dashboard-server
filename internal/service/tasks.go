@@ -12,25 +12,69 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+func toTaskResponse(t domain.Task) domain.TaskResponse {
+	resp := domain.TaskResponse{
+		ID:           t.ID,
+		Parent:       t.Parent,
+		TaskListID:   t.TaskListID,
+		Title:        t.Title,
+		Status:       t.Status,
+		Due:          t.Due,
+		Notes:        t.Notes,
+		Updated:      t.Updated,
+		DurationMins: t.DurationMins,
+		Date:         t.Date,
+		IsRepeating:  t.IsRepeating,
+		Quadrant:     t.Quadrant,
+	}
+	for _, s := range t.Subtasks {
+		resp.Subtasks = append(resp.Subtasks, toTaskResponse(s))
+	}
+	return resp
+}
+
+func toTaskListResponse(tl domain.TaskList) domain.TaskListResponse {
+	resp := domain.TaskListResponse{
+		ID:    tl.ID,
+		Title: tl.Title,
+	}
+	for _, t := range tl.Tasks {
+		resp.Tasks = append(resp.Tasks, toTaskResponse(t))
+	}
+	return resp
+}
+
 // READ: Fast, Database only
-func (s *service) GetTaskLists(userID uint) ([]domain.TaskList, error) {
-	return s.taskRepo.GetTaskLists(userID)
+func (s *service) GetTaskLists(req domain.GetTaskListsRequest) (domain.GetTaskListsResponse, error) {
+	lists, err := s.taskRepo.GetTaskLists(req.UserID)
+	if err != nil {
+		return domain.GetTaskListsResponse{}, err
+	}
+
+	resp := make([]domain.TaskListResponse, len(lists))
+	for i, l := range lists {
+		resp[i] = toTaskListResponse(l)
+	}
+
+	return domain.GetTaskListsResponse{TaskLists: resp}, nil
 }
 
 // SYNC: Fetch from Google, Save to DB
-func (s *service) SyncTaskLists(ctx context.Context, userID uint) error {
+func (s *service) SyncTaskLists(ctx context.Context, req domain.SyncTaskListsRequest) (domain.SyncTaskListsResponse, error) {
+	userID := req.UserID
+
 	srv, err := s.getGoogleTaskService(ctx, userID)
 	if err != nil {
-		return err
+		return domain.SyncTaskListsResponse{}, err
 	}
 
 	// Fetch
 	gLists, err := srv.Tasklists.List().Do()
 	if err != nil {
 		if s.isTokenError(err) {
-			return errors.New("unauthorized: refresh token invalid")
+			return domain.SyncTaskListsResponse{}, errors.New("unauthorized: refresh token invalid")
 		}
-		return err
+		return domain.SyncTaskListsResponse{}, err
 	}
 
 	// Map
@@ -45,17 +89,24 @@ func (s *service) SyncTaskLists(ctx context.Context, userID uint) error {
 	}
 
 	// Save (Command only, returns error)
-	return s.taskRepo.UpsertTaskLists(domainLists)
+	if err := s.taskRepo.UpsertTaskLists(domainLists); err != nil {
+		return domain.SyncTaskListsResponse{}, err
+	}
+
+	return domain.SyncTaskListsResponse{Message: "synced"}, nil
 }
 
-func (s *service) CreateTask(ctx context.Context, userID uint, taskListID string, req domain.CreateTaskRequest) (domain.Task, error) {
+func (s *service) CreateTask(ctx context.Context, req domain.CreateTaskRequest) (domain.CreateTaskResponse, error) {
+	userID := req.UserID
+	taskListID := req.TaskListID
+
 	if err := s.taskRepo.VerifyTaskListOwner(userID, taskListID); err != nil {
-		return domain.Task{}, fmt.Errorf("task list not found: %w", err)
+		return domain.CreateTaskResponse{}, fmt.Errorf("task list not found: %w", err)
 	}
 
 	srv, err := s.getGoogleTaskService(ctx, userID)
 	if err != nil {
-		return domain.Task{}, err
+		return domain.CreateTaskResponse{}, err
 	}
 
 	googleTask := &tasks.Task{
@@ -78,7 +129,7 @@ func (s *service) CreateTask(ctx context.Context, userID uint, taskListID string
 	// Call Google API
 	createdGTask, err := insertCall.Do()
 	if err != nil {
-		return domain.Task{}, fmt.Errorf("google api insert failed: %w", err)
+		return domain.CreateTaskResponse{}, fmt.Errorf("google api insert failed: %w", err)
 	}
 
 	// Map response to Domain Model
@@ -102,37 +153,51 @@ func (s *service) CreateTask(ctx context.Context, userID uint, taskListID string
 	}
 	// Save to DB
 	if err := s.taskRepo.CreateTask(newTask); err != nil {
-		return domain.Task{}, err
+		return domain.CreateTaskResponse{}, err
 	}
 
-	return newTask, nil
+	return domain.CreateTaskResponse{TaskResponse: toTaskResponse(newTask)}, nil
 }
 
-func (s *service) GetTasks(ctx context.Context, userID uint, taskListID string) ([]domain.Task, error) {
-	if err := s.taskRepo.VerifyTaskListOwner(userID, taskListID); err != nil {
-		return nil, fmt.Errorf("task list not found: %w", err)
+func (s *service) GetTasks(ctx context.Context, req domain.GetTasksRequest) (domain.GetTasksResponse, error) {
+	if err := s.taskRepo.VerifyTaskListOwner(req.UserID, req.TaskListID); err != nil {
+		return domain.GetTasksResponse{}, fmt.Errorf("task list not found: %w", err)
 	}
-	return s.taskRepo.GetTasks(taskListID)
+
+	tasks, err := s.taskRepo.GetTasks(req.TaskListID)
+	if err != nil {
+		return domain.GetTasksResponse{}, err
+	}
+
+	resp := make([]domain.TaskResponse, len(tasks))
+	for i, t := range tasks {
+		resp[i] = toTaskResponse(t)
+	}
+
+	return domain.GetTasksResponse{Tasks: resp}, nil
 }
 
-func (s *service) SyncTasks(ctx context.Context, userID uint, taskListID string) error {
+func (s *service) SyncTasks(ctx context.Context, req domain.SyncTasksRequest) (domain.SyncTasksResponse, error) {
+	userID := req.UserID
+	taskListID := req.TaskListID
+
 	if err := s.taskRepo.VerifyTaskListOwner(userID, taskListID); err != nil {
-		return fmt.Errorf("task list not found: %w", err)
+		return domain.SyncTasksResponse{}, fmt.Errorf("task list not found: %w", err)
 	}
 
 	// Connect to Google
 	srv, err := s.getGoogleTaskService(ctx, userID)
 	if err != nil {
-		return err
+		return domain.SyncTasksResponse{}, err
 	}
 
 	// Fetch ONLY active tasks (ShowCompleted = false)
 	gTasks, err := srv.Tasks.List(taskListID).ShowCompleted(false).ShowHidden(true).Do()
 	if err != nil {
 		if s.isTokenError(err) {
-			return errors.New("unauthorized: refresh token invalid")
+			return domain.SyncTasksResponse{}, errors.New("unauthorized: refresh token invalid")
 		}
-		return err
+		return domain.SyncTasksResponse{}, err
 	}
 
 	// Map to Domain Models & Collect Active IDs
@@ -208,7 +273,7 @@ func (s *service) SyncTasks(ctx context.Context, userID uint, taskListID string)
 
 	tx := s.taskRepo.BeginTx()
 	if tx.Error != nil {
-		return tx.Error
+		return domain.SyncTasksResponse{}, tx.Error
 	}
 
 	defer func() {
@@ -222,39 +287,49 @@ func (s *service) SyncTasks(ctx context.Context, userID uint, taskListID string)
 
 	if err := txRepo.UpsertTasks(sortedTasks); err != nil {
 		tx.Rollback()
-		return err
+		return domain.SyncTasksResponse{}, err
 	}
 
 	// Mark local tasks as 'completed' if they are missing from Google's active list
 	if err := txRepo.MarkTasksCompletedExcluding(taskListID, activeIDs); err != nil {
 		fmt.Printf("Error marking tasks completed: %v\n", err)
 		tx.Rollback()
-		return err
+		return domain.SyncTasksResponse{}, err
 	}
 
 	// Update Sync Time
 	if err := txRepo.UpdateListLastSync(taskListID, time.Now()); err != nil {
 		tx.Rollback()
-		return err
+		return domain.SyncTasksResponse{}, err
 	}
 
-	return tx.Commit().Error
+	if err := tx.Commit().Error; err != nil {
+		return domain.SyncTasksResponse{}, err
+	}
+
+	return domain.SyncTasksResponse{Message: "synced"}, nil
 }
 
-func (s *service) UpdateTask(ctx context.Context, userID uint, taskID string, req domain.UpdateTaskRequest) error {
+func (s *service) UpdateTask(ctx context.Context, req domain.UpdateTaskRequest) (domain.UpdateTaskResponse, error) {
+	userID := req.UserID
+	taskID := req.TaskID
+
 	task, err := s.taskRepo.GetTaskByID(taskID)
 	if err != nil {
-		return err
+		return domain.UpdateTaskResponse{}, err
 	}
 
 	// Verify the task belongs to this user (via its task list)
 	if err := s.taskRepo.VerifyTaskListOwner(userID, task.TaskListID); err != nil {
-		return fmt.Errorf("task not found: %w", err)
+		return domain.UpdateTaskResponse{}, fmt.Errorf("task not found: %w", err)
 	}
 
 	// DETECT MOVE: If TaskListID is present and different, trigger the Move logic
 	if req.TaskListID != nil && *req.TaskListID != task.TaskListID {
-		return s.moveTask(ctx, userID, task, *req.TaskListID, req)
+		if err := s.moveTask(ctx, userID, task, *req.TaskListID, req); err != nil {
+			return domain.UpdateTaskResponse{}, err
+		}
+		return domain.UpdateTaskResponse{Message: "Task updated"}, nil
 	}
 
 	updates := make(map[string]interface{})
@@ -310,38 +385,45 @@ func (s *service) UpdateTask(ctx context.Context, userID uint, taskID string, re
 	if shouldPatch {
 		srv, err := s.getGoogleTaskService(ctx, userID)
 		if err != nil {
-			return fmt.Errorf("failed to get Google client: %w", err)
+			return domain.UpdateTaskResponse{}, fmt.Errorf("failed to get Google client: %w", err)
 		}
 
 		// Capture the response to get the official 'Updated' timestamp
 		updatedGTask, err := srv.Tasks.Patch(task.TaskListID, taskID, googleTask).Do()
 		if err != nil {
-			return fmt.Errorf("failed to sync to Google: %w", err)
+			return domain.UpdateTaskResponse{}, fmt.Errorf("failed to sync to Google: %w", err)
 		}
 
 		// Update the local timestamp to match Google's server time immediately
 		updates["updated"] = updatedGTask.Updated
 	}
 
-	return s.taskRepo.UpdateTask(taskID, updates)
+	if err := s.taskRepo.UpdateTask(taskID, updates); err != nil {
+		return domain.UpdateTaskResponse{}, err
+	}
+
+	return domain.UpdateTaskResponse{Message: "Task updated"}, nil
 }
 
-func (s *service) DeleteTask(ctx context.Context, userID uint, taskID string) error {
+func (s *service) DeleteTask(ctx context.Context, req domain.DeleteTaskRequest) (domain.DeleteTaskResponse, error) {
+	userID := req.UserID
+	taskID := req.TaskID
+
 	// Get the task to find its taskListID
 	task, err := s.taskRepo.GetTaskByID(taskID)
 	if err != nil {
-		return fmt.Errorf("task not found: %w", err)
+		return domain.DeleteTaskResponse{}, fmt.Errorf("task not found: %w", err)
 	}
 
 	// Verify the task belongs to this user (via its task list)
 	if err := s.taskRepo.VerifyTaskListOwner(userID, task.TaskListID); err != nil {
-		return fmt.Errorf("task not found: %w", err)
+		return domain.DeleteTaskResponse{}, fmt.Errorf("task not found: %w", err)
 	}
 
 	// Delete from Google Tasks API
 	srv, err := s.getGoogleTaskService(ctx, userID)
 	if err != nil {
-		return fmt.Errorf("failed to get Google client: %w", err)
+		return domain.DeleteTaskResponse{}, fmt.Errorf("failed to get Google client: %w", err)
 	}
 
 	err = srv.Tasks.Delete(task.TaskListID, taskID).Do()
@@ -352,10 +434,10 @@ func (s *service) DeleteTask(ctx context.Context, userID uint, taskID string) er
 
 	// Delete from local database
 	if err := s.taskRepo.DeleteTask(taskID); err != nil {
-		return fmt.Errorf("failed to delete task from database: %w", err)
+		return domain.DeleteTaskResponse{}, fmt.Errorf("failed to delete task from database: %w", err)
 	}
 
-	return nil
+	return domain.DeleteTaskResponse{Message: "Task deleted"}, nil
 }
 
 func (s *service) isTokenError(err error) bool {
