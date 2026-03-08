@@ -81,3 +81,10 @@ type Feedback struct {
 	AppArea *string `json:"appArea"` // Which area of the app the feedback is about
 	Message string  `json:"message"`
 }
+
+type Scratchpad struct {
+	gorm.Model
+	UserId  uint   `gorm:"uniqueIndex:idx_user_date;not null" json:"userId"`
+	Date    string `gorm:"uniqueIndex:idx_user_date;not null;size:10" json:"date"` // Format: YYYY-MM-DD
+	Content string `gorm:"type:text" json:"content"`
+}

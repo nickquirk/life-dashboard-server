@@ -64,6 +64,9 @@ func GetRoutes(mx *chi.Mux, h *Handler) error {
 			auth.Delete("/zones/{id}", h.deleteZone)
 			// Feedback
 			auth.Post("/feedback", h.createFeedback)
+			// Scratchpad
+			auth.Get("/scratchpad", h.getScratchpad)
+			auth.Put("/scratchpad", h.upsertScratchpad)
 		})
 	})
 	return nil

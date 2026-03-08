@@ -159,6 +159,8 @@ type DeleteZonesResponse struct {
 	Message string `json:"message"`
 }
 
+// ------ Feedback ---------
+
 type CreateFeedbackRequest struct {
 	UserID  uint    `json:"userId"`
 	Type    string  `json:"type"`              // e.g., "bug", "feature request"
@@ -168,4 +170,25 @@ type CreateFeedbackRequest struct {
 
 type CreateFeedbackResponse struct {
 	ID uint `json:"id"`
+}
+
+// ------ Scratchpad ---------
+
+type GetScratchpadRequest struct {
+	UserID uint   `json:"-"`
+	Date   string `json:"date"`
+}
+
+type GetScratchpadResponse struct {
+	Content string `json:"content"`
+}
+
+type UpsertScratchpadRequest struct {
+	UserID  uint   `json:"-"`
+	Date    string `json:"date"`
+	Content string `json:"content"`
+}
+
+type UpsertScratchpadResponse struct {
+	Content string `json:"content"`
 }
