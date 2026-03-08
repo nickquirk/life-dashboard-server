@@ -97,8 +97,7 @@ func (h *Handler) getCurrentUserID(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) deleteAccount(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	userID, ok := ctx.Value(UserIDKey).(uint)
+	userID, ok := h.GetUserID(r)
 	if !ok {
 		http.Error(w, "User not found in context", http.StatusUnauthorized)
 		return

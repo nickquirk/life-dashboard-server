@@ -10,8 +10,7 @@ import (
 
 // GET /api/tasks
 func (h *Handler) getTaskLists(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	userID, ok := ctx.Value(UserIDKey).(uint)
+	userID, ok := h.GetUserID(r)
 	if !ok {
 		http.Error(w, "User not found", http.StatusUnauthorized)
 		return
@@ -33,7 +32,7 @@ func (h *Handler) getTaskLists(w http.ResponseWriter, r *http.Request) {
 // POST /api/tasks/sync
 func (h *Handler) syncTaskLists(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, ok := ctx.Value(UserIDKey).(uint)
+	userID, ok := h.GetUserID(r)
 	if !ok {
 		http.Error(w, "User not found", http.StatusUnauthorized)
 		return
@@ -52,7 +51,7 @@ func (h *Handler) syncTaskLists(w http.ResponseWriter, r *http.Request) {
 // POST /api/tasks/{taskListId}
 func (h *Handler) createTask(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, ok := ctx.Value(UserIDKey).(uint)
+	userID, ok := h.GetUserID(r)
 	if !ok {
 		http.Error(w, "User not found", http.StatusUnauthorized)
 		return
@@ -81,7 +80,7 @@ func (h *Handler) createTask(w http.ResponseWriter, r *http.Request) {
 // GET /api/tasks/{taskListId}
 func (h *Handler) getTasksInList(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, ok := ctx.Value(UserIDKey).(uint)
+	userID, ok := h.GetUserID(r)
 	if !ok {
 		http.Error(w, "User not found", http.StatusUnauthorized)
 		return
@@ -104,7 +103,7 @@ func (h *Handler) syncTasksInList(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	taskListID := chi.URLParam(r, "taskListId")
 
-	userID, ok := ctx.Value(UserIDKey).(uint)
+	userID, ok := h.GetUserID(r)
 	if !ok {
 		http.Error(w, "User not found", http.StatusUnauthorized)
 		return
@@ -124,7 +123,7 @@ func (h *Handler) updateTask(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	taskID := chi.URLParam(r, "id")
 
-	userID, ok := ctx.Value(UserIDKey).(uint)
+	userID, ok := h.GetUserID(r)
 	if !ok {
 		http.Error(w, "User not found in context", http.StatusUnauthorized)
 		return
@@ -153,7 +152,7 @@ func (h *Handler) deleteTask(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	taskID := chi.URLParam(r, "id")
 
-	userID, ok := ctx.Value(UserIDKey).(uint)
+	userID, ok := h.GetUserID(r)
 	if !ok {
 		http.Error(w, "User not found in context", http.StatusUnauthorized)
 		return

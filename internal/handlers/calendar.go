@@ -11,8 +11,7 @@ import (
 // GET /api/events
 func (h *Handler) getCalendarEvents(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	// refactor into helper getUserIDFromConfig
-	userID, ok := ctx.Value(UserIDKey).(uint)
+	userID, ok := h.GetUserID(r)
 	if !ok {
 		http.Error(w, "User not found", http.StatusUnauthorized)
 		return
