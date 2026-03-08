@@ -11,7 +11,7 @@ import (
 )
 
 func newTestService(userRepo *mocks.MockUserRepository) Service {
-	return NewServiceWithRepos(userRepo, &mocks.MockTaskRepository{}, nil, nil, nil)
+	return NewServiceWithRepos(userRepo, &mocks.MockTaskRepository{}, nil, nil, nil, nil)
 }
 
 // --- CreateUser ---

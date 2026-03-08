@@ -30,6 +30,8 @@ type MockService struct {
 	DeleteZoneFunc          func(req domain.DeleteZonesRequest) (domain.DeleteZonesResponse, error)
 	DeleteAccountFunc       func(userID uint) error
 	CreateFeedbackFunc func(req domain.CreateFeedbackRequest) (domain.CreateFeedbackResponse, error)
+	GetScratchpadFunc    func(req domain.GetScratchpadRequest) (domain.GetScratchpadResponse, error)
+	UpsertScratchpadFunc func(req domain.UpsertScratchpadRequest) (domain.UpsertScratchpadResponse, error)
 }
 
 func (m *MockService) Ping() error {
@@ -177,5 +179,19 @@ func (m *MockService) CreateFeedback(req domain.CreateFeedbackRequest) (domain.C
 		return m.CreateFeedbackFunc(req)
 	}
 	return domain.CreateFeedbackResponse{}, nil
+}
+
+func (m *MockService) GetScratchpad(req domain.GetScratchpadRequest) (domain.GetScratchpadResponse, error) {
+	if m.GetScratchpadFunc != nil {
+		return m.GetScratchpadFunc(req)
+	}
+	return domain.GetScratchpadResponse{}, nil
+}
+
+func (m *MockService) UpsertScratchpad(req domain.UpsertScratchpadRequest) (domain.UpsertScratchpadResponse, error) {
+	if m.UpsertScratchpadFunc != nil {
+		return m.UpsertScratchpadFunc(req)
+	}
+	return domain.UpsertScratchpadResponse{}, nil
 }
 
