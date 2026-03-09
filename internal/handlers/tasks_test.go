@@ -35,8 +35,8 @@ func TestGetTaskLists_Success(t *testing.T) {
 	svc := &mocks.MockService{
 		GetTaskListsFunc: func(req domain.GetTaskListsRequest) (domain.GetTaskListsResponse, error) {
 			return domain.GetTaskListsResponse{
-				TaskLists: []domain.TaskListResponse{
-					{ID: "list1", Title: "My Tasks", Tasks: []domain.TaskResponse{
+				TaskLists: []domain.TaskList{
+					{ID: "list1", Title: "My Tasks", Tasks: []domain.Task{
 						{ID: "t1", Title: "Do laundry", Status: "needsAction"},
 					}},
 				},
@@ -86,7 +86,9 @@ func TestGetTaskLists_ServiceError(t *testing.T) {
 func TestSyncTaskLists_Success(t *testing.T) {
 	svc := &mocks.MockService{
 		SyncTaskListsFunc: func(ctx context.Context, req domain.SyncTaskListsRequest) (domain.SyncTaskListsResponse, error) {
-			return domain.SyncTaskListsResponse{Message: "synced"}, nil
+			return domain.SyncTaskListsResponse{
+				TaskLists: []domain.TaskList{{ID: "list1", Title: "Synced List"}},
+			}, nil
 		},
 	}
 	h := testHandler(svc)
@@ -97,7 +99,7 @@ func TestSyncTaskLists_Success(t *testing.T) {
 	h.syncTaskLists(rr, r)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Contains(t, rr.Body.String(), "synced")
+	assert.Contains(t, rr.Body.String(), "Synced List")
 }
 
 func TestSyncTaskLists_Error(t *testing.T) {
@@ -122,7 +124,7 @@ func TestCreateTask_Success(t *testing.T) {
 	svc := &mocks.MockService{
 		CreateTaskFunc: func(ctx context.Context, req domain.CreateTaskRequest) (domain.CreateTaskResponse, error) {
 			return domain.CreateTaskResponse{
-				TaskResponse: domain.TaskResponse{ID: "new-task", Title: req.Title, Status: "needsAction"},
+				ID: "new-task", Title: req.Title, Status: "needsAction",
 			}, nil
 		},
 	}
@@ -172,7 +174,7 @@ func TestGetTasksInList_Success(t *testing.T) {
 	svc := &mocks.MockService{
 		GetTasksFunc: func(ctx context.Context, req domain.GetTasksRequest) (domain.GetTasksResponse, error) {
 			return domain.GetTasksResponse{
-				Tasks: []domain.TaskResponse{{ID: "t1", Title: "Task 1", Status: "needsAction"}},
+				Tasks: []domain.Task{{ID: "t1", Title: "Task 1", Status: "needsAction"}},
 			}, nil
 		},
 	}
@@ -208,7 +210,9 @@ func TestGetTasksInList_Error(t *testing.T) {
 func TestSyncTasksInList_Success(t *testing.T) {
 	svc := &mocks.MockService{
 		SyncTasksFunc: func(ctx context.Context, req domain.SyncTasksRequest) (domain.SyncTasksResponse, error) {
-			return domain.SyncTasksResponse{Message: "synced"}, nil
+			return domain.SyncTasksResponse{
+				Tasks: []domain.Task{{ID: "t1", Title: "Synced Task"}},
+			}, nil
 		},
 	}
 	h := testHandler(svc)
@@ -219,7 +223,7 @@ func TestSyncTasksInList_Success(t *testing.T) {
 	h.syncTasksInList(rr, r)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Contains(t, rr.Body.String(), "synced")
+	assert.Contains(t, rr.Body.String(), "Synced Task")
 }
 
 func TestSyncTasksInList_Error(t *testing.T) {
@@ -246,7 +250,7 @@ func TestUpdateTask_Success(t *testing.T) {
 		UpdateTaskFunc: func(ctx context.Context, req domain.UpdateTaskRequest) (domain.UpdateTaskResponse, error) {
 			require.Equal(t, "task1", req.TaskID)
 			require.Equal(t, &title, req.Title)
-			return domain.UpdateTaskResponse{Message: "Task updated"}, nil
+			return domain.UpdateTaskResponse{ID: "task1"}, nil
 		},
 	}
 	h := testHandler(svc)
@@ -258,7 +262,7 @@ func TestUpdateTask_Success(t *testing.T) {
 	h.updateTask(rr, r)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Contains(t, rr.Body.String(), "Task updated")
+	assert.Contains(t, rr.Body.String(), "task1")
 }
 
 func TestUpdateTask_BadBody(t *testing.T) {
@@ -295,7 +299,7 @@ func TestUpdateTask_ServiceError(t *testing.T) {
 func TestDeleteTask_Success(t *testing.T) {
 	svc := &mocks.MockService{
 		DeleteTaskFunc: func(ctx context.Context, req domain.DeleteTaskRequest) (domain.DeleteTaskResponse, error) {
-			return domain.DeleteTaskResponse{Message: "Task deleted"}, nil
+			return domain.DeleteTaskResponse{ID: "task1"}, nil
 		},
 	}
 	h := testHandler(svc)
@@ -306,7 +310,7 @@ func TestDeleteTask_Success(t *testing.T) {
 	h.deleteTask(rr, r)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Contains(t, rr.Body.String(), "Task deleted")
+	assert.Contains(t, rr.Body.String(), "task1")
 }
 
 func TestDeleteTask_Error(t *testing.T) {

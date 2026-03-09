@@ -168,9 +168,9 @@ func TestService_DeleteZone_Success(t *testing.T) {
 	}
 	svc := newZoneService(repo)
 
-	resp, err := svc.DeleteZone(domain.DeleteZonesRequest{ID: 5, UserID: 1})
+	resp, err := svc.DeleteZone(domain.DeleteZoneRequest{ID: 5, UserID: 1})
 	require.NoError(t, err)
-	assert.Contains(t, resp.Message, "deleted")
+	assert.Equal(t, uint(5), resp.ID)
 }
 
 func TestService_DeleteZone_Error(t *testing.T) {
@@ -181,6 +181,6 @@ func TestService_DeleteZone_Error(t *testing.T) {
 	}
 	svc := newZoneService(repo)
 
-	_, err := svc.DeleteZone(domain.DeleteZonesRequest{ID: 999, UserID: 1})
+	_, err := svc.DeleteZone(domain.DeleteZoneRequest{ID: 999, UserID: 1})
 	assert.Error(t, err)
 }

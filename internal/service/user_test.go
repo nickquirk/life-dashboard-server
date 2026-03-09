@@ -19,14 +19,14 @@ func newTestService(userRepo *mocks.MockUserRepository) Service {
 func TestCreateUser_Success(t *testing.T) {
 	repo := &mocks.MockUserRepository{
 		CreateFunc: func(req domain.CreateUserRequest) (domain.CreateUserResponse, error) {
-			return domain.CreateUserResponse{Id: 1}, nil
+			return domain.CreateUserResponse{ID: 1}, nil
 		},
 	}
 	svc := newTestService(repo)
 
 	resp, err := svc.CreateUser(domain.CreateUserRequest{Email: "a@b.com"})
 	require.NoError(t, err)
-	assert.Equal(t, uint(1), resp.Id)
+	assert.Equal(t, uint(1), resp.ID)
 }
 
 func TestCreateUser_RepoError(t *testing.T) {
@@ -51,7 +51,7 @@ func TestGetUser_Success(t *testing.T) {
 	}
 	svc := newTestService(repo)
 
-	resp, err := svc.GetUser(domain.GetUserRequest{Id: 1})
+	resp, err := svc.GetUser(domain.GetUserRequest{ID: 1})
 	require.NoError(t, err)
 	assert.Equal(t, "alice@test.com", resp.Email)
 }
@@ -64,7 +64,7 @@ func TestGetUser_RepoError(t *testing.T) {
 	}
 	svc := newTestService(repo)
 
-	_, err := svc.GetUser(domain.GetUserRequest{Id: 999})
+	_, err := svc.GetUser(domain.GetUserRequest{ID: 999})
 	assert.Error(t, err)
 }
 

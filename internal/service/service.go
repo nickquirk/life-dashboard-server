@@ -33,7 +33,7 @@ type Service interface {
 	CreateZone(req domain.CreateZoneRequest) (domain.CreateZoneResponse, error)
 	GetZones(req domain.GetZonesRequest) (domain.GetZonesResponse, error)
 	UpdateZone(req domain.UpdateZoneRequest) (domain.UpdateZoneResponse, error)
-	DeleteZone(req domain.DeleteZonesRequest) (domain.DeleteZonesResponse, error)
+	DeleteZone(req domain.DeleteZoneRequest) (domain.DeleteZoneResponse, error)
 	// ------ Feedback ---------
 	CreateFeedback(req domain.CreateFeedbackRequest) (domain.CreateFeedbackResponse, error)
 	// ------ Scratchpad ---------

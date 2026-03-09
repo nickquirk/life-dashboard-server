@@ -176,8 +176,8 @@ func TestUpdateZone_Error(t *testing.T) {
 
 func TestDeleteZone_Success(t *testing.T) {
 	svc := &mocks.MockService{
-		DeleteZoneFunc: func(req domain.DeleteZonesRequest) (domain.DeleteZonesResponse, error) {
-			return domain.DeleteZonesResponse{Message: "Zone deleted successfully"}, nil
+		DeleteZoneFunc: func(req domain.DeleteZoneRequest) (domain.DeleteZoneResponse, error) {
+			return domain.DeleteZoneResponse{ID: 10}, nil
 		},
 	}
 	h := testHandler(svc)
@@ -193,7 +193,7 @@ func TestDeleteZone_Success(t *testing.T) {
 	h.deleteZone(rr, r)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Contains(t, rr.Body.String(), "deleted")
+	assert.Contains(t, rr.Body.String(), `"id":10`)
 }
 
 func TestDeleteZone_InvalidID(t *testing.T) {
@@ -214,8 +214,8 @@ func TestDeleteZone_InvalidID(t *testing.T) {
 
 func TestDeleteZone_NotFound(t *testing.T) {
 	svc := &mocks.MockService{
-		DeleteZoneFunc: func(req domain.DeleteZonesRequest) (domain.DeleteZonesResponse, error) {
-			return domain.DeleteZonesResponse{}, gorm.ErrRecordNotFound
+		DeleteZoneFunc: func(req domain.DeleteZoneRequest) (domain.DeleteZoneResponse, error) {
+			return domain.DeleteZoneResponse{}, gorm.ErrRecordNotFound
 		},
 	}
 	h := testHandler(svc)
@@ -235,8 +235,8 @@ func TestDeleteZone_NotFound(t *testing.T) {
 
 func TestDeleteZone_Error(t *testing.T) {
 	svc := &mocks.MockService{
-		DeleteZoneFunc: func(req domain.DeleteZonesRequest) (domain.DeleteZonesResponse, error) {
-			return domain.DeleteZonesResponse{}, errors.New("db error")
+		DeleteZoneFunc: func(req domain.DeleteZoneRequest) (domain.DeleteZoneResponse, error) {
+			return domain.DeleteZoneResponse{}, errors.New("db error")
 		},
 	}
 	h := testHandler(svc)
