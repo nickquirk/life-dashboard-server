@@ -298,6 +298,16 @@ type CreateRoutineInstanceResponse struct {
 	DurationMins *int      `json:"durationMins,omitempty"`
 }
 
+type GetRoutineInstancesRequest struct {
+	UserID uint      `json:"-"`
+	Start  time.Time `json:"start"`
+	End    time.Time `json:"end"`
+}
+
+type GetRoutineInstancesResponse struct {
+	Instances []RoutineInstance `json:"instances"`
+}
+
 type UpdateRoutineInstanceRequest struct {
 	ID           uint       `json:"-"`
 	UserID       uint       `json:"-"`
@@ -313,4 +323,9 @@ type UpdateRoutineInstanceResponse struct {
 	Date         time.Time `json:"date"`
 	Status       string    `json:"status"`
 	DurationMins *int      `json:"durationMins,omitempty"`
+}
+
+type DeleteRoutineInstanceRequest struct {
+	ID     uint `json:"-"`
+	UserID uint `json:"-"`
 }
