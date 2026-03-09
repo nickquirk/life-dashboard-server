@@ -278,6 +278,11 @@ type UpdateRoutineResponse struct {
 }
 
 type DeleteRoutineRequest struct {
+	ID     uint `json:"id"`
+	UserID uint `json:"userId"`
+}
+
+type DeleteRoutineResponse struct {
 	ID uint `json:"id"`
 }
 
@@ -326,6 +331,10 @@ type UpdateRoutineInstanceResponse struct {
 }
 
 type DeleteRoutineInstanceRequest struct {
-	ID     uint `json:"-"`
-	UserID uint `json:"-"`
+	ID     uint `json:"id"`
+	UserID uint `json:"userId"`
+}
+
+type DeleteRoutineInstanceResponse struct {
+	ID uint `json:"id"`
 }
