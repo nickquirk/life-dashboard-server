@@ -256,6 +256,14 @@ type CreateRoutineResponse struct {
 	DurationMins int    `json:"durationMins"`
 }
 
+type GetRoutineRequest struct {
+	UserID uint `json:"-"`
+}
+
+type GetRoutineResponse struct {
+	Routines []Routine `json:"routines"`
+}
+
 type UpdateRoutineRequest struct {
 	ID           uint    `json:"-"`
 	UserID       uint    `json:"-"`
@@ -267,6 +275,10 @@ type UpdateRoutineResponse struct {
 	ID           uint   `json:"id"`
 	Title        string `json:"title"`
 	DurationMins int    `json:"durationMins"`
+}
+
+type DeleteRoutineRequest struct {
+	ID uint `json:"id"`
 }
 
 // ------ Routine Instances ---------

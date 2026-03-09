@@ -34,6 +34,8 @@ type Service interface {
 	GetZones(req domain.GetZonesRequest) (domain.GetZonesResponse, error)
 	UpdateZone(req domain.UpdateZoneRequest) (domain.UpdateZoneResponse, error)
 	DeleteZone(req domain.DeleteZoneRequest) (domain.DeleteZoneResponse, error)
+	// ------ Routines ---------
+
 	// ------ Feedback ---------
 	CreateFeedback(req domain.CreateFeedbackRequest) (domain.CreateFeedbackResponse, error)
 	// ------ Scratchpad ---------
@@ -47,14 +49,15 @@ type service struct {
 	taskRepo       repository.TaskRepository
 	calendarRepo   repository.CalendarRepository
 	zoneRepo       repository.ZoneRepository
+	routineRepo    repository.RoutineRepository
 	feedbackRepo   repository.FeedbackRepository
 	scratchpadRepo repository.ScratchpadRepository
 }
 
 // NewServiceWithRepos creates a Service with injected repositories
 func NewServiceWithRepos(userRepo repository.UserRepository, taskRepo repository.TaskRepository,
-	calendarRepo repository.CalendarRepository, zoneRepo repository.ZoneRepository, feedbackRepo repository.FeedbackRepository, scratchpadRepo repository.ScratchpadRepository) Service {
-	return &service{userRepo: userRepo, taskRepo: taskRepo, calendarRepo: calendarRepo, zoneRepo: zoneRepo, feedbackRepo: feedbackRepo, scratchpadRepo: scratchpadRepo}
+	calendarRepo repository.CalendarRepository, zoneRepo repository.ZoneRepository, routineRepo repository.RoutineRepository, feedbackRepo repository.FeedbackRepository, scratchpadRepo repository.ScratchpadRepository) Service {
+	return &service{userRepo: userRepo, taskRepo: taskRepo, calendarRepo: calendarRepo, zoneRepo: zoneRepo, routineRepo: routineRepo, feedbackRepo: feedbackRepo, scratchpadRepo: scratchpadRepo}
 }
 
 func (s service) Ping() error {
@@ -80,6 +83,7 @@ func NewService(db *gorm.DB, encryptor crypto.TokenEncryptor) Service {
 			Db: db,
 		},
 		zoneRepo:       &repository.GormZoneRepository{Db: db},
+		routineRepo:    &repository.GormRoutineRepository{Db: db},
 		feedbackRepo:   &repository.GormFeedbackRepository{Db: db},
 		scratchpadRepo: &repository.GormScratchpadRepository{Db: db},
 	}
