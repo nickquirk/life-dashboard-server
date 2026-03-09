@@ -59,7 +59,7 @@ func (r GormUserRepository) Create(c domain.CreateUserRequest) (domain.CreateUse
 		}
 
 		// Return the Existing ID
-		return domain.CreateUserResponse{Id: user.ID}, nil
+		return domain.CreateUserResponse{ID: user.ID}, nil
 	}
 
 	// --- USER NEW: CREATE ---
@@ -82,14 +82,14 @@ func (r GormUserRepository) Create(c domain.CreateUserRequest) (domain.CreateUse
 	}
 
 	return domain.CreateUserResponse{
-		Id: newUser.ID,
+		ID: newUser.ID,
 	}, nil
 }
 
 func (r GormUserRepository) Get(g domain.GetUserRequest) (domain.GetUserResponse, error) {
 	var user domain.User
 	// Find user by ID
-	result := r.Db.First(&user, g.Id)
+	result := r.Db.First(&user, g.ID)
 
 	if result.Error != nil {
 		return domain.GetUserResponse{}, result.Error

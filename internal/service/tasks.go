@@ -12,38 +12,6 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-func toTaskResponse(t domain.Task) domain.TaskResponse {
-	resp := domain.TaskResponse{
-		ID:           t.ID,
-		Parent:       t.Parent,
-		TaskListID:   t.TaskListID,
-		Title:        t.Title,
-		Status:       t.Status,
-		Due:          t.Due,
-		Notes:        t.Notes,
-		Updated:      t.Updated,
-		DurationMins: t.DurationMins,
-		Date:         t.Date,
-		IsRepeating:  t.IsRepeating,
-		Quadrant:     t.Quadrant,
-	}
-	for _, s := range t.Subtasks {
-		resp.Subtasks = append(resp.Subtasks, toTaskResponse(s))
-	}
-	return resp
-}
-
-func toTaskListResponse(tl domain.TaskList) domain.TaskListResponse {
-	resp := domain.TaskListResponse{
-		ID:    tl.ID,
-		Title: tl.Title,
-	}
-	for _, t := range tl.Tasks {
-		resp.Tasks = append(resp.Tasks, toTaskResponse(t))
-	}
-	return resp
-}
-
 // READ: Fast, Database only
 func (s *service) GetTaskLists(req domain.GetTaskListsRequest) (domain.GetTaskListsResponse, error) {
 	lists, err := s.taskRepo.GetTaskLists(req.UserID)
@@ -51,12 +19,9 @@ func (s *service) GetTaskLists(req domain.GetTaskListsRequest) (domain.GetTaskLi
 		return domain.GetTaskListsResponse{}, err
 	}
 
-	resp := make([]domain.TaskListResponse, len(lists))
-	for i, l := range lists {
-		resp[i] = toTaskListResponse(l)
-	}
-
-	return domain.GetTaskListsResponse{TaskLists: resp}, nil
+	return domain.GetTaskListsResponse{
+		TaskLists: lists,
+	}, nil
 }
 
 // SYNC: Fetch from Google, Save to DB
@@ -93,7 +58,13 @@ func (s *service) SyncTaskLists(ctx context.Context, req domain.SyncTaskListsReq
 		return domain.SyncTaskListsResponse{}, err
 	}
 
-	return domain.SyncTaskListsResponse{Message: "synced"}, nil
+	// Fetch the fresh lists from the DB and return them
+	freshLists, err := s.taskRepo.GetTaskLists(userID)
+	if err != nil {
+		return domain.SyncTaskListsResponse{}, err
+	}
+
+	return domain.SyncTaskListsResponse{TaskLists: freshLists}, nil
 }
 
 func (s *service) CreateTask(ctx context.Context, req domain.CreateTaskRequest) (domain.CreateTaskResponse, error) {
@@ -156,7 +127,20 @@ func (s *service) CreateTask(ctx context.Context, req domain.CreateTaskRequest) 
 		return domain.CreateTaskResponse{}, err
 	}
 
-	return domain.CreateTaskResponse{TaskResponse: toTaskResponse(newTask)}, nil
+	return domain.CreateTaskResponse{
+		ID:           newTask.ID,
+		Parent:       newTask.Parent,
+		TaskListID:   newTask.TaskListID,
+		Title:        newTask.Title,
+		Status:       newTask.Status,
+		Due:          newTask.Due,
+		Notes:        newTask.Notes,
+		Updated:      newTask.Updated,
+		DurationMins: newTask.DurationMins,
+		Date:         newTask.Date,
+		IsRepeating:  newTask.IsRepeating,
+		Quadrant:     newTask.Quadrant,
+	}, nil
 }
 
 func (s *service) GetTasks(ctx context.Context, req domain.GetTasksRequest) (domain.GetTasksResponse, error) {
@@ -169,12 +153,9 @@ func (s *service) GetTasks(ctx context.Context, req domain.GetTasksRequest) (dom
 		return domain.GetTasksResponse{}, err
 	}
 
-	resp := make([]domain.TaskResponse, len(tasks))
-	for i, t := range tasks {
-		resp[i] = toTaskResponse(t)
-	}
-
-	return domain.GetTasksResponse{Tasks: resp}, nil
+	return domain.GetTasksResponse{
+		Tasks: tasks,
+	}, nil
 }
 
 func (s *service) SyncTasks(ctx context.Context, req domain.SyncTasksRequest) (domain.SyncTasksResponse, error) {
@@ -307,7 +288,13 @@ func (s *service) SyncTasks(ctx context.Context, req domain.SyncTasksRequest) (d
 		return domain.SyncTasksResponse{}, err
 	}
 
-	return domain.SyncTasksResponse{Message: "synced"}, nil
+	// Fetch the fresh tasks from the DB and return them
+	freshTasks, err := s.taskRepo.GetTasks(taskListID)
+	if err != nil {
+		return domain.SyncTasksResponse{}, err
+	}
+
+	return domain.SyncTasksResponse{Tasks: freshTasks}, nil
 }
 
 func (s *service) UpdateTask(ctx context.Context, req domain.UpdateTaskRequest) (domain.UpdateTaskResponse, error) {
@@ -329,7 +316,7 @@ func (s *service) UpdateTask(ctx context.Context, req domain.UpdateTaskRequest) 
 		if err := s.moveTask(ctx, userID, task, *req.TaskListID, req); err != nil {
 			return domain.UpdateTaskResponse{}, err
 		}
-		return domain.UpdateTaskResponse{Message: "Task updated"}, nil
+		return domain.UpdateTaskResponse{ID: taskID}, nil
 	}
 
 	updates := make(map[string]interface{})
@@ -402,7 +389,7 @@ func (s *service) UpdateTask(ctx context.Context, req domain.UpdateTaskRequest) 
 		return domain.UpdateTaskResponse{}, err
 	}
 
-	return domain.UpdateTaskResponse{Message: "Task updated"}, nil
+	return domain.UpdateTaskResponse{ID: taskID}, nil
 }
 
 func (s *service) DeleteTask(ctx context.Context, req domain.DeleteTaskRequest) (domain.DeleteTaskResponse, error) {
@@ -437,7 +424,7 @@ func (s *service) DeleteTask(ctx context.Context, req domain.DeleteTaskRequest) 
 		return domain.DeleteTaskResponse{}, fmt.Errorf("failed to delete task from database: %w", err)
 	}
 
-	return domain.DeleteTaskResponse{Message: "Task deleted"}, nil
+	return domain.DeleteTaskResponse{ID: taskID}, nil
 }
 
 func (s *service) isTokenError(err error) bool {

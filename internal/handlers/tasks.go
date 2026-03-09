@@ -23,7 +23,7 @@ func (h *Handler) getTaskLists(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(resp.TaskLists); err != nil {
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 		return
 	}
@@ -74,7 +74,7 @@ func (h *Handler) createTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp.TaskResponse)
+	json.NewEncoder(w).Encode(resp)
 }
 
 // GET /api/tasks/{taskListId}
@@ -95,7 +95,7 @@ func (h *Handler) getTasksInList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp.Tasks)
+	json.NewEncoder(w).Encode(resp)
 }
 
 // POST /api/tasks/{taskListId}/sync - New Endpoint

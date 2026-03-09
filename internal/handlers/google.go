@@ -115,7 +115,7 @@ func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Save user to DB
-	user, err := h.CreateUser(userData)
+	user, err := h.Service.CreateUser(userData)
 	if err != nil {
 		slog.Error("failed to save user to database", "error", err)
 		http.Error(w, "Failed to save user", http.StatusInternalServerError)
@@ -123,7 +123,7 @@ func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// save id and email in JWT
-	tok, err := utils.GenerateToken(user.Id, userData.Email)
+	tok, err := utils.GenerateToken(user.ID, userData.Email)
 	if err != nil {
 		slog.Error("failed to generate JWT", "error", err)
 		http.Error(w, "Authentication failed", http.StatusInternalServerError)
@@ -138,7 +138,7 @@ func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	hashedRefreshToken := utils.HashRefreshToken(rawRefreshToken)
-	if err := h.Service.UpdateAppRefreshToken(user.Id, hashedRefreshToken); err != nil {
+	if err := h.Service.UpdateAppRefreshToken(user.ID, hashedRefreshToken); err != nil {
 		slog.Error("failed to store refresh token", "error", err)
 		http.Error(w, "Authentication failed", http.StatusInternalServerError)
 		return

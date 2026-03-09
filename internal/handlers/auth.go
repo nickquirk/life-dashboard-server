@@ -20,7 +20,7 @@ const UserIDKey contextKey = "userID"
 func (h *Handler) GetClient(config *oauth2.Config) (*http.Client, error) {
 	userToLogIn := domain.GetUserRequest{}
 
-	user, err := h.GetUser(userToLogIn)
+	user, err := h.Service.GetUser(userToLogIn)
 	if err != nil {
 		return config.Client(context.Background(), &oauth2.Token{}), err
 	}
@@ -84,7 +84,7 @@ func (h *Handler) refreshToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get user info for new JWT claims
-	user, err := h.Service.GetUser(domain.GetUserRequest{Id: userID})
+	user, err := h.Service.GetUser(domain.GetUserRequest{ID: userID})
 	if err != nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return

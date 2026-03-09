@@ -15,11 +15,11 @@ type CreateUserRequest struct {
 }
 
 type CreateUserResponse struct {
-	Id uint `json:"id"`
+	ID uint `json:"id"`
 }
 
 type GetUserRequest struct {
-	Id    uint   `json:"id"`
+	ID    uint   `json:"id"`
 	Email string `json:"email"`
 }
 
@@ -32,7 +32,7 @@ type GetUserResponse struct {
 }
 
 type GetCurrentUserIDResponse struct {
-	Id uint `json:"id"`
+	ID uint `json:"id"`
 }
 
 type UserProfileResponse struct {
@@ -42,34 +42,12 @@ type UserProfileResponse struct {
 
 // ------ Task ---------
 
-type TaskListResponse struct {
-	ID    string         `json:"id"`
-	Title string         `json:"title"`
-	Tasks []TaskResponse `json:"tasks,omitempty"`
-}
-
-type TaskResponse struct {
-	ID           string         `json:"id"`
-	Parent       *string        `json:"parent,omitempty"`
-	TaskListID   string         `json:"taskListId"`
-	Title        string         `json:"title"`
-	Status       string         `json:"status"`
-	Due          *time.Time     `json:"due,omitempty"`
-	Notes        string         `json:"notes"`
-	Updated      string         `json:"updated"`
-	DurationMins int            `json:"durationMins"`
-	Date         *time.Time     `json:"date,omitempty"`
-	Subtasks     []TaskResponse `json:"subtasks,omitempty"`
-	IsRepeating  bool           `json:"isRepeating"`
-	Quadrant     int            `json:"quadrant"`
-}
-
 type GetTaskListsRequest struct {
 	UserID uint `json:"-"`
 }
 
 type GetTaskListsResponse struct {
-	TaskLists []TaskListResponse `json:"taskLists"`
+	TaskLists []TaskList `json:"taskLists"`
 }
 
 type SyncTaskListsRequest struct {
@@ -77,7 +55,7 @@ type SyncTaskListsRequest struct {
 }
 
 type SyncTaskListsResponse struct {
-	Message string `json:"message"`
+	TaskLists []TaskList `json:"taskLists"`
 }
 
 type CreateTaskRequest struct {
@@ -89,7 +67,19 @@ type CreateTaskRequest struct {
 }
 
 type CreateTaskResponse struct {
-	TaskResponse
+	ID           string     `json:"id"`
+	Parent       *string    `json:"parent,omitempty"`
+	TaskListID   string     `json:"taskListId"`
+	Title        string     `json:"title"`
+	Status       string     `json:"status"`
+	Due          *time.Time `json:"due,omitempty"`
+	Notes        string     `json:"notes"`
+	Updated      string     `json:"updated"`
+	DurationMins int        `json:"durationMins"`
+	Date         *time.Time `json:"date,omitempty"`
+	Subtasks     []Task     `json:"subtasks,omitempty"`
+	IsRepeating  bool       `json:"isRepeating"`
+	Quadrant     int        `json:"quadrant"`
 }
 
 type GetTasksRequest struct {
@@ -98,7 +88,7 @@ type GetTasksRequest struct {
 }
 
 type GetTasksResponse struct {
-	Tasks []TaskResponse `json:"tasks"`
+	Tasks []Task `json:"tasks"`
 }
 
 type SyncTasksRequest struct {
@@ -107,7 +97,7 @@ type SyncTasksRequest struct {
 }
 
 type SyncTasksResponse struct {
-	Message string `json:"message"`
+	Tasks []Task `json:"tasks"`
 }
 
 type UpdateTaskRequest struct {
@@ -127,7 +117,7 @@ type UpdateTaskRequest struct {
 }
 
 type UpdateTaskResponse struct {
-	Message string `json:"message"`
+	ID string `json:"id"`
 }
 
 type DeleteTaskRequest struct {
@@ -136,7 +126,7 @@ type DeleteTaskRequest struct {
 }
 
 type DeleteTaskResponse struct {
-	Message string `json:"message"`
+	ID string `json:"id"`
 }
 
 // ------ Calendar ---------
@@ -205,13 +195,13 @@ type UpdateZoneResponse struct {
 	UpdatedAt  time.Time `json:"updatedAt"`
 }
 
-type DeleteZonesRequest struct {
+type DeleteZoneRequest struct {
 	ID     uint `json:"id"`
 	UserID uint `json:"userId"`
 }
 
-type DeleteZonesResponse struct {
-	Message string `json:"message"`
+type DeleteZoneResponse struct {
+	ID uint `json:"id"`
 }
 
 // ------ Feedback ---------

@@ -16,7 +16,7 @@ import (
 // Helper to get Google Client
 func (s *service) getAuthenticatedClient(ctx context.Context, userID uint) (*http.Client, error) {
 	//  Get User for tokens
-	userResp, err := s.userRepo.Get(domain.GetUserRequest{Id: userID})
+	userResp, err := s.userRepo.Get(domain.GetUserRequest{ID: userID})
 	if err != nil {
 		return nil, err
 	}

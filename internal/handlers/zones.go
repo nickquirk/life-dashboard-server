@@ -110,7 +110,7 @@ func (h *Handler) deleteZone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req := domain.DeleteZonesRequest{
+	req := domain.DeleteZoneRequest{
 		ID:     uint(zoneID),
 		UserID: userID,
 	}

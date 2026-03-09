@@ -93,13 +93,13 @@ func (s *service) UpdateZone(req domain.UpdateZoneRequest) (domain.UpdateZoneRes
 
 }
 
-func (s *service) DeleteZone(req domain.DeleteZonesRequest) (domain.DeleteZonesResponse, error) {
+func (s *service) DeleteZone(req domain.DeleteZoneRequest) (domain.DeleteZoneResponse, error) {
 	err := s.zoneRepo.Delete(req.UserID, req.ID)
 	if err != nil {
-		return domain.DeleteZonesResponse{}, err
+		return domain.DeleteZoneResponse{}, err
 	}
 
-	return domain.DeleteZonesResponse{
-		Message: "Zone deleted successfully",
+	return domain.DeleteZoneResponse{
+		ID: req.ID,
 	}, nil
 }

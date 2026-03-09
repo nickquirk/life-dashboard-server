@@ -2,8 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"errors"
-	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -17,23 +15,6 @@ type Handler struct {
 	Cookies CookieConfig
 }
 
-func (h *Handler) CreateUser(user domain.CreateUserRequest) (domain.CreateUserResponse, error) {
-	resp, err := h.Service.CreateUser(user)
-	if err != nil {
-		slog.Error("error creating user", "error", err)
-		return domain.CreateUserResponse{}, errors.New("error creating user")
-	}
-	return resp, nil
-}
-
-func (h *Handler) GetUser(user domain.GetUserRequest) (domain.GetUserResponse, error) {
-	resp, err := h.Service.GetUser(user)
-	if err != nil {
-		return domain.GetUserResponse{}, err
-	}
-	return resp, nil
-}
-
 func (h *Handler) GetUserHTTP(w http.ResponseWriter, r *http.Request) {
 	// get ID from URL param
 	idStr := chi.URLParam(r, "id")
@@ -43,11 +24,10 @@ func (h *Handler) GetUserHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Call your existing service logic
-	req := domain.GetUserRequest{Id: uint(id)}
+	// Call service logic directly
+	req := domain.GetUserRequest{ID: uint(id)}
 	resp, err := h.Service.GetUser(req)
 	if err != nil {
-		// Ideally check if error is "record not found" to return 404
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}
@@ -68,8 +48,8 @@ func (h *Handler) getCurrentUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Fetch User Details
-	req := domain.GetUserRequest{Id: userID}
+	// Fetch User Details directly from Service
+	req := domain.GetUserRequest{ID: userID}
 	resp, err := h.Service.GetUser(req)
 	if err != nil {
 		http.Error(w, "Failed to fetch user profile", http.StatusInternalServerError)
@@ -92,7 +72,7 @@ func (h *Handler) getCurrentUserID(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(domain.GetCurrentUserIDResponse{
-		Id: userID,
+		ID: userID,
 	})
 }
 
