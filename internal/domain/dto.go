@@ -241,3 +241,64 @@ type UpsertScratchpadRequest struct {
 type UpsertScratchpadResponse struct {
 	Content string `json:"content"`
 }
+
+// ------ Routines ---------
+
+type CreateRoutineRequest struct {
+	UserID       uint   `json:"-"`
+	Title        string `json:"title"`
+	DurationMins int    `json:"durationMins"`
+}
+
+type CreateRoutineResponse struct {
+	ID           uint   `json:"id"`
+	Title        string `json:"title"`
+	DurationMins int    `json:"durationMins"`
+}
+
+type UpdateRoutineRequest struct {
+	ID           uint    `json:"-"`
+	UserID       uint    `json:"-"`
+	Title        *string `json:"title"`
+	DurationMins *int    `json:"durationMins"`
+}
+
+type UpdateRoutineResponse struct {
+	ID           uint   `json:"id"`
+	Title        string `json:"title"`
+	DurationMins int    `json:"durationMins"`
+}
+
+// ------ Routine Instances ---------
+
+type CreateRoutineInstanceRequest struct {
+	UserID    uint      `json:"-"`
+	RoutineID uint      `json:"routineId"`
+	Date      time.Time `json:"date"`
+}
+
+type CreateRoutineInstanceResponse struct {
+	ID           uint      `json:"id"`
+	RoutineID    uint      `json:"routineId"`
+	Routine      Routine   `json:"routine"`
+	Date         time.Time `json:"date"`
+	Status       string    `json:"status"`
+	DurationMins *int      `json:"durationMins,omitempty"`
+}
+
+type UpdateRoutineInstanceRequest struct {
+	ID           uint       `json:"-"`
+	UserID       uint       `json:"-"`
+	Date         *time.Time `json:"date"`
+	Status       *string    `json:"status"`
+	DurationMins *int       `json:"durationMins"`
+}
+
+type UpdateRoutineInstanceResponse struct {
+	ID           uint      `json:"id"`
+	RoutineID    uint      `json:"routineId"`
+	Routine      Routine   `json:"routine"`
+	Date         time.Time `json:"date"`
+	Status       string    `json:"status"`
+	DurationMins *int      `json:"durationMins,omitempty"`
+}

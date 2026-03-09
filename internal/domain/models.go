@@ -88,3 +88,20 @@ type Scratchpad struct {
 	Date    string `gorm:"uniqueIndex:idx_user_date;not null;size:10" json:"date"` // Format: YYYY-MM-DD
 	Content string `gorm:"type:text" json:"content"`
 }
+
+type Routine struct {
+	gorm.Model
+	UserID       uint   `gorm:"index;not null" json:"userId"`
+	Title        string `json:"title"`
+	DurationMins int    `json:"durationMins"`
+}
+
+type RoutineInstance struct {
+	gorm.Model
+	UserID       uint      `gorm:"index;not null" json:"userId"`
+	RoutineID    uint      `gorm:"index;not null" json:"routineId"`
+	Routine      Routine   `gorm:"foreignKey:RoutineID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"routine"` // Auto-fetches the template data
+	Date         time.Time `gorm:"type:datetime" json:"date"`
+	Status       string    `json:"status"`                 // "needsAction" or "completed"
+	DurationMins *int      `json:"durationMins,omitempty"` // Only populated if user overrides the template
+}

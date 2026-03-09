@@ -75,4 +75,6 @@ func InitMigration(db *gorm.DB) {
 	db.AutoMigrate(domain.Zone{})
 	db.AutoMigrate(domain.Feedback{})
 	db.AutoMigrate(domain.Scratchpad{})
+	db.AutoMigrate(domain.Routine{})
+	db.AutoMigrate(domain.RoutineInstance{})
 }
