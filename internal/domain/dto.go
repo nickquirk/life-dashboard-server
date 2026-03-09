@@ -59,11 +59,15 @@ type SyncTaskListsResponse struct {
 }
 
 type CreateTaskRequest struct {
-	UserID     uint   `json:"-"`
-	TaskListID string `json:"-"`
-	Title      string `json:"title"`
-	Parent     string `json:"parent,omitempty"`   // Optional: ID of the parent task
-	PreviousID string `json:"previous,omitempty"` // Optional: ID of task to insert after (for ordering)
+	UserID       uint       `json:"-"`
+	TaskListID   string     `json:"-"`
+	Title        string     `json:"title"`
+	Parent       string     `json:"parent,omitempty"`   // Optional: ID of the parent task
+	PreviousID   string     `json:"previous,omitempty"` // Optional: ID of task to insert after (for ordering)
+	IsRepeating  *bool      `json:"isRepeating,omitempty"`
+	Quadrant     *int       `json:"quadrant,omitempty"`
+	DurationMins *int       `json:"durationMins,omitempty"`
+	Date         *time.Time `json:"date,omitempty"`
 }
 
 type CreateTaskResponse struct {

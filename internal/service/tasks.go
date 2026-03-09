@@ -113,6 +113,20 @@ func (s *service) CreateTask(ctx context.Context, req domain.CreateTaskRequest) 
 		Notes:      createdGTask.Notes,
 	}
 
+	// Map local fields
+	if req.IsRepeating != nil {
+		newTask.IsRepeating = *req.IsRepeating
+	}
+	if req.Quadrant != nil {
+		newTask.Quadrant = *req.Quadrant
+	}
+	if req.DurationMins != nil {
+		newTask.DurationMins = *req.DurationMins
+	}
+	if req.Date != nil {
+		newTask.Date = req.Date
+	}
+
 	// If Google returned it, use it. If not, use what we requested.
 	if createdGTask.Parent != "" {
 		parent := createdGTask.Parent
