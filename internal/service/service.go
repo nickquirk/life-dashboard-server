@@ -35,7 +35,14 @@ type Service interface {
 	UpdateZone(req domain.UpdateZoneRequest) (domain.UpdateZoneResponse, error)
 	DeleteZone(req domain.DeleteZoneRequest) (domain.DeleteZoneResponse, error)
 	// ------ Routines ---------
-
+	CreateRoutine(req domain.CreateRoutineRequest) (domain.CreateRoutineResponse, error)
+	GetRoutines(req domain.GetRoutineRequest) (domain.GetRoutineResponse, error)
+	UpdateRoutine(req domain.UpdateRoutineRequest) (domain.UpdateRoutineResponse, error)
+	DeleteRoutine(req domain.DeleteRoutineRequest) (domain.DeleteRoutineResponse, error)
+	CreateRoutineInstance(req domain.CreateRoutineInstanceRequest) (domain.CreateRoutineInstanceResponse, error)
+	GetRoutineInstances(req domain.GetRoutineInstancesRequest) (domain.GetRoutineInstancesResponse, error)
+	UpdateRoutineInstance(req domain.UpdateRoutineInstanceRequest) (domain.UpdateRoutineInstanceResponse, error)
+	DeleteRoutineInstance(req domain.DeleteRoutineInstanceRequest) (domain.DeleteRoutineInstanceResponse, error)
 	// ------ Feedback ---------
 	CreateFeedback(req domain.CreateFeedbackRequest) (domain.CreateFeedbackResponse, error)
 	// ------ Scratchpad ---------
