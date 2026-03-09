@@ -62,6 +62,16 @@ func GetRoutes(mx *chi.Mux, h *Handler) error {
 			auth.Post("/zones", h.createZone)
 			auth.Patch("/zones/{id}", h.updateZone)
 			auth.Delete("/zones/{id}", h.deleteZone)
+			// Routines
+			auth.Get("/routines", h.getRoutines)
+			auth.Post("/routines", h.createRoutine)
+			auth.Patch("/routines/{id}", h.updateRoutine)
+			auth.Delete("/routines/{id}", h.deleteRoutine)
+			// Routine Instances
+			auth.Post("/routines/instances", h.createRoutineInstance)
+			auth.Get("/routines/instances", h.getRoutineInstances)
+			auth.Patch("/routines/instances/{id}", h.updateRoutineInstance)
+			auth.Delete("/routines/instances/{id}", h.deleteRoutineInstance)
 			// Feedback
 			auth.Post("/feedback", h.createFeedback)
 			// Scratchpad

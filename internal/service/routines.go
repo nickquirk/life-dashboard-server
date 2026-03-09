@@ -67,7 +67,7 @@ func (s *service) CreateRoutineInstance(req domain.CreateRoutineInstanceRequest)
 		UserID:    req.UserID,
 		RoutineID: req.RoutineID,
 		Date:      req.Date,
-		Status:    "pending",
+		Status:    "needsAction",
 	})
 	if err != nil {
 		return domain.CreateRoutineInstanceResponse{}, err
