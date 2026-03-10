@@ -90,14 +90,22 @@ type Scratchpad struct {
 }
 
 type Routine struct {
-	gorm.Model
+	ID        uint           `gorm:"primarykey" json:"id"`
+	CreatedAt time.Time      `json:"createdAt"`
+	UpdatedAt time.Time      `json:"updatedAt"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"` // "-" hides this from the frontend entirely
+
 	UserID       uint   `gorm:"index;not null" json:"userId"`
 	Title        string `json:"title"`
 	DurationMins int    `json:"durationMins"`
 }
 
 type RoutineInstance struct {
-	gorm.Model
+	ID        uint           `gorm:"primarykey" json:"id"`
+	CreatedAt time.Time      `json:"createdAt"`
+	UpdatedAt time.Time      `json:"updatedAt"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+
 	UserID       uint      `gorm:"index;not null" json:"userId"`
 	RoutineID    uint      `gorm:"index;not null" json:"routineId"`
 	Routine      Routine   `gorm:"foreignKey:RoutineID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"routine"` // Auto-fetches the template data

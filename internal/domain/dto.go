@@ -146,7 +146,7 @@ type GetCalendarEventsResponse struct {
 }
 
 // ------ Zone ---------
-
+// TODO remove and add id etc to model
 type ZoneResponse struct {
 	ID         uint   `json:"id"`
 	Label      string `json:"label"`
@@ -243,6 +243,13 @@ type UpsertScratchpadResponse struct {
 }
 
 // ------ Routines ---------
+
+type RoutineResponse struct {
+	ID           uint   `json:"id"`
+	UserID       uint   `json:"userId"`
+	Title        string `json:"title"`
+	DurationMins int    `json:"durationMins"`
+}
 
 type CreateRoutineRequest struct {
 	UserID       uint   `json:"-"`
