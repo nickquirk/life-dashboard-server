@@ -64,7 +64,6 @@ type CreateTaskRequest struct {
 	Title        string     `json:"title"`
 	Parent       string     `json:"parent,omitempty"`   // Optional: ID of the parent task
 	PreviousID   string     `json:"previous,omitempty"` // Optional: ID of task to insert after (for ordering)
-	IsRepeating  *bool      `json:"isRepeating,omitempty"`
 	Quadrant     *int       `json:"quadrant,omitempty"`
 	DurationMins *int       `json:"durationMins,omitempty"`
 	Date         *time.Time `json:"date,omitempty"`
@@ -82,7 +81,6 @@ type CreateTaskResponse struct {
 	DurationMins int        `json:"durationMins"`
 	Date         *time.Time `json:"date,omitempty"`
 	Subtasks     []Task     `json:"subtasks,omitempty"`
-	IsRepeating  bool       `json:"isRepeating"`
 	Quadrant     int        `json:"quadrant"`
 }
 

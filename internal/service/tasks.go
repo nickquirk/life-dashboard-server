@@ -114,9 +114,6 @@ func (s *service) CreateTask(ctx context.Context, req domain.CreateTaskRequest) 
 	}
 
 	// Map local fields
-	if req.IsRepeating != nil {
-		newTask.IsRepeating = *req.IsRepeating
-	}
 	if req.Quadrant != nil {
 		newTask.Quadrant = *req.Quadrant
 	}
@@ -152,7 +149,6 @@ func (s *service) CreateTask(ctx context.Context, req domain.CreateTaskRequest) 
 		Updated:      newTask.Updated,
 		DurationMins: newTask.DurationMins,
 		Date:         newTask.Date,
-		IsRepeating:  newTask.IsRepeating,
 		Quadrant:     newTask.Quadrant,
 	}, nil
 }
@@ -513,7 +509,6 @@ func (s *service) moveTask(ctx context.Context, userID uint, currentTask domain.
 		// Carry over local-only fields
 		Quadrant:     currentTask.Quadrant,
 		DurationMins: currentTask.DurationMins,
-		IsRepeating:  currentTask.IsRepeating,
 		Date:         currentTask.Date, // Default to old date
 	}
 
