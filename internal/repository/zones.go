@@ -46,7 +46,7 @@ func (r *GormZoneRepository) Update(userID uint, zoneID uint, updates map[string
 }
 
 func (r *GormZoneRepository) Delete(userID uint, zoneID uint) error {
-	result := r.Db.Where("id = ? AND user_id = ?", zoneID, userID).Delete(&domain.Zone{})
+	result := r.Db.Unscoped().Where("id = ? AND user_id = ?", zoneID, userID).Delete(&domain.Zone{})
 	if result.Error != nil {
 		return result.Error
 	}

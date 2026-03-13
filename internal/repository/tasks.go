@@ -99,14 +99,14 @@ func (r *GormTaskRepository) UpdateTask(taskID string, updates map[string]interf
 }
 
 func (r *GormTaskRepository) DeleteTask(taskID string) error {
-	return r.Db.Where("id = ?", taskID).Delete(&domain.Task{}).Error
+	return r.Db.Unscoped().Where("id = ?", taskID).Delete(&domain.Task{}).Error
 }
 
 func (r *GormTaskRepository) DeleteTasks(taskIDs []string) error {
 	if len(taskIDs) == 0 {
 		return nil
 	}
-	return r.Db.Where("id IN ?", taskIDs).Delete(&domain.Task{}).Error
+	return r.Db.Unscoped().Where("id IN ?", taskIDs).Delete(&domain.Task{}).Error
 }
 
 func (r *GormTaskRepository) MarkTasksCompletedExcluding(taskListID string, activeIDs []string) error {

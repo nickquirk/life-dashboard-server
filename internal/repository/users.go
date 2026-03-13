@@ -154,6 +154,30 @@ func (r GormUserRepository) DeleteUserAndData(userID uint) error {
 		}
 	}()
 
+	// Permanently delete Scratchpad entries
+	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&domain.Scratchpad{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Permanently delete Feedback
+	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&domain.Feedback{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Permanently delete Routine Instances (Child)
+	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&domain.RoutineInstance{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Permanently delete Routines (Parent)
+	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&domain.Routine{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
 	// Permanently delete Zones
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&domain.Zone{}).Error; err != nil {
 		tx.Rollback()

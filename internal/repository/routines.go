@@ -44,7 +44,7 @@ func (r *GormRoutineRepository) UpdateRoutine(userID, routineID uint, updates ma
 }
 
 func (r *GormRoutineRepository) DeleteRoutine(userID, routineID uint) error {
-	result := r.Db.Where("id = ? AND user_id = ?", routineID, userID).Delete(&domain.Routine{})
+	result := r.Db.Unscoped().Where("id = ? AND user_id = ?", routineID, userID).Delete(&domain.Routine{})
 	if result.RowsAffected == 0 {
 		return gorm.ErrRecordNotFound
 	}
@@ -74,7 +74,7 @@ func (r *GormRoutineRepository) UpdateInstance(userID, instanceID uint, updates 
 }
 
 func (r *GormRoutineRepository) DeleteInstance(userID, instanceID uint) error {
-	result := r.Db.Where("id = ? AND user_id = ?", instanceID, userID).Delete(&domain.RoutineInstance{})
+	result := r.Db.Unscoped().Where("id = ? AND user_id = ?", instanceID, userID).Delete(&domain.RoutineInstance{})
 	if result.RowsAffected == 0 {
 		return gorm.ErrRecordNotFound
 	}
