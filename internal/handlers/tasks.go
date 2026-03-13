@@ -147,6 +147,33 @@ func (h *Handler) updateTask(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resp)
 }
 
+// DELETE /api/tasks
+func (h *Handler) deleteTasks(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	userID, ok := h.GetUserID(r)
+	if !ok {
+		http.Error(w, "User not found in context", http.StatusUnauthorized)
+		return
+	}
+
+	var req domain.DeleteTasksRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	req.UserID = userID
+
+	resp, err := h.Service.DeleteTasks(ctx, req)
+	if err != nil {
+		http.Error(w, "Failed to delete tasks", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
 // DELETE /api/tasks/{id}
 func (h *Handler) deleteTask(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()

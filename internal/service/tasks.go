@@ -441,6 +441,54 @@ func (s *service) DeleteTask(ctx context.Context, req domain.DeleteTaskRequest) 
 	return domain.DeleteTaskResponse{ID: taskID}, nil
 }
 
+func (s *service) DeleteTasks(ctx context.Context, req domain.DeleteTasksRequest) (domain.DeleteTasksResponse, error) {
+	userID := req.UserID
+
+	if len(req.TaskIDs) == 0 {
+		return domain.DeleteTasksResponse{IDs: []string{}}, nil
+	}
+
+	// Group tasks by task list for ownership verification
+	taskListMap := make(map[string][]string) // taskListID -> []taskID
+	for _, taskID := range req.TaskIDs {
+		taskListID, err := s.taskRepo.GetTaskListIDForTask(taskID)
+		if err != nil {
+			return domain.DeleteTasksResponse{}, fmt.Errorf("task not found: %s: %w", taskID, err)
+		}
+		taskListMap[taskListID] = append(taskListMap[taskListID], taskID)
+	}
+
+	// Verify ownership for each task list
+	for taskListID := range taskListMap {
+		if err := s.taskRepo.VerifyTaskListOwner(userID, taskListID); err != nil {
+			return domain.DeleteTasksResponse{}, fmt.Errorf("task not found: %w", err)
+		}
+	}
+
+	// Delete from Google Tasks API
+	srv, err := s.getGoogleTaskService(ctx, userID)
+	if err != nil {
+		return domain.DeleteTasksResponse{}, fmt.Errorf("failed to get Google client: %w", err)
+	}
+
+	for taskListID, taskIDs := range taskListMap {
+		for _, taskID := range taskIDs {
+			err := srv.Tasks.Delete(taskListID, taskID).Do()
+			if err != nil {
+				// Log but continue - task might already be deleted on Google's side
+				fmt.Printf("Warning: Could not delete task %s from Google Tasks: %v\n", taskID, err)
+			}
+		}
+	}
+
+	// Delete from local database
+	if err := s.taskRepo.DeleteTasks(req.TaskIDs); err != nil {
+		return domain.DeleteTasksResponse{}, fmt.Errorf("failed to delete tasks from database: %w", err)
+	}
+
+	return domain.DeleteTasksResponse{IDs: req.TaskIDs}, nil
+}
+
 func (s *service) isTokenError(err error) bool {
 	var retrieveErr *oauth2.RetrieveError
 	if errors.As(err, &retrieveErr) {

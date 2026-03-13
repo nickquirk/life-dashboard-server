@@ -131,6 +131,15 @@ type DeleteTaskResponse struct {
 	ID string `json:"id"`
 }
 
+type DeleteTasksRequest struct {
+	UserID  uint     `json:"-"`
+	TaskIDs []string `json:"taskIds"`
+}
+
+type DeleteTasksResponse struct {
+	IDs []string `json:"ids"`
+}
+
 // ------ Calendar ---------
 
 type GetCalendarEventsRequest struct {

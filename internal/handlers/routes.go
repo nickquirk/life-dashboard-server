@@ -54,6 +54,7 @@ func GetRoutes(mx *chi.Mux, h *Handler) error {
 			auth.Get("/tasks/{taskListId}", h.getTasksInList)
 			auth.Post("/tasks/{taskListId}/sync", h.syncTasksInList)
 			auth.Patch("/tasks/{id}", h.updateTask)
+			auth.Delete("/tasks/batch", h.deleteTasks)
 			auth.Delete("/tasks/{id}", h.deleteTask)
 			// Calendar Events
 			auth.Get("/calendar/events", h.getCalendarEvents)

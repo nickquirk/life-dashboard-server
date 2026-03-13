@@ -28,6 +28,7 @@ type Service interface {
 	SyncTasks(ctx context.Context, req domain.SyncTasksRequest) (domain.SyncTasksResponse, error)
 	UpdateTask(ctx context.Context, req domain.UpdateTaskRequest) (domain.UpdateTaskResponse, error)
 	DeleteTask(ctx context.Context, req domain.DeleteTaskRequest) (domain.DeleteTaskResponse, error)
+	DeleteTasks(ctx context.Context, req domain.DeleteTasksRequest) (domain.DeleteTasksResponse, error)
 	// ------ Calendar ---------
 	GetCalendarEvents(ctx context.Context, req domain.GetCalendarEventsRequest) (domain.GetCalendarEventsResponse, error)
 	// ------ Zones ---------
