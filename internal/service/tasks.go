@@ -311,18 +311,22 @@ func (s *service) UpdateTask(ctx context.Context, req domain.UpdateTaskRequest) 
 	userID := req.UserID
 	taskID := req.TaskID
 
-	task, err := s.taskRepo.GetTaskByID(taskID)
+	taskListID, err := s.taskRepo.GetTaskListIDForTask(taskID)
 	if err != nil {
 		return domain.UpdateTaskResponse{}, err
 	}
 
 	// Verify the task belongs to this user (via its task list)
-	if err := s.taskRepo.VerifyTaskListOwner(userID, task.TaskListID); err != nil {
+	if err := s.taskRepo.VerifyTaskListOwner(userID, taskListID); err != nil {
 		return domain.UpdateTaskResponse{}, fmt.Errorf("task not found: %w", err)
 	}
 
 	// DETECT MOVE: If TaskListID is present and different, trigger the Move logic
-	if req.TaskListID != nil && *req.TaskListID != task.TaskListID {
+	if req.TaskListID != nil && *req.TaskListID != taskListID {
+		task, err := s.taskRepo.GetTaskByID(taskID)
+		if err != nil {
+			return domain.UpdateTaskResponse{}, err
+		}
 		if err := s.moveTask(ctx, userID, task, *req.TaskListID, req); err != nil {
 			return domain.UpdateTaskResponse{}, err
 		}
@@ -386,7 +390,7 @@ func (s *service) UpdateTask(ctx context.Context, req domain.UpdateTaskRequest) 
 		}
 
 		// Capture the response to get the official 'Updated' timestamp
-		updatedGTask, err := srv.Tasks.Patch(task.TaskListID, taskID, googleTask).Do()
+		updatedGTask, err := srv.Tasks.Patch(taskListID, taskID, googleTask).Do()
 		if err != nil {
 			return domain.UpdateTaskResponse{}, fmt.Errorf("failed to sync to Google: %w", err)
 		}
@@ -406,14 +410,14 @@ func (s *service) DeleteTask(ctx context.Context, req domain.DeleteTaskRequest) 
 	userID := req.UserID
 	taskID := req.TaskID
 
-	// Get the task to find its taskListID
-	task, err := s.taskRepo.GetTaskByID(taskID)
+	// Get just the task list ID for authorization
+	taskListID, err := s.taskRepo.GetTaskListIDForTask(taskID)
 	if err != nil {
 		return domain.DeleteTaskResponse{}, fmt.Errorf("task not found: %w", err)
 	}
 
 	// Verify the task belongs to this user (via its task list)
-	if err := s.taskRepo.VerifyTaskListOwner(userID, task.TaskListID); err != nil {
+	if err := s.taskRepo.VerifyTaskListOwner(userID, taskListID); err != nil {
 		return domain.DeleteTaskResponse{}, fmt.Errorf("task not found: %w", err)
 	}
 
@@ -423,7 +427,7 @@ func (s *service) DeleteTask(ctx context.Context, req domain.DeleteTaskRequest) 
 		return domain.DeleteTaskResponse{}, fmt.Errorf("failed to get Google client: %w", err)
 	}
 
-	err = srv.Tasks.Delete(task.TaskListID, taskID).Do()
+	err = srv.Tasks.Delete(taskListID, taskID).Do()
 	if err != nil {
 		// Log but continue - task might already be deleted on Google's side
 		fmt.Printf("Warning: Could not delete from Google Tasks: %v\n", err)

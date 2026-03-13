@@ -18,6 +18,7 @@ type MockTaskRepository struct {
 	CreateTaskFunc                  func(domain.Task) error
 	GetTasksFunc                    func(taskListID string) ([]domain.Task, error)
 	GetTaskByIDFunc                 func(taskID string) (domain.Task, error)
+	GetTaskListIDForTaskFunc        func(taskID string) (string, error)
 	UpsertTasksFunc                 func([]domain.Task) error
 	UpdateTaskFunc                  func(taskID string, updates map[string]interface{}) error
 	DeleteTaskFunc                  func(taskID string) error
@@ -81,6 +82,13 @@ func (m *MockTaskRepository) GetTaskByID(taskID string) (domain.Task, error) {
 		return m.GetTaskByIDFunc(taskID)
 	}
 	return domain.Task{}, nil
+}
+
+func (m *MockTaskRepository) GetTaskListIDForTask(taskID string) (string, error) {
+	if m.GetTaskListIDForTaskFunc != nil {
+		return m.GetTaskListIDForTaskFunc(taskID)
+	}
+	return "", nil
 }
 
 func (m *MockTaskRepository) UpsertTasks(tasks []domain.Task) error {

@@ -23,6 +23,7 @@ type TaskRepository interface {
 	CreateTask(task domain.Task) error
 	GetTasks(taskListID string) ([]domain.Task, error)
 	GetTaskByID(taskID string) (domain.Task, error)
+	GetTaskListIDForTask(taskID string) (string, error)
 	UpsertTasks(tasks []domain.Task) error
 	UpdateTask(taskID string, updates map[string]interface{}) error
 	DeleteTask(taskID string) error
@@ -97,6 +98,15 @@ func (r *GormTaskRepository) GetTaskByID(taskID string) (domain.Task, error) {
 	var task domain.Task
 	err := r.Db.First(&task, "id = ?", taskID).Error
 	return task, err
+}
+
+func (r *GormTaskRepository) GetTaskListIDForTask(taskID string) (string, error) {
+	var taskListID string
+	err := r.Db.Model(&domain.Task{}).
+		Select("task_list_id").
+		Where("id = ?", taskID).
+		First(&taskListID).Error
+	return taskListID, err
 }
 
 func (r *GormTaskRepository) UpdateTask(taskID string, updates map[string]interface{}) error {
