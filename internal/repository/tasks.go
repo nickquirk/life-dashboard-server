@@ -62,9 +62,14 @@ func (r *GormTaskRepository) UpdateListLastSync(listID string, t time.Time) erro
 }
 
 func (r *GormTaskRepository) VerifyTaskListOwner(userID uint, taskListID string) error {
-	var list domain.TaskList
-	result := r.Db.Where("id = ? AND user_id = ?", taskListID, userID).First(&list)
-	return result.Error // gorm.ErrRecordNotFound when the list doesn't belong to this user
+	var id string
+	// only fetch the ID column
+	err := r.Db.Model(&domain.TaskList{}).
+		Select("id").
+		Where("id = ? AND user_id = ?", taskListID, userID).
+		First(&id).Error
+
+	return err
 }
 
 func (r *GormTaskRepository) UpsertTasks(tasks []domain.Task) error {
