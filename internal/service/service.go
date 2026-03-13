@@ -15,6 +15,7 @@ type Service interface {
 	// ------ User ---------
 	CreateUser(user domain.CreateUserRequest) (domain.CreateUserResponse, error)
 	GetUser(domain.GetUserRequest) (domain.GetUserResponse, error)
+	GetUserEmail(userID uint) (string, error)
 	UpdateAppRefreshToken(userID uint, hashedToken string) error
 	GetAppRefreshToken(userID uint) (string, error)
 	DeleteAccount(userID uint) error

@@ -12,6 +12,7 @@ type MockService struct {
 	PingFunc                func() error
 	CreateUserFunc          func(domain.CreateUserRequest) (domain.CreateUserResponse, error)
 	GetUserFunc             func(domain.GetUserRequest) (domain.GetUserResponse, error)
+	GetUserEmailFunc        func(userID uint) (string, error)
 	UpdateAppRefreshTokenFunc func(userID uint, hashedToken string) error
 	GetAppRefreshTokenFunc  func(userID uint) (string, error)
 	TriggerGlobalSyncFunc   func(ctx context.Context, projectID, location, queue, workerURL, serviceAccountEmail string) error
@@ -53,6 +54,13 @@ func (m *MockService) GetUser(req domain.GetUserRequest) (domain.GetUserResponse
 		return m.GetUserFunc(req)
 	}
 	return domain.GetUserResponse{}, nil
+}
+
+func (m *MockService) GetUserEmail(userID uint) (string, error) {
+	if m.GetUserEmailFunc != nil {
+		return m.GetUserEmailFunc(userID)
+	}
+	return "", nil
 }
 
 func (m *MockService) UpdateAppRefreshToken(userID uint, hashedToken string) error {

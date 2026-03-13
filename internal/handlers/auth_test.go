@@ -50,8 +50,8 @@ func TestRefreshToken_Success(t *testing.T) {
 		GetAppRefreshTokenFunc: func(userID uint) (string, error) {
 			return expectedHash, nil
 		},
-		GetUserFunc: func(req domain.GetUserRequest) (domain.GetUserResponse, error) {
-			return domain.GetUserResponse{Email: "user@example.com"}, nil
+		GetUserEmailFunc: func(userID uint) (string, error) {
+			return "user@example.com", nil
 		},
 		UpdateAppRefreshTokenFunc: func(userID uint, hash string) error {
 			return nil
@@ -135,8 +135,8 @@ func TestRefreshToken_UserNotFound(t *testing.T) {
 		GetAppRefreshTokenFunc: func(userID uint) (string, error) {
 			return expectedHash, nil
 		},
-		GetUserFunc: func(req domain.GetUserRequest) (domain.GetUserResponse, error) {
-			return domain.GetUserResponse{}, errors.New("not found")
+		GetUserEmailFunc: func(userID uint) (string, error) {
+			return "", errors.New("not found")
 		},
 	}
 

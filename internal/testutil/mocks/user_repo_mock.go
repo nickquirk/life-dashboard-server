@@ -6,6 +6,7 @@ import "github.com/nickquirk/life-dashboard-server/internal/domain"
 type MockUserRepository struct {
 	CreateFunc                    func(domain.CreateUserRequest) (domain.CreateUserResponse, error)
 	GetFunc                       func(domain.GetUserRequest) (domain.GetUserResponse, error)
+	GetEmailFunc                  func(userID uint) (string, error)
 	GetUsersWithRefreshTokensFunc func() ([]uint, error)
 	UpdateAppRefreshTokenFunc     func(userID uint, hashedToken string) error
 	GetAppRefreshTokenFunc        func(userID uint) (string, error)
@@ -24,6 +25,13 @@ func (m *MockUserRepository) Get(req domain.GetUserRequest) (domain.GetUserRespo
 		return m.GetFunc(req)
 	}
 	return domain.GetUserResponse{}, nil
+}
+
+func (m *MockUserRepository) GetEmail(userID uint) (string, error) {
+	if m.GetEmailFunc != nil {
+		return m.GetEmailFunc(userID)
+	}
+	return "", nil
 }
 
 func (m *MockUserRepository) GetUsersWithRefreshTokens() ([]uint, error) {

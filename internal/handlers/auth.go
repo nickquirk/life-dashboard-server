@@ -83,15 +83,15 @@ func (h *Handler) refreshToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get user info for new JWT claims
-	user, err := h.Service.GetUser(domain.GetUserRequest{ID: userID})
+	// Get user email for new JWT claims
+	email, err := h.Service.GetUserEmail(userID)
 	if err != nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	// Generate new JWT
-	newJWT, err := utils.GenerateToken(userID, user.Email)
+	newJWT, err := utils.GenerateToken(userID, email)
 	if err != nil {
 		slog.Error("failed to generate JWT during refresh", "error", err)
 		http.Error(w, "Token refresh failed", http.StatusInternalServerError)

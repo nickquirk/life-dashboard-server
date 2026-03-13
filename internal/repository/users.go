@@ -16,6 +16,7 @@ type GormUserRepository struct {
 type UserRepository interface {
 	Create(domain.CreateUserRequest) (domain.CreateUserResponse, error)
 	Get(domain.GetUserRequest) (domain.GetUserResponse, error)
+	GetEmail(userID uint) (string, error)
 	GetUsersWithRefreshTokens() ([]uint, error)
 	UpdateAppRefreshToken(userID uint, hashedToken string) error
 	GetAppRefreshToken(userID uint) (string, error)
@@ -112,6 +113,15 @@ func (r GormUserRepository) Get(g domain.GetUserRequest) (domain.GetUserResponse
 		RefreshToken: refreshToken,
 		TokenExpiry:  user.TokenExpiry,
 	}, nil
+}
+
+func (r GormUserRepository) GetEmail(userID uint) (string, error) {
+	var email string
+	err := r.Db.Model(&domain.User{}).Where("id = ?", userID).Pluck("email", &email).Error
+	if err != nil {
+		return "", err
+	}
+	return email, nil
 }
 
 func (r GormUserRepository) GetUsersWithRefreshTokens() ([]uint, error) {
