@@ -33,6 +33,14 @@ type MockService struct {
 	CreateFeedbackFunc func(req domain.CreateFeedbackRequest) (domain.CreateFeedbackResponse, error)
 	GetScratchpadFunc    func(req domain.GetScratchpadRequest) (domain.GetScratchpadResponse, error)
 	UpsertScratchpadFunc func(req domain.UpsertScratchpadRequest) (domain.UpsertScratchpadResponse, error)
+	CreateRoutineFunc          func(req domain.CreateRoutineRequest) (domain.CreateRoutineResponse, error)
+	GetRoutinesFunc            func(req domain.GetRoutineRequest) (domain.GetRoutineResponse, error)
+	UpdateRoutineFunc          func(req domain.UpdateRoutineRequest) (domain.UpdateRoutineResponse, error)
+	DeleteRoutineFunc          func(req domain.DeleteRoutineRequest) (domain.DeleteRoutineResponse, error)
+	CreateRoutineInstanceFunc  func(req domain.CreateRoutineInstanceRequest) (domain.CreateRoutineInstanceResponse, error)
+	GetRoutineInstancesFunc    func(req domain.GetRoutineInstancesRequest) (domain.GetRoutineInstancesResponse, error)
+	UpdateRoutineInstanceFunc  func(req domain.UpdateRoutineInstanceRequest) (domain.UpdateRoutineInstanceResponse, error)
+	DeleteRoutineInstanceFunc  func(req domain.DeleteRoutineInstanceRequest) (domain.DeleteRoutineInstanceResponse, error)
 }
 
 func (m *MockService) Ping() error {
@@ -201,5 +209,61 @@ func (m *MockService) UpsertScratchpad(req domain.UpsertScratchpadRequest) (doma
 		return m.UpsertScratchpadFunc(req)
 	}
 	return domain.UpsertScratchpadResponse{}, nil
+}
+
+func (m *MockService) CreateRoutine(req domain.CreateRoutineRequest) (domain.CreateRoutineResponse, error) {
+	if m.CreateRoutineFunc != nil {
+		return m.CreateRoutineFunc(req)
+	}
+	return domain.CreateRoutineResponse{}, nil
+}
+
+func (m *MockService) GetRoutines(req domain.GetRoutineRequest) (domain.GetRoutineResponse, error) {
+	if m.GetRoutinesFunc != nil {
+		return m.GetRoutinesFunc(req)
+	}
+	return domain.GetRoutineResponse{}, nil
+}
+
+func (m *MockService) UpdateRoutine(req domain.UpdateRoutineRequest) (domain.UpdateRoutineResponse, error) {
+	if m.UpdateRoutineFunc != nil {
+		return m.UpdateRoutineFunc(req)
+	}
+	return domain.UpdateRoutineResponse{}, nil
+}
+
+func (m *MockService) DeleteRoutine(req domain.DeleteRoutineRequest) (domain.DeleteRoutineResponse, error) {
+	if m.DeleteRoutineFunc != nil {
+		return m.DeleteRoutineFunc(req)
+	}
+	return domain.DeleteRoutineResponse{}, nil
+}
+
+func (m *MockService) CreateRoutineInstance(req domain.CreateRoutineInstanceRequest) (domain.CreateRoutineInstanceResponse, error) {
+	if m.CreateRoutineInstanceFunc != nil {
+		return m.CreateRoutineInstanceFunc(req)
+	}
+	return domain.CreateRoutineInstanceResponse{}, nil
+}
+
+func (m *MockService) GetRoutineInstances(req domain.GetRoutineInstancesRequest) (domain.GetRoutineInstancesResponse, error) {
+	if m.GetRoutineInstancesFunc != nil {
+		return m.GetRoutineInstancesFunc(req)
+	}
+	return domain.GetRoutineInstancesResponse{}, nil
+}
+
+func (m *MockService) UpdateRoutineInstance(req domain.UpdateRoutineInstanceRequest) (domain.UpdateRoutineInstanceResponse, error) {
+	if m.UpdateRoutineInstanceFunc != nil {
+		return m.UpdateRoutineInstanceFunc(req)
+	}
+	return domain.UpdateRoutineInstanceResponse{}, nil
+}
+
+func (m *MockService) DeleteRoutineInstance(req domain.DeleteRoutineInstanceRequest) (domain.DeleteRoutineInstanceResponse, error) {
+	if m.DeleteRoutineInstanceFunc != nil {
+		return m.DeleteRoutineInstanceFunc(req)
+	}
+	return domain.DeleteRoutineInstanceResponse{}, nil
 }
 

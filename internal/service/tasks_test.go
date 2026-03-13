@@ -12,7 +12,7 @@ import (
 )
 
 func newTaskService(taskRepo *mocks.MockTaskRepository) Service {
-	return NewServiceWithRepos(nil, taskRepo, nil, nil, nil, nil)
+	return NewServiceWithRepos(nil, taskRepo, nil, nil, nil, nil, nil)
 }
 
 // --- GetTaskLists ---
