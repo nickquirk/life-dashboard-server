@@ -53,8 +53,8 @@ substitutions:
   _DB_USER: 'app'                                                         
   _DB_NAME: 'life_dashboard'                                              
   _CR_SA: '835639357459-compute@developer.gserviceaccount.com'
-  _CLIENT_URL: 'https://YOUR-FRONTEND-URL.run.app'                        # ← update after first FE deploy
-  _REDIRECT_URL: 'https://YOUR-BACKEND-URL.run.app/api/auth/google/callback'  # ← update after first BE deploy
+  _CLIENT_URL: 'https://frontend-835639357459.europe-west2.run.app'                      
+  _REDIRECT_URL: 'https://backend-835639357459.europe-west2.run.app/api/auth/google-callback' 
   _CROSS_ORIGIN: 'true'
 
 images:
