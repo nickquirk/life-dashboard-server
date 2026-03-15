@@ -11,53 +11,21 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', '${_IMAGE}']
 
-  # ── Run database migrations (as a one-off Cloud Run job) ──
+  # ── Run database migrations ──
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
-        gcloud run jobs replace - <<EOF
-        apiVersion: run.googleapis.com/v1
-        kind: Job
-        metadata:
-          name: backend-migrate
-          labels:
-            cloud.googleapis.com/location: ${_REGION}
-        spec:
-          template:
-            spec:
-              template:
-                spec:
-                  containers:
-                    - image: ${_IMAGE}
-                      env:
-                        - name: MIGRATE_ONLY
-                          value: "true"
-                        - name: ENV
-                          value: "prod"
-                        - name: DB_CONNECTION
-                          value: "mysql"
-                        - name: DB_USER
-                          value: "${_DB_USER}"
-                        - name: DB_NAME
-                          value: "${_DB_NAME}"
-                        - name: DB_SOCKET
-                          value: "/cloudsql/${_CLOUD_SQL_CONNECTION}"
-                        - name: DB_PASS
-                          valueFrom:
-                            secretKeyRef:
-                              name: db-password
-                              key: latest
-                        - name: CONFIG_PATH
-                          value: "config.yaml"
-                  serviceAccountName: ${_CR_SA}
-              metadata:
-                annotations:
-                  run.googleapis.com/cloudsql-instances: ${_CLOUD_SQL_CONNECTION}
-        EOF
-        gcloud run jobs execute backend-migrate \
-          --region=${_REGION} --wait
+        gcloud run jobs deploy backend-migrate \
+          --image=${_IMAGE} \
+          --region=${_REGION} \
+          --set-env-vars="MIGRATE_ONLY=true,ENV=prod,DB_CONNECTION=mysql,DB_USER=${_DB_USER},DB_NAME=${_DB_NAME},DB_SOCKET=/cloudsql/${_CLOUD_SQL_CONNECTION},CONFIG_PATH=config.yaml" \
+          --set-secrets="DB_PASS=db-password:latest" \
+          --set-cloudsql-instances=${_CLOUD_SQL_CONNECTION} \
+          --service-account=${_CR_SA} \
+          --wait \
+          --execute-now
 
   # ── Deploy to Cloud Run ──
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -84,10 +52,9 @@ substitutions:
   _CLOUD_SQL_CONNECTION: 'life-dashboard-413916:europe-west2:life-dashboard-db' 
   _DB_USER: 'app'                                                         
   _DB_NAME: 'life_dashboard'                                              
-  _CR_SA: ''    # filled automatically or override
+  _CR_SA: '835639357459-compute@developer.gserviceaccount.com'
   _CLIENT_URL: 'https://YOUR-FRONTEND-URL.run.app'                        # ← update after first FE deploy
   _REDIRECT_URL: 'https://YOUR-BACKEND-URL.run.app/api/auth/google/callback'  # ← update after first BE deploy
-  _COOKIE_DOMAIN: ''
   _CROSS_ORIGIN: 'true'
 
 images:
