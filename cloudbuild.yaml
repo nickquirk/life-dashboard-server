@@ -20,8 +20,8 @@ steps:
         gcloud run jobs deploy backend-migrate \
           --image=${_IMAGE} \
           --region=${_REGION} \
-          --set-env-vars="MIGRATE_ONLY=true,ENV=prod,DB_CONNECTION=mysql,DB_USER=${_DB_USER},DB_NAME=${_DB_NAME},DB_SOCKET=/cloudsql/${_CLOUD_SQL_CONNECTION},CONFIG_PATH=config.yaml" \
-          --set-secrets="DB_PASS=db-password:latest" \
+          --set-env-vars="MIGRATE_ONLY=true,ENV=prod,DB_CONNECTION=mysql,DB_USER=${_DB_USER},DB_NAME=${_DB_NAME},DB_SOCKET=/cloudsql/${_CLOUD_SQL_CONNECTION}  \
+          --set-secrets="DB_PASS=db-password:latest,TOKEN_ENCRYPTION_KEY=token-encryption-key:latest"
           --set-cloudsql-instances=${_CLOUD_SQL_CONNECTION} \
           --service-account=${_CR_SA} \
           --wait \
