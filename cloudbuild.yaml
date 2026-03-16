@@ -54,8 +54,10 @@ substitutions:
   _DB_NAME: 'life_dashboard'                                              
   _CR_SA: '835639357459-compute@developer.gserviceaccount.com'
   _CLIENT_URL: 'https://frontend-835639357459.europe-west2.run.app'                      
-  _REDIRECT_URL: 'https://backend-835639357459.europe-west2.run.app/api/auth/google-callback' 
-  _CROSS_ORIGIN: 'true'
+  # _REDIRECT_URL: 'https://backend-835639357459.europe-west2.run.app/api/auth/google-callback' 
+  _REDIRECT_URL: 'https://frontend-835639357459.europe-west2.run.app/api/auth/google-callback' 
+  # _CROSS_ORIGIN: 'true'
+  _CROSS_ORIGIN: 'false'
 
 images:
   - '${_IMAGE}'
