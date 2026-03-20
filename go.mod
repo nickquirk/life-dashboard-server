@@ -3,7 +3,6 @@ module github.com/nickquirk/life-dashboard-server
 go 1.24.0
 
 require (
-	cloud.google.com/go/cloudtasks v1.13.7
 	cloud.google.com/go/secretmanager v1.16.0
 	github.com/go-chi/chi/v5 v5.2.4
 	github.com/go-chi/cors v1.2.2
@@ -64,7 +63,7 @@ require (
 	golang.org/x/sys v0.40.0 // indirect
 	golang.org/x/text v0.33.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260128011058-8636f8732409 // indirect
-	google.golang.org/grpc v1.78.0 // indirect
+	google.golang.org/grpc v1.79.3 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gorm.io/driver/mysql v1.6.0
 )
