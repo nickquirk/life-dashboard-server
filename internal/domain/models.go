@@ -50,7 +50,7 @@ type Task struct {
 
 type CalendarEvent struct {
 	ID           string    `gorm:"primaryKey;size:255" json:"id"` // Google's ID
-	UserID       uint      `gorm:"index;index:idx_ce_user_start,priority:1" json:"-"`
+	UserID       uint      `gorm:"index:idx_ce_user_start,priority:1" json:"-"`
 	Title        string    `json:"title"`
 	Start        time.Time `gorm:"index:idx_ce_user_start,priority:2" json:"start"`
 	End          time.Time `json:"end"`
@@ -105,7 +105,7 @@ type RoutineInstance struct {
 	UpdatedAt time.Time      `json:"updatedAt"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 
-	UserID       uint      `gorm:"index;index:idx_ri_user_date,priority:1;not null" json:"userId"`
+	UserID       uint      `gorm:"index:idx_ri_user_date,priority:1;not null" json:"userId"`
 	RoutineID    uint      `gorm:"index;not null" json:"routineId"`
 	Routine      Routine   `gorm:"foreignKey:RoutineID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"routine"` // Auto-fetches the template data
 	Date         time.Time `gorm:"index:idx_ri_user_date,priority:2;type:datetime" json:"date"`
