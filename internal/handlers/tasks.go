@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
-	"log/slog"
+	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -13,21 +13,19 @@ import (
 func (h *Handler) getTaskLists(w http.ResponseWriter, r *http.Request) {
 	userID, ok := h.GetUserID(r)
 	if !ok {
-		http.Error(w, "User not found", http.StatusUnauthorized)
+		h.respondWithError(w, "User not found", fmt.Errorf("user ID not in context"), http.StatusUnauthorized)
 		return
 	}
 
 	resp, err := h.Service.GetTaskLists(domain.GetTaskListsRequest{UserID: userID})
 	if err != nil {
-		slog.Error("failed to fetch task lists", "error", err, "userID", userID)
-		http.Error(w, "Failed to fetch lists", http.StatusInternalServerError)
+		h.respondWithError(w, "Failed to fetch lists", err, http.StatusInternalServerError, "userID", userID)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		slog.Error("failed to encode task lists response", "error", err)
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		h.respondWithError(w, "Failed to encode response", err, http.StatusInternalServerError)
 		return
 	}
 }
@@ -37,14 +35,13 @@ func (h *Handler) syncTaskLists(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	userID, ok := h.GetUserID(r)
 	if !ok {
-		http.Error(w, "User not found", http.StatusUnauthorized)
+		h.respondWithError(w, "User not found", fmt.Errorf("user ID not in context"), http.StatusUnauthorized)
 		return
 	}
 
 	resp, err := h.Service.SyncTaskLists(ctx, domain.SyncTaskListsRequest{UserID: userID})
 	if err != nil {
-		slog.Error("failed to sync task lists", "error", err, "userID", userID)
-		http.Error(w, "Failed to sync task lists", http.StatusInternalServerError)
+		h.respondWithError(w, "Failed to sync task lists", err, http.StatusInternalServerError, "userID", userID)
 		return
 	}
 
@@ -57,7 +54,7 @@ func (h *Handler) createTask(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	userID, ok := h.GetUserID(r)
 	if !ok {
-		http.Error(w, "User not found", http.StatusUnauthorized)
+		h.respondWithError(w, "User not found", fmt.Errorf("user ID not in context"), http.StatusUnauthorized)
 		return
 	}
 
@@ -65,8 +62,7 @@ func (h *Handler) createTask(w http.ResponseWriter, r *http.Request) {
 
 	var req domain.CreateTaskRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		slog.Warn("invalid create task request body", "error", err, "userID", userID)
-		http.Error(w, "Invalid body", http.StatusBadRequest)
+		h.respondWithError(w, "Invalid body", err, http.StatusBadRequest, "userID", userID)
 		return
 	}
 	req.UserID = userID
@@ -74,8 +70,7 @@ func (h *Handler) createTask(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.Service.CreateTask(ctx, req)
 	if err != nil {
-		slog.Error("failed to create task", "error", err, "userID", userID, "taskListID", taskListID)
-		http.Error(w, "Failed to create task", http.StatusInternalServerError)
+		h.respondWithError(w, "Failed to create task", err, http.StatusInternalServerError, "userID", userID, "taskListID", taskListID)
 		return
 	}
 
@@ -88,7 +83,7 @@ func (h *Handler) getTasksInList(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	userID, ok := h.GetUserID(r)
 	if !ok {
-		http.Error(w, "User not found", http.StatusUnauthorized)
+		h.respondWithError(w, "User not found", fmt.Errorf("user ID not in context"), http.StatusUnauthorized)
 		return
 	}
 
@@ -96,8 +91,7 @@ func (h *Handler) getTasksInList(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.Service.GetTasks(ctx, domain.GetTasksRequest{UserID: userID, TaskListID: taskListID})
 	if err != nil {
-		slog.Error("failed to fetch tasks", "error", err, "userID", userID, "taskListID", taskListID)
-		http.Error(w, "Failed to fetch tasks", http.StatusInternalServerError)
+		h.respondWithError(w, "Failed to fetch tasks", err, http.StatusInternalServerError, "userID", userID, "taskListID", taskListID)
 		return
 	}
 
@@ -112,14 +106,13 @@ func (h *Handler) syncTasksInList(w http.ResponseWriter, r *http.Request) {
 
 	userID, ok := h.GetUserID(r)
 	if !ok {
-		http.Error(w, "User not found", http.StatusUnauthorized)
+		h.respondWithError(w, "User not found", fmt.Errorf("user ID not in context"), http.StatusUnauthorized)
 		return
 	}
 
 	resp, err := h.Service.SyncTasks(ctx, domain.SyncTasksRequest{UserID: userID, TaskListID: taskListID})
 	if err != nil {
-		slog.Error("failed to sync tasks", "error", err, "userID", userID, "taskListID", taskListID)
-		http.Error(w, "Failed to sync tasks", http.StatusInternalServerError)
+		h.respondWithError(w, "Failed to sync tasks", err, http.StatusInternalServerError, "userID", userID, "taskListID", taskListID)
 		return
 	}
 
@@ -133,14 +126,13 @@ func (h *Handler) updateTask(w http.ResponseWriter, r *http.Request) {
 
 	userID, ok := h.GetUserID(r)
 	if !ok {
-		http.Error(w, "User not found in context", http.StatusUnauthorized)
+		h.respondWithError(w, "User not found in context", fmt.Errorf("user ID not in context"), http.StatusUnauthorized)
 		return
 	}
 
 	var req domain.UpdateTaskRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		slog.Warn("invalid update task request body", "error", err, "userID", userID, "taskID", taskID)
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		h.respondWithError(w, "Invalid request body", err, http.StatusBadRequest, "userID", userID, "taskID", taskID)
 		return
 	}
 	req.UserID = userID
@@ -148,8 +140,7 @@ func (h *Handler) updateTask(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.Service.UpdateTask(ctx, req)
 	if err != nil {
-		slog.Error("failed to update task", "error", err, "userID", userID, "taskID", taskID)
-		http.Error(w, "Failed to update task", http.StatusInternalServerError)
+		h.respondWithError(w, "Failed to update task", err, http.StatusInternalServerError, "userID", userID, "taskID", taskID)
 		return
 	}
 
@@ -163,22 +154,20 @@ func (h *Handler) deleteTasks(w http.ResponseWriter, r *http.Request) {
 
 	userID, ok := h.GetUserID(r)
 	if !ok {
-		http.Error(w, "User not found in context", http.StatusUnauthorized)
+		h.respondWithError(w, "User not found in context", fmt.Errorf("user ID not in context"), http.StatusUnauthorized)
 		return
 	}
 
 	var req domain.DeleteTasksRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		slog.Warn("invalid delete tasks request body", "error", err, "userID", userID)
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		h.respondWithError(w, "Invalid request body", err, http.StatusBadRequest, "userID", userID)
 		return
 	}
 	req.UserID = userID
 
 	resp, err := h.Service.DeleteTasks(ctx, req)
 	if err != nil {
-		slog.Error("failed to delete tasks", "error", err, "userID", userID)
-		http.Error(w, "Failed to delete tasks", http.StatusInternalServerError)
+		h.respondWithError(w, "Failed to delete tasks", err, http.StatusInternalServerError, "userID", userID)
 		return
 	}
 
@@ -193,14 +182,13 @@ func (h *Handler) deleteTask(w http.ResponseWriter, r *http.Request) {
 
 	userID, ok := h.GetUserID(r)
 	if !ok {
-		http.Error(w, "User not found in context", http.StatusUnauthorized)
+		h.respondWithError(w, "User not found in context", fmt.Errorf("user ID not in context"), http.StatusUnauthorized)
 		return
 	}
 
 	resp, err := h.Service.DeleteTask(ctx, domain.DeleteTaskRequest{UserID: userID, TaskID: taskID})
 	if err != nil {
-		slog.Error("failed to delete task", "error", err, "userID", userID, "taskID", taskID)
-		http.Error(w, "Failed to delete task", http.StatusInternalServerError)
+		h.respondWithError(w, "Failed to delete task", err, http.StatusInternalServerError, "userID", userID, "taskID", taskID)
 		return
 	}
 

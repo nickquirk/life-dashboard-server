@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -13,19 +14,19 @@ import (
 func (h *Handler) getScratchpad(w http.ResponseWriter, r *http.Request) {
 	userID, ok := h.GetUserID(r)
 	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		h.respondWithError(w, "Unauthorized", fmt.Errorf("user ID not in context"), http.StatusUnauthorized)
 		return
 	}
 
 	date := r.URL.Query().Get("date") // Expects ?date=YYYY-MM-DD
 	if date == "" {
-		http.Error(w, "Missing date parameter", http.StatusBadRequest)
+		h.respondWithError(w, "Missing date parameter", fmt.Errorf("missing date query parameter"), http.StatusBadRequest, "userID", userID)
 		return
 	}
 
 	// Validate date format exactly matches YYYY-MM-DD
 	if _, err := time.Parse(time.DateOnly, date); err != nil {
-		http.Error(w, "Invalid date format, expected YYYY-MM-DD", http.StatusBadRequest)
+		h.respondWithError(w, "Invalid date format, expected YYYY-MM-DD", err, http.StatusBadRequest, "userID", userID)
 		return
 	}
 
@@ -42,7 +43,7 @@ func (h *Handler) getScratchpad(w http.ResponseWriter, r *http.Request) {
 			json.NewEncoder(w).Encode(domain.GetScratchpadResponse{Content: ""})
 			return
 		}
-		http.Error(w, "Failed to fetch scratchpad", http.StatusInternalServerError)
+		h.respondWithError(w, "Failed to fetch scratchpad", err, http.StatusInternalServerError, "userID", userID)
 		return
 	}
 
@@ -53,19 +54,19 @@ func (h *Handler) getScratchpad(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) upsertScratchpad(w http.ResponseWriter, r *http.Request) {
 	userID, ok := h.GetUserID(r)
 	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		h.respondWithError(w, "Unauthorized", fmt.Errorf("user ID not in context"), http.StatusUnauthorized)
 		return
 	}
 
 	var req domain.UpsertScratchpadRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		h.respondWithError(w, "Invalid request body", err, http.StatusBadRequest, "userID", userID)
 		return
 	}
 
 	// Validate date format exactly matches YYYY-MM-DD
 	if _, err := time.Parse(time.DateOnly, req.Date); err != nil {
-		http.Error(w, "Invalid date format, expected YYYY-MM-DD", http.StatusBadRequest)
+		h.respondWithError(w, "Invalid date format, expected YYYY-MM-DD", err, http.StatusBadRequest, "userID", userID)
 		return
 	}
 
@@ -74,7 +75,7 @@ func (h *Handler) upsertScratchpad(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.Service.UpsertScratchpad(req)
 	if err != nil {
-		http.Error(w, "Failed to save scratchpad", http.StatusInternalServerError)
+		h.respondWithError(w, "Failed to save scratchpad", err, http.StatusInternalServerError, "userID", userID)
 		return
 	}
 

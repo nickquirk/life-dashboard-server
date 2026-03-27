@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -20,7 +21,7 @@ func (h *Handler) GetUserHTTP(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		http.Error(w, "Invalid user ID", http.StatusBadRequest)
+		h.respondWithError(w, "Invalid user ID", err, http.StatusBadRequest)
 		return
 	}
 
@@ -28,7 +29,7 @@ func (h *Handler) GetUserHTTP(w http.ResponseWriter, r *http.Request) {
 	req := domain.GetUserRequest{ID: uint(id)}
 	resp, err := h.Service.GetUser(req)
 	if err != nil {
-		http.Error(w, "User not found", http.StatusNotFound)
+		h.respondWithError(w, "User not found", err, http.StatusNotFound)
 		return
 	}
 
@@ -44,7 +45,7 @@ func (h *Handler) getCurrentUser(w http.ResponseWriter, r *http.Request) {
 	// Get UserID from context (set by Authenticate middleware)
 	userID, ok := h.GetUserID(r)
 	if !ok {
-		http.Error(w, "User not found", http.StatusUnauthorized)
+		h.respondWithError(w, "User not found", fmt.Errorf("user ID not in context"), http.StatusUnauthorized)
 		return
 	}
 
@@ -52,7 +53,7 @@ func (h *Handler) getCurrentUser(w http.ResponseWriter, r *http.Request) {
 	req := domain.GetUserRequest{ID: userID}
 	resp, err := h.Service.GetUser(req)
 	if err != nil {
-		http.Error(w, "Failed to fetch user profile", http.StatusInternalServerError)
+		h.respondWithError(w, "Failed to fetch user profile", err, http.StatusInternalServerError, "userID", userID)
 		return
 	}
 
@@ -67,7 +68,7 @@ func (h *Handler) getCurrentUser(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) getCurrentUserID(w http.ResponseWriter, r *http.Request) {
 	userID, ok := h.GetUserID(r)
 	if !ok {
-		http.Error(w, "User not found", http.StatusUnauthorized)
+		h.respondWithError(w, "User not found", fmt.Errorf("user ID not in context"), http.StatusUnauthorized)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -79,12 +80,12 @@ func (h *Handler) getCurrentUserID(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) deleteAccount(w http.ResponseWriter, r *http.Request) {
 	userID, ok := h.GetUserID(r)
 	if !ok {
-		http.Error(w, "User not found in context", http.StatusUnauthorized)
+		h.respondWithError(w, "User not found in context", fmt.Errorf("user ID not in context"), http.StatusUnauthorized)
 		return
 	}
 
 	if err := h.Service.DeleteAccount(userID); err != nil {
-		http.Error(w, "Failed to delete account", http.StatusInternalServerError)
+		h.respondWithError(w, "Failed to delete account", err, http.StatusInternalServerError, "userID", userID)
 		return
 	}
 

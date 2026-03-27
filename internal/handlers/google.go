@@ -5,8 +5,8 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"os"
 
@@ -40,21 +40,18 @@ func (h *Handler) googleLogin(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 	oauthStateCookie, err := r.Cookie("oauthstate")
 	if err != nil {
-		http.Error(w, "OAuth state cookie missing", http.StatusBadRequest)
-		slog.Error("oauth state cookie missing", "error", err)
+		h.respondWithError(w, "OAuth state cookie missing", err, http.StatusBadRequest)
 		return
 	}
 
 	state := r.URL.Query().Get("state")
 	if state == "" {
-		http.Error(w, "State param not set or empty", http.StatusUnauthorized)
-		slog.Error("state param not set or empty", "error", err)
+		h.respondWithError(w, "State param not set or empty", fmt.Errorf("missing state query parameter"), http.StatusUnauthorized)
 		return
 	}
 
 	if state != oauthStateCookie.Value {
-		http.Error(w, "Google Auth states do not match", http.StatusUnauthorized)
-		slog.Warn("oauth state mismatch, potential CSRF")
+		h.respondWithError(w, "Google Auth states do not match", fmt.Errorf("oauth state mismatch, potential CSRF"), http.StatusUnauthorized)
 		return
 	}
 
@@ -63,8 +60,7 @@ func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 
 	code := r.URL.Query().Get("code")
 	if code == "" {
-		http.Error(w, "Missing authorization code", http.StatusBadRequest)
-		slog.Error("missing authorization code", "error", err)
+		h.respondWithError(w, "Missing authorization code", fmt.Errorf("missing authorization code query parameter"), http.StatusBadRequest)
 		return
 	}
 	googleConfig := config.GetGoogleConfig()
@@ -72,15 +68,13 @@ func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 
 	token, err := googleConfig.Exchange(ctx, code)
 	if err != nil {
-		http.Error(w, "Code-Token exchange failed", http.StatusInternalServerError)
-		slog.Error("code-token exchange failed", "error", err)
+		h.respondWithError(w, "Code-Token exchange failed", err, http.StatusInternalServerError)
 		return
 	}
 
 	resp, err := http.Get("https://www.googleapis.com/oauth2/v2/userinfo?access_token=" + token.AccessToken)
 	if err != nil {
-		http.Error(w, "User data fetch failed", http.StatusInternalServerError)
-		slog.Error("user data fetch failed", "error", err)
+		h.respondWithError(w, "User data fetch failed", err, http.StatusInternalServerError)
 		return
 	}
 
@@ -88,15 +82,13 @@ func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		http.Error(w, "Failed to fetch user info from Google", http.StatusInternalServerError)
-		slog.Error("failed to fetch user info from Google", "error", err)
+		h.respondWithError(w, "Failed to fetch user info from Google", fmt.Errorf("google userinfo returned status %d", resp.StatusCode), http.StatusInternalServerError)
 		return
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		http.Error(w, "Failed to parse Google response body", http.StatusInternalServerError)
-		slog.Error("failed to parse google response body", "error", err)
+		h.respondWithError(w, "Failed to parse Google response body", err, http.StatusInternalServerError)
 		return
 	}
 
@@ -109,38 +101,33 @@ func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 
 	err = json.Unmarshal(body, &userData)
 	if err != nil {
-		http.Error(w, "Failed to unmarshal user data", http.StatusInternalServerError)
-		slog.Error("failed to unmarshal user data", "error", err)
+		h.respondWithError(w, "Failed to unmarshal user data", err, http.StatusInternalServerError)
 		return
 	}
 
 	// Save user to DB
 	user, err := h.Service.CreateUser(userData)
 	if err != nil {
-		slog.Error("failed to save user to database", "error", err)
-		http.Error(w, "Failed to save user", http.StatusInternalServerError)
+		h.respondWithError(w, "Failed to save user", err, http.StatusInternalServerError)
 		return
 	}
 
 	// save id and email in JWT
 	tok, err := utils.GenerateToken(user.ID, userData.Email)
 	if err != nil {
-		slog.Error("failed to generate JWT", "error", err)
-		http.Error(w, "Authentication failed", http.StatusInternalServerError)
+		h.respondWithError(w, "Authentication failed", err, http.StatusInternalServerError)
 		return
 	}
 
 	// Generate app-level refresh token
 	rawRefreshToken, err := utils.GenerateRefreshToken()
 	if err != nil {
-		slog.Error("failed to generate refresh token", "error", err)
-		http.Error(w, "Authentication failed", http.StatusInternalServerError)
+		h.respondWithError(w, "Authentication failed", err, http.StatusInternalServerError)
 		return
 	}
 	hashedRefreshToken := utils.HashRefreshToken(rawRefreshToken)
 	if err := h.Service.UpdateAppRefreshToken(user.ID, hashedRefreshToken); err != nil {
-		slog.Error("failed to store refresh token", "error", err)
-		http.Error(w, "Authentication failed", http.StatusInternalServerError)
+		h.respondWithError(w, "Authentication failed", err, http.StatusInternalServerError)
 		return
 	}
 

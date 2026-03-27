@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -14,14 +15,14 @@ import (
 func (h *Handler) createZone(w http.ResponseWriter, r *http.Request) {
 	userID, ok := h.GetUserID(r)
 	if !ok {
-		http.Error(w, "User not found", http.StatusUnauthorized)
+		h.respondWithError(w, "User not found", fmt.Errorf("user ID not in context"), http.StatusUnauthorized)
 		return
 	}
 
 	var req domain.CreateZoneRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		h.respondWithError(w, "Invalid request body", err, http.StatusBadRequest, "userID", userID)
 		return
 	}
 
@@ -29,7 +30,7 @@ func (h *Handler) createZone(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.Service.CreateZone(req)
 	if err != nil {
-		http.Error(w, "Failed to create zone", http.StatusInternalServerError)
+		h.respondWithError(w, "Failed to create zone", err, http.StatusInternalServerError, "userID", userID)
 		return
 	}
 
@@ -40,7 +41,7 @@ func (h *Handler) createZone(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) getZones(w http.ResponseWriter, r *http.Request) {
 	userID, ok := h.GetUserID(r)
 	if !ok {
-		http.Error(w, "User not found", http.StatusUnauthorized)
+		h.respondWithError(w, "User not found", fmt.Errorf("user ID not in context"), http.StatusUnauthorized)
 		return
 	}
 
@@ -50,7 +51,7 @@ func (h *Handler) getZones(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.Service.GetZones(req)
 	if err != nil {
-		http.Error(w, "Failed to fetch zones", http.StatusInternalServerError)
+		h.respondWithError(w, "Failed to fetch zones", err, http.StatusInternalServerError, "userID", userID)
 		return
 	}
 
@@ -61,7 +62,7 @@ func (h *Handler) getZones(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) updateZone(w http.ResponseWriter, r *http.Request) {
 	userID, ok := h.GetUserID(r)
 	if !ok {
-		http.Error(w, "User not found", http.StatusUnauthorized)
+		h.respondWithError(w, "User not found", fmt.Errorf("user ID not in context"), http.StatusUnauthorized)
 		return
 	}
 
@@ -70,7 +71,7 @@ func (h *Handler) updateZone(w http.ResponseWriter, r *http.Request) {
 	// Parse string to uint64, then cast to uint
 	parsedID, err := strconv.ParseUint(zoneIDStr, 10, 32)
 	if err != nil {
-		http.Error(w, "Invalid zone ID format", http.StatusBadRequest)
+		h.respondWithError(w, "Invalid zone ID format", err, http.StatusBadRequest, "userID", userID)
 		return
 	}
 	zoneID := uint(parsedID)
@@ -78,7 +79,7 @@ func (h *Handler) updateZone(w http.ResponseWriter, r *http.Request) {
 	var req domain.UpdateZoneRequest
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		h.respondWithError(w, "Invalid request body", err, http.StatusBadRequest, "userID", userID)
 		return
 	}
 
@@ -87,7 +88,7 @@ func (h *Handler) updateZone(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.Service.UpdateZone(req)
 	if err != nil {
-		http.Error(w, "Failed to update zone", http.StatusInternalServerError)
+		h.respondWithError(w, "Failed to update zone", err, http.StatusInternalServerError, "userID", userID, "zoneID", zoneID)
 		return
 	}
 
@@ -98,7 +99,7 @@ func (h *Handler) updateZone(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) deleteZone(w http.ResponseWriter, r *http.Request) {
 	userID, ok := h.GetUserID(r)
 	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		h.respondWithError(w, "Unauthorized", fmt.Errorf("user ID not in context"), http.StatusUnauthorized)
 		return
 	}
 
@@ -106,7 +107,7 @@ func (h *Handler) deleteZone(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	zoneID, err := strconv.Atoi(idStr)
 	if err != nil {
-		http.Error(w, "Invalid zone ID", http.StatusBadRequest)
+		h.respondWithError(w, "Invalid zone ID", err, http.StatusBadRequest, "userID", userID)
 		return
 	}
 
@@ -118,14 +119,13 @@ func (h *Handler) deleteZone(w http.ResponseWriter, r *http.Request) {
 	resp, err := h.Service.DeleteZone(req)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			http.Error(w, "Zone not found", http.StatusNotFound)
+			h.respondWithError(w, "Zone not found", err, http.StatusNotFound, "userID", userID, "zoneID", zoneID)
 			return
 		}
-		http.Error(w, "Failed to delete zone", http.StatusInternalServerError)
+		h.respondWithError(w, "Failed to delete zone", err, http.StatusInternalServerError, "userID", userID, "zoneID", zoneID)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
-
 }

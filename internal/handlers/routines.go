@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -17,14 +18,14 @@ import (
 func (h *Handler) createRoutine(w http.ResponseWriter, r *http.Request) {
 	userID, ok := h.GetUserID(r)
 	if !ok {
-		http.Error(w, "User not found", http.StatusUnauthorized)
+		h.respondWithError(w, "User not found", fmt.Errorf("user ID not in context"), http.StatusUnauthorized)
 		return
 	}
 
 	var req domain.CreateRoutineRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		h.respondWithError(w, "Invalid request body", err, http.StatusBadRequest, "userID", userID)
 		return
 	}
 
@@ -32,7 +33,7 @@ func (h *Handler) createRoutine(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.Service.CreateRoutine(req)
 	if err != nil {
-		http.Error(w, "Failed to create routine", http.StatusInternalServerError)
+		h.respondWithError(w, "Failed to create routine", err, http.StatusInternalServerError, "userID", userID)
 		return
 	}
 
@@ -43,7 +44,7 @@ func (h *Handler) createRoutine(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) getRoutines(w http.ResponseWriter, r *http.Request) {
 	userID, ok := h.GetUserID(r)
 	if !ok {
-		http.Error(w, "User not found", http.StatusUnauthorized)
+		h.respondWithError(w, "User not found", fmt.Errorf("user ID not in context"), http.StatusUnauthorized)
 		return
 	}
 
@@ -53,7 +54,7 @@ func (h *Handler) getRoutines(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.Service.GetRoutines(req)
 	if err != nil {
-		http.Error(w, "Failed to fetch routines", http.StatusInternalServerError)
+		h.respondWithError(w, "Failed to fetch routines", err, http.StatusInternalServerError, "userID", userID)
 		return
 	}
 
@@ -64,14 +65,14 @@ func (h *Handler) getRoutines(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) updateRoutine(w http.ResponseWriter, r *http.Request) {
 	userID, ok := h.GetUserID(r)
 	if !ok {
-		http.Error(w, "User not found", http.StatusUnauthorized)
+		h.respondWithError(w, "User not found", fmt.Errorf("user ID not in context"), http.StatusUnauthorized)
 		return
 	}
 
 	idStr := chi.URLParam(r, "id")
 	parsedID, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		http.Error(w, "Invalid routine ID format", http.StatusBadRequest)
+		h.respondWithError(w, "Invalid routine ID format", err, http.StatusBadRequest, "userID", userID)
 		return
 	}
 	routineID := uint(parsedID)
@@ -79,7 +80,7 @@ func (h *Handler) updateRoutine(w http.ResponseWriter, r *http.Request) {
 	var req domain.UpdateRoutineRequest
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		h.respondWithError(w, "Invalid request body", err, http.StatusBadRequest, "userID", userID)
 		return
 	}
 
@@ -88,7 +89,7 @@ func (h *Handler) updateRoutine(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.Service.UpdateRoutine(req)
 	if err != nil {
-		http.Error(w, "Failed to update routine", http.StatusInternalServerError)
+		h.respondWithError(w, "Failed to update routine", err, http.StatusInternalServerError, "userID", userID, "routineID", routineID)
 		return
 	}
 
@@ -99,14 +100,14 @@ func (h *Handler) updateRoutine(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) deleteRoutine(w http.ResponseWriter, r *http.Request) {
 	userID, ok := h.GetUserID(r)
 	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		h.respondWithError(w, "Unauthorized", fmt.Errorf("user ID not in context"), http.StatusUnauthorized)
 		return
 	}
 
 	idStr := chi.URLParam(r, "id")
 	routineID, err := strconv.Atoi(idStr)
 	if err != nil {
-		http.Error(w, "Invalid routine ID", http.StatusBadRequest)
+		h.respondWithError(w, "Invalid routine ID", err, http.StatusBadRequest, "userID", userID)
 		return
 	}
 
@@ -118,10 +119,10 @@ func (h *Handler) deleteRoutine(w http.ResponseWriter, r *http.Request) {
 	resp, err := h.Service.DeleteRoutine(req)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			http.Error(w, "Routine not found", http.StatusNotFound)
+			h.respondWithError(w, "Routine not found", err, http.StatusNotFound, "userID", userID, "routineID", routineID)
 			return
 		}
-		http.Error(w, "Failed to delete routine", http.StatusInternalServerError)
+		h.respondWithError(w, "Failed to delete routine", err, http.StatusInternalServerError, "userID", userID, "routineID", routineID)
 		return
 	}
 
@@ -134,14 +135,14 @@ func (h *Handler) deleteRoutine(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) createRoutineInstance(w http.ResponseWriter, r *http.Request) {
 	userID, ok := h.GetUserID(r)
 	if !ok {
-		http.Error(w, "User not found", http.StatusUnauthorized)
+		h.respondWithError(w, "User not found", fmt.Errorf("user ID not in context"), http.StatusUnauthorized)
 		return
 	}
 
 	var req domain.CreateRoutineInstanceRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		h.respondWithError(w, "Invalid request body", err, http.StatusBadRequest, "userID", userID)
 		return
 	}
 
@@ -149,7 +150,7 @@ func (h *Handler) createRoutineInstance(w http.ResponseWriter, r *http.Request) 
 
 	resp, err := h.Service.CreateRoutineInstance(req)
 	if err != nil {
-		http.Error(w, "Failed to create routine instance", http.StatusInternalServerError)
+		h.respondWithError(w, "Failed to create routine instance", err, http.StatusInternalServerError, "userID", userID)
 		return
 	}
 
@@ -160,7 +161,7 @@ func (h *Handler) createRoutineInstance(w http.ResponseWriter, r *http.Request) 
 func (h *Handler) getRoutineInstances(w http.ResponseWriter, r *http.Request) {
 	userID, ok := h.GetUserID(r)
 	if !ok {
-		http.Error(w, "User not found", http.StatusUnauthorized)
+		h.respondWithError(w, "User not found", fmt.Errorf("user ID not in context"), http.StatusUnauthorized)
 		return
 	}
 
@@ -169,20 +170,20 @@ func (h *Handler) getRoutineInstances(w http.ResponseWriter, r *http.Request) {
 	endStr := r.URL.Query().Get("end")
 
 	if startStr == "" || endStr == "" {
-		http.Error(w, "Missing start or end query parameters", http.StatusBadRequest)
+		h.respondWithError(w, "Missing start or end query parameters", fmt.Errorf("missing start or end query parameter"), http.StatusBadRequest, "userID", userID)
 		return
 	}
 
 	// Parse into time.Time
 	start, err := time.Parse(time.RFC3339, startStr)
 	if err != nil {
-		http.Error(w, "Invalid start format, expected RFC3339", http.StatusBadRequest)
+		h.respondWithError(w, "Invalid start format, expected RFC3339", err, http.StatusBadRequest, "userID", userID)
 		return
 	}
 
 	end, err := time.Parse(time.RFC3339, endStr)
 	if err != nil {
-		http.Error(w, "Invalid end format, expected RFC3339", http.StatusBadRequest)
+		h.respondWithError(w, "Invalid end format, expected RFC3339", err, http.StatusBadRequest, "userID", userID)
 		return
 	}
 
@@ -196,7 +197,7 @@ func (h *Handler) getRoutineInstances(w http.ResponseWriter, r *http.Request) {
 	// Fetch from service
 	resp, err := h.Service.GetRoutineInstances(req)
 	if err != nil {
-		http.Error(w, "Failed to fetch routine instances", http.StatusInternalServerError)
+		h.respondWithError(w, "Failed to fetch routine instances", err, http.StatusInternalServerError, "userID", userID)
 		return
 	}
 
@@ -207,14 +208,14 @@ func (h *Handler) getRoutineInstances(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) updateRoutineInstance(w http.ResponseWriter, r *http.Request) {
 	userID, ok := h.GetUserID(r)
 	if !ok {
-		http.Error(w, "User not found", http.StatusUnauthorized)
+		h.respondWithError(w, "User not found", fmt.Errorf("user ID not in context"), http.StatusUnauthorized)
 		return
 	}
 
 	idStr := chi.URLParam(r, "id")
 	parsedID, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		http.Error(w, "Invalid instance ID format", http.StatusBadRequest)
+		h.respondWithError(w, "Invalid instance ID format", err, http.StatusBadRequest, "userID", userID)
 		return
 	}
 	instanceID := uint(parsedID)
@@ -222,7 +223,7 @@ func (h *Handler) updateRoutineInstance(w http.ResponseWriter, r *http.Request) 
 	var req domain.UpdateRoutineInstanceRequest
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		h.respondWithError(w, "Invalid request body", err, http.StatusBadRequest, "userID", userID)
 		return
 	}
 
@@ -231,7 +232,7 @@ func (h *Handler) updateRoutineInstance(w http.ResponseWriter, r *http.Request) 
 
 	resp, err := h.Service.UpdateRoutineInstance(req)
 	if err != nil {
-		http.Error(w, "Failed to update routine instance", http.StatusInternalServerError)
+		h.respondWithError(w, "Failed to update routine instance", err, http.StatusInternalServerError, "userID", userID, "instanceID", instanceID)
 		return
 	}
 
@@ -242,14 +243,14 @@ func (h *Handler) updateRoutineInstance(w http.ResponseWriter, r *http.Request) 
 func (h *Handler) deleteRoutineInstance(w http.ResponseWriter, r *http.Request) {
 	userID, ok := h.GetUserID(r)
 	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		h.respondWithError(w, "Unauthorized", fmt.Errorf("user ID not in context"), http.StatusUnauthorized)
 		return
 	}
 
 	idStr := chi.URLParam(r, "id")
 	instanceID, err := strconv.Atoi(idStr)
 	if err != nil {
-		http.Error(w, "Invalid instance ID", http.StatusBadRequest)
+		h.respondWithError(w, "Invalid instance ID", err, http.StatusBadRequest, "userID", userID)
 		return
 	}
 
@@ -261,10 +262,10 @@ func (h *Handler) deleteRoutineInstance(w http.ResponseWriter, r *http.Request) 
 	resp, err := h.Service.DeleteRoutineInstance(req)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			http.Error(w, "Routine instance not found", http.StatusNotFound)
+			h.respondWithError(w, "Routine instance not found", err, http.StatusNotFound, "userID", userID, "instanceID", instanceID)
 			return
 		}
-		http.Error(w, "Failed to delete routine instance", http.StatusInternalServerError)
+		h.respondWithError(w, "Failed to delete routine instance", err, http.StatusInternalServerError, "userID", userID, "instanceID", instanceID)
 		return
 	}
 

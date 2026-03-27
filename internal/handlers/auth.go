@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/subtle"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -56,23 +57,20 @@ func (h *Handler) refreshToken(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from the expired JWT
 	jwtCookie, err := r.Cookie("life-dashboard")
 	if err != nil {
-		slog.Warn("refresh token: session cookie missing", "error", err)
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		h.respondWithError(w, "Unauthorized", err, http.StatusUnauthorized)
 		return
 	}
 
 	userID, err := utils.GetUserIdFromExpiredToken(jwtCookie.Value)
 	if err != nil {
-		slog.Warn("refresh token: invalid expired JWT", "error", err)
-		http.Error(w, "Invalid token", http.StatusUnauthorized)
+		h.respondWithError(w, "Invalid token", err, http.StatusUnauthorized)
 		return
 	}
 
 	//  Get the refresh token from cookie
 	refreshCookie, err := r.Cookie("life-dashboard-refresh")
 	if err != nil {
-		slog.Warn("refresh token: refresh cookie missing", "userID", userID)
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		h.respondWithError(w, "Unauthorized", err, http.StatusUnauthorized, "userID", userID)
 		return
 	}
 
@@ -80,45 +78,42 @@ func (h *Handler) refreshToken(w http.ResponseWriter, r *http.Request) {
 	providedHash := utils.HashRefreshToken(refreshCookie.Value)
 	storedHash, err := h.Service.GetAppRefreshToken(userID)
 	if err != nil || storedHash == "" {
-		slog.Warn("refresh token: stored refresh token not found", "error", err, "userID", userID)
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		if err == nil {
+			err = fmt.Errorf("no stored refresh token")
+		}
+		h.respondWithError(w, "Unauthorized", err, http.StatusUnauthorized, "userID", userID)
 		return
 	}
 
 	if subtle.ConstantTimeCompare([]byte(providedHash), []byte(storedHash)) != 1 {
-		slog.Warn("refresh token: hash mismatch", "userID", userID)
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		h.respondWithError(w, "Unauthorized", fmt.Errorf("refresh token hash mismatch"), http.StatusUnauthorized, "userID", userID)
 		return
 	}
 
 	// Get user email for new JWT claims
 	email, err := h.Service.GetUserEmail(userID)
 	if err != nil {
-		slog.Warn("refresh token: failed to get user email", "error", err, "userID", userID)
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		h.respondWithError(w, "Unauthorized", err, http.StatusUnauthorized, "userID", userID)
 		return
 	}
 
 	// Generate new JWT
 	newJWT, err := utils.GenerateToken(userID, email)
 	if err != nil {
-		slog.Error("failed to generate JWT during refresh", "error", err)
-		http.Error(w, "Token refresh failed", http.StatusInternalServerError)
+		h.respondWithError(w, "Token refresh failed", err, http.StatusInternalServerError)
 		return
 	}
 
 	// Rotate refresh token
 	newRefreshToken, err := utils.GenerateRefreshToken()
 	if err != nil {
-		slog.Error("failed to generate refresh token during refresh", "error", err)
-		http.Error(w, "Token refresh failed", http.StatusInternalServerError)
+		h.respondWithError(w, "Token refresh failed", err, http.StatusInternalServerError)
 		return
 	}
 
 	newHash := utils.HashRefreshToken(newRefreshToken)
 	if err := h.Service.UpdateAppRefreshToken(userID, newHash); err != nil {
-		slog.Error("failed to store rotated refresh token", "error", err)
-		http.Error(w, "Token refresh failed", http.StatusInternalServerError)
+		h.respondWithError(w, "Token refresh failed", err, http.StatusInternalServerError)
 		return
 	}
 

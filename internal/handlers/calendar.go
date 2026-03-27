@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -13,7 +14,7 @@ func (h *Handler) getCalendarEvents(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	userID, ok := h.GetUserID(r)
 	if !ok {
-		http.Error(w, "User not found", http.StatusUnauthorized)
+		h.respondWithError(w, "User not found", fmt.Errorf("user ID not in context"), http.StatusUnauthorized)
 		return
 	}
 
@@ -23,19 +24,19 @@ func (h *Handler) getCalendarEvents(w http.ResponseWriter, r *http.Request) {
 	endStr := r.URL.Query().Get("end")
 
 	if startStr == "" || endStr == "" {
-		http.Error(w, "Missing required query params: start and end", http.StatusBadRequest)
+		h.respondWithError(w, "Missing required query params: start and end", fmt.Errorf("missing start or end query parameter"), http.StatusBadRequest, "userID", userID)
 		return
 	}
 
 	start, err := time.Parse(time.RFC3339, startStr)
 	if err != nil {
-		http.Error(w, "Invalid start param, expected RFC3339 format", http.StatusBadRequest)
+		h.respondWithError(w, "Invalid start param, expected RFC3339 format", err, http.StatusBadRequest, "userID", userID)
 		return
 	}
 
 	end, err := time.Parse(time.RFC3339, endStr)
 	if err != nil {
-		http.Error(w, "Invalid end param, expected RFC3339 format", http.StatusBadRequest)
+		h.respondWithError(w, "Invalid end param, expected RFC3339 format", err, http.StatusBadRequest, "userID", userID)
 		return
 	}
 
@@ -47,7 +48,7 @@ func (h *Handler) getCalendarEvents(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.Service.GetCalendarEvents(ctx, dto)
 	if err != nil {
-		http.Error(w, "Failed to fetch calendar events", http.StatusInternalServerError)
+		h.respondWithError(w, "Failed to fetch calendar events", err, http.StatusInternalServerError, "userID", userID)
 		return
 	}
 
