@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
@@ -30,6 +31,7 @@ func (s *service) SyncTaskLists(ctx context.Context, req domain.SyncTaskListsReq
 
 	srv, err := s.getGoogleTaskService(ctx, userID)
 	if err != nil {
+		slog.Error("failed to get Google Task service for sync task lists", "error", err, "userID", userID)
 		return domain.SyncTaskListsResponse{}, err
 	}
 
@@ -37,8 +39,10 @@ func (s *service) SyncTaskLists(ctx context.Context, req domain.SyncTaskListsReq
 	gLists, err := srv.Tasklists.List().Do()
 	if err != nil {
 		if s.isTokenError(err) {
+			slog.Warn("unauthorized token during task list sync", "userID", userID)
 			return domain.SyncTaskListsResponse{}, errors.New("unauthorized: refresh token invalid")
 		}
+		slog.Error("failed to fetch task lists from Google", "error", err, "userID", userID)
 		return domain.SyncTaskListsResponse{}, err
 	}
 
@@ -55,6 +59,7 @@ func (s *service) SyncTaskLists(ctx context.Context, req domain.SyncTaskListsReq
 
 	// Save (Command only, returns error)
 	if err := s.taskRepo.UpsertTaskLists(domainLists); err != nil {
+		slog.Error("failed to upsert task lists", "error", err, "userID", userID)
 		return domain.SyncTaskListsResponse{}, err
 	}
 
@@ -100,6 +105,7 @@ func (s *service) CreateTask(ctx context.Context, req domain.CreateTaskRequest) 
 	// Call Google API
 	createdGTask, err := insertCall.Do()
 	if err != nil {
+		slog.Error("Google API task insert failed", "error", err, "userID", userID, "taskListID", taskListID)
 		return domain.CreateTaskResponse{}, fmt.Errorf("google api insert failed: %w", err)
 	}
 
@@ -186,8 +192,10 @@ func (s *service) SyncTasks(ctx context.Context, req domain.SyncTasksRequest) (d
 	gTasks, err := srv.Tasks.List(taskListID).ShowCompleted(false).ShowHidden(true).Do()
 	if err != nil {
 		if s.isTokenError(err) {
+			slog.Warn("unauthorized token during task sync", "userID", userID, "taskListID", taskListID)
 			return domain.SyncTasksResponse{}, errors.New("unauthorized: refresh token invalid")
 		}
+		slog.Error("failed to fetch tasks from Google", "error", err, "userID", userID, "taskListID", taskListID)
 		return domain.SyncTasksResponse{}, err
 	}
 
@@ -283,7 +291,7 @@ func (s *service) SyncTasks(ctx context.Context, req domain.SyncTasksRequest) (d
 
 	// Mark local tasks as 'completed' if they are missing from Google's active list
 	if err := txRepo.MarkTasksCompletedExcluding(taskListID, activeIDs); err != nil {
-		fmt.Printf("Error marking tasks completed: %v\n", err)
+		slog.Error("failed to mark tasks completed", "error", err, "taskListID", taskListID)
 		tx.Rollback()
 		return domain.SyncTasksResponse{}, err
 	}
@@ -392,6 +400,7 @@ func (s *service) UpdateTask(ctx context.Context, req domain.UpdateTaskRequest) 
 		// Capture the response to get the official 'Updated' timestamp
 		updatedGTask, err := srv.Tasks.Patch(taskListID, taskID, googleTask).Do()
 		if err != nil {
+			slog.Error("failed to patch task on Google", "error", err, "taskID", taskID, "taskListID", taskListID)
 			return domain.UpdateTaskResponse{}, fmt.Errorf("failed to sync to Google: %w", err)
 		}
 
@@ -430,7 +439,7 @@ func (s *service) DeleteTask(ctx context.Context, req domain.DeleteTaskRequest) 
 	err = srv.Tasks.Delete(taskListID, taskID).Do()
 	if err != nil {
 		// Log but continue - task might already be deleted on Google's side
-		fmt.Printf("Warning: Could not delete from Google Tasks: %v\n", err)
+		slog.Warn("could not delete task from Google Tasks", "error", err, "taskID", taskID, "taskListID", taskListID)
 	}
 
 	// Delete from local database
@@ -476,7 +485,7 @@ func (s *service) DeleteTasks(ctx context.Context, req domain.DeleteTasksRequest
 			err := srv.Tasks.Delete(taskListID, taskID).Do()
 			if err != nil {
 				// Log but continue - task might already be deleted on Google's side
-				fmt.Printf("Warning: Could not delete task %s from Google Tasks: %v\n", taskID, err)
+				slog.Warn("could not delete task from Google Tasks", "error", err, "taskID", taskID, "taskListID", taskListID)
 			}
 		}
 	}

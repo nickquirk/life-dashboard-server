@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -18,12 +19,14 @@ func (h *Handler) getTaskLists(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.Service.GetTaskLists(domain.GetTaskListsRequest{UserID: userID})
 	if err != nil {
+		slog.Error("failed to fetch task lists", "error", err, "userID", userID)
 		http.Error(w, "Failed to fetch lists", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		slog.Error("failed to encode task lists response", "error", err)
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 		return
 	}
@@ -40,6 +43,7 @@ func (h *Handler) syncTaskLists(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.Service.SyncTaskLists(ctx, domain.SyncTaskListsRequest{UserID: userID})
 	if err != nil {
+		slog.Error("failed to sync task lists", "error", err, "userID", userID)
 		http.Error(w, "Failed to sync task lists", http.StatusInternalServerError)
 		return
 	}
@@ -61,6 +65,7 @@ func (h *Handler) createTask(w http.ResponseWriter, r *http.Request) {
 
 	var req domain.CreateTaskRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		slog.Warn("invalid create task request body", "error", err, "userID", userID)
 		http.Error(w, "Invalid body", http.StatusBadRequest)
 		return
 	}
@@ -69,6 +74,7 @@ func (h *Handler) createTask(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.Service.CreateTask(ctx, req)
 	if err != nil {
+		slog.Error("failed to create task", "error", err, "userID", userID, "taskListID", taskListID)
 		http.Error(w, "Failed to create task", http.StatusInternalServerError)
 		return
 	}
@@ -90,6 +96,7 @@ func (h *Handler) getTasksInList(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.Service.GetTasks(ctx, domain.GetTasksRequest{UserID: userID, TaskListID: taskListID})
 	if err != nil {
+		slog.Error("failed to fetch tasks", "error", err, "userID", userID, "taskListID", taskListID)
 		http.Error(w, "Failed to fetch tasks", http.StatusInternalServerError)
 		return
 	}
@@ -111,6 +118,7 @@ func (h *Handler) syncTasksInList(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.Service.SyncTasks(ctx, domain.SyncTasksRequest{UserID: userID, TaskListID: taskListID})
 	if err != nil {
+		slog.Error("failed to sync tasks", "error", err, "userID", userID, "taskListID", taskListID)
 		http.Error(w, "Failed to sync tasks", http.StatusInternalServerError)
 		return
 	}
@@ -131,6 +139,7 @@ func (h *Handler) updateTask(w http.ResponseWriter, r *http.Request) {
 
 	var req domain.UpdateTaskRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		slog.Warn("invalid update task request body", "error", err, "userID", userID, "taskID", taskID)
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
@@ -139,6 +148,7 @@ func (h *Handler) updateTask(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.Service.UpdateTask(ctx, req)
 	if err != nil {
+		slog.Error("failed to update task", "error", err, "userID", userID, "taskID", taskID)
 		http.Error(w, "Failed to update task", http.StatusInternalServerError)
 		return
 	}
@@ -159,6 +169,7 @@ func (h *Handler) deleteTasks(w http.ResponseWriter, r *http.Request) {
 
 	var req domain.DeleteTasksRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		slog.Warn("invalid delete tasks request body", "error", err, "userID", userID)
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
@@ -166,6 +177,7 @@ func (h *Handler) deleteTasks(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.Service.DeleteTasks(ctx, req)
 	if err != nil {
+		slog.Error("failed to delete tasks", "error", err, "userID", userID)
 		http.Error(w, "Failed to delete tasks", http.StatusInternalServerError)
 		return
 	}
@@ -187,6 +199,7 @@ func (h *Handler) deleteTask(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.Service.DeleteTask(ctx, domain.DeleteTaskRequest{UserID: userID, TaskID: taskID})
 	if err != nil {
+		slog.Error("failed to delete task", "error", err, "userID", userID, "taskID", taskID)
 		http.Error(w, "Failed to delete task", http.StatusInternalServerError)
 		return
 	}
