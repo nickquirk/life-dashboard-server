@@ -27,8 +27,8 @@ func GetRoutes(mx *chi.Mux, h *Handler) error {
 
 	// Public Routes
 	// Health
-	mx.Get("/healthz", h.health)
-	mx.Get("/readyz", h.ready)
+	mx.Get("/health", h.health)
+	mx.Get("/ready", h.ready)
 
 	mx.Route("/api", func(r chi.Router) {
 		// Google OAuth2
