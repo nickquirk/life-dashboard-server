@@ -17,6 +17,7 @@ func Authenticate(next http.Handler) http.Handler {
 		// Get the cookie
 		cookie, err := r.Cookie("life-dashboard") // Ensure name matches SetCookie in google.go
 		if err != nil {
+			slog.Warn("authentication: session cookie missing", "path", r.URL.Path)
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
@@ -24,6 +25,7 @@ func Authenticate(next http.Handler) http.Handler {
 		// Validate token and get User ID
 		userID, err := utils.GetUserIdFromToken(cookie.Value)
 		if err != nil {
+			slog.Warn("authentication: invalid token", "error", err, "path", r.URL.Path)
 			http.Error(w, "Invalid Token", http.StatusUnauthorized)
 			return
 		}

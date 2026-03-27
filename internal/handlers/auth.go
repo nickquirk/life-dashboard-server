@@ -41,7 +41,10 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 	// Best-effort: invalidate refresh token in DB if we can identify the user
 	if jwtCookie, err := r.Cookie("life-dashboard"); err == nil {
 		if userID, err := utils.GetUserIdFromExpiredToken(jwtCookie.Value); err == nil {
-			_ = h.Service.UpdateAppRefreshToken(userID, "")
+			if err := h.Service.UpdateAppRefreshToken(userID, ""); err != nil {
+				slog.Warn("failed to invalidate refresh token on logout", "error", err, "userID", userID)
+			}
+			slog.Info("user logged out", "userID", userID)
 		}
 	}
 
@@ -53,12 +56,14 @@ func (h *Handler) refreshToken(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from the expired JWT
 	jwtCookie, err := r.Cookie("life-dashboard")
 	if err != nil {
+		slog.Warn("refresh token: session cookie missing", "error", err)
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	userID, err := utils.GetUserIdFromExpiredToken(jwtCookie.Value)
 	if err != nil {
+		slog.Warn("refresh token: invalid expired JWT", "error", err)
 		http.Error(w, "Invalid token", http.StatusUnauthorized)
 		return
 	}
@@ -66,6 +71,7 @@ func (h *Handler) refreshToken(w http.ResponseWriter, r *http.Request) {
 	//  Get the refresh token from cookie
 	refreshCookie, err := r.Cookie("life-dashboard-refresh")
 	if err != nil {
+		slog.Warn("refresh token: refresh cookie missing", "userID", userID)
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
@@ -74,11 +80,13 @@ func (h *Handler) refreshToken(w http.ResponseWriter, r *http.Request) {
 	providedHash := utils.HashRefreshToken(refreshCookie.Value)
 	storedHash, err := h.Service.GetAppRefreshToken(userID)
 	if err != nil || storedHash == "" {
+		slog.Warn("refresh token: stored refresh token not found", "error", err, "userID", userID)
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	if subtle.ConstantTimeCompare([]byte(providedHash), []byte(storedHash)) != 1 {
+		slog.Warn("refresh token: hash mismatch", "userID", userID)
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
@@ -86,6 +94,7 @@ func (h *Handler) refreshToken(w http.ResponseWriter, r *http.Request) {
 	// Get user email for new JWT claims
 	email, err := h.Service.GetUserEmail(userID)
 	if err != nil {
+		slog.Warn("refresh token: failed to get user email", "error", err, "userID", userID)
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
