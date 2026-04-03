@@ -39,16 +39,14 @@ func (h *Handler) getScratchpad(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// Return empty 200 instead of 404 for seamless frontend UX
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(domain.GetScratchpadResponse{Content: ""})
+			h.respondWithJSON(w, http.StatusOK, domain.GetScratchpadResponse{Content: ""}, "userID", userID)
 			return
 		}
 		h.respondWithError(w, "Failed to fetch scratchpad", err, http.StatusInternalServerError, "userID", userID)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	h.respondWithJSON(w, http.StatusOK, resp, "userID", userID)
 }
 
 func (h *Handler) upsertScratchpad(w http.ResponseWriter, r *http.Request) {
@@ -79,6 +77,5 @@ func (h *Handler) upsertScratchpad(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	h.respondWithJSON(w, http.StatusOK, resp, "userID", userID)
 }

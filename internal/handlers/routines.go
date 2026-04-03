@@ -37,8 +37,7 @@ func (h *Handler) createRoutine(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	h.respondWithJSON(w, http.StatusOK, resp, "userID", userID)
 }
 
 func (h *Handler) getRoutines(w http.ResponseWriter, r *http.Request) {
@@ -58,8 +57,7 @@ func (h *Handler) getRoutines(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	h.respondWithJSON(w, http.StatusOK, resp, "userID", userID)
 }
 
 func (h *Handler) updateRoutine(w http.ResponseWriter, r *http.Request) {
@@ -93,8 +91,7 @@ func (h *Handler) updateRoutine(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	h.respondWithJSON(w, http.StatusOK, resp, "userID", userID, "routineID", routineID)
 }
 
 func (h *Handler) deleteRoutine(w http.ResponseWriter, r *http.Request) {
@@ -126,8 +123,7 @@ func (h *Handler) deleteRoutine(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	h.respondWithJSON(w, http.StatusOK, resp, "userID", userID, "routineID", routineID)
 }
 
 // --- Routine Instances ---
@@ -154,8 +150,7 @@ func (h *Handler) createRoutineInstance(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	h.respondWithJSON(w, http.StatusOK, resp, "userID", userID)
 }
 
 func (h *Handler) getRoutineInstances(w http.ResponseWriter, r *http.Request) {
@@ -201,8 +196,7 @@ func (h *Handler) getRoutineInstances(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	h.respondWithJSON(w, http.StatusOK, resp, "userID", userID)
 }
 
 func (h *Handler) updateRoutineInstance(w http.ResponseWriter, r *http.Request) {
@@ -236,8 +230,7 @@ func (h *Handler) updateRoutineInstance(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	h.respondWithJSON(w, http.StatusOK, resp, "userID", userID, "instanceID", instanceID)
 }
 
 func (h *Handler) deleteRoutineInstance(w http.ResponseWriter, r *http.Request) {
@@ -269,6 +262,5 @@ func (h *Handler) deleteRoutineInstance(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	h.respondWithJSON(w, http.StatusOK, resp, "userID", userID, "instanceID", instanceID)
 }

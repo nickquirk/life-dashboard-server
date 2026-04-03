@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -33,9 +32,7 @@ func (h *Handler) GetUserHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Write JSON response
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(domain.UserProfileResponse{
+	h.respondWithJSON(w, http.StatusOK, domain.UserProfileResponse{
 		Email:   resp.Email,
 		Picture: resp.Picture,
 	})
@@ -57,12 +54,10 @@ func (h *Handler) getCurrentUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Return JSON
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(domain.UserProfileResponse{
+	h.respondWithJSON(w, http.StatusOK, domain.UserProfileResponse{
 		Email:   resp.Email,
 		Picture: resp.Picture,
-	})
+	}, "userID", userID)
 }
 
 func (h *Handler) getCurrentUserID(w http.ResponseWriter, r *http.Request) {
@@ -71,10 +66,9 @@ func (h *Handler) getCurrentUserID(w http.ResponseWriter, r *http.Request) {
 		h.respondWithError(w, "User not found", fmt.Errorf("user ID not in context"), http.StatusUnauthorized)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(domain.GetCurrentUserIDResponse{
+	h.respondWithJSON(w, http.StatusOK, domain.GetCurrentUserIDResponse{
 		ID: userID,
-	})
+	}, "userID", userID)
 }
 
 func (h *Handler) deleteAccount(w http.ResponseWriter, r *http.Request) {
@@ -93,6 +87,5 @@ func (h *Handler) deleteAccount(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, h.Cookies.ExpireSessionCookie())
 	http.SetCookie(w, h.Cookies.ExpireRefreshCookie())
 
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"message":"Account and all data deleted"}`))
+	h.respondWithJSON(w, http.StatusOK, map[string]string{"message": "Account and all data deleted"}, "userID", userID)
 }

@@ -34,8 +34,7 @@ func (h *Handler) createZone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	h.respondWithJSON(w, http.StatusOK, resp, "userID", userID)
 }
 
 func (h *Handler) getZones(w http.ResponseWriter, r *http.Request) {
@@ -55,8 +54,7 @@ func (h *Handler) getZones(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	h.respondWithJSON(w, http.StatusOK, resp, "userID", userID)
 }
 
 func (h *Handler) updateZone(w http.ResponseWriter, r *http.Request) {
@@ -88,12 +86,15 @@ func (h *Handler) updateZone(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.Service.UpdateZone(req)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			h.respondWithError(w, "Zone not found", err, http.StatusNotFound, "userID", userID, "zoneID", zoneID)
+			return
+		}
 		h.respondWithError(w, "Failed to update zone", err, http.StatusInternalServerError, "userID", userID, "zoneID", zoneID)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	h.respondWithJSON(w, http.StatusOK, resp, "userID", userID, "zoneID", zoneID)
 }
 
 func (h *Handler) deleteZone(w http.ResponseWriter, r *http.Request) {
@@ -126,6 +127,5 @@ func (h *Handler) deleteZone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	h.respondWithJSON(w, http.StatusOK, resp, "userID", userID, "zoneID", zoneID)
 }

@@ -24,11 +24,7 @@ func (h *Handler) getTaskLists(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		h.respondWithError(w, "Failed to encode response", err, http.StatusInternalServerError)
-		return
-	}
+	h.respondWithJSON(w, http.StatusOK, resp, "userID", userID)
 }
 
 // POST /api/tasks/sync
@@ -46,8 +42,7 @@ func (h *Handler) syncTaskLists(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	h.respondWithJSON(w, http.StatusOK, resp, "userID", userID)
 }
 
 // POST /api/tasks/{taskListId}
@@ -75,8 +70,7 @@ func (h *Handler) createTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	h.respondWithJSON(w, http.StatusOK, resp, "userID", userID, "taskListID", taskListID)
 }
 
 // GET /api/tasks/{taskListId}
@@ -96,8 +90,7 @@ func (h *Handler) getTasksInList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	h.respondWithJSON(w, http.StatusOK, resp, "userID", userID, "taskListID", taskListID)
 }
 
 // POST /api/tasks/{taskListId}/sync
@@ -123,8 +116,7 @@ func (h *Handler) syncTasksInList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	h.respondWithJSON(w, http.StatusOK, resp, "userID", userID, "taskListID", taskListID)
 }
 
 func (h *Handler) updateTask(w http.ResponseWriter, r *http.Request) {
@@ -151,8 +143,7 @@ func (h *Handler) updateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	h.respondWithJSON(w, http.StatusOK, resp, "userID", userID, "taskID", taskID)
 }
 
 // DELETE /api/tasks
@@ -178,8 +169,7 @@ func (h *Handler) deleteTasks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	h.respondWithJSON(w, http.StatusOK, resp, "userID", userID)
 }
 
 // DELETE /api/tasks/{id}
@@ -199,6 +189,5 @@ func (h *Handler) deleteTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	h.respondWithJSON(w, http.StatusOK, resp, "userID", userID, "taskID", taskID)
 }

@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"crypto/subtle"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -49,8 +48,7 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"message": "Logged out"}`))
+	h.respondWithJSON(w, http.StatusOK, map[string]string{"message": "Logged out"})
 }
 
 func (h *Handler) refreshToken(w http.ResponseWriter, r *http.Request) {
@@ -121,9 +119,7 @@ func (h *Handler) refreshToken(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, h.Cookies.NewSessionCookie(newJWT))
 	http.SetCookie(w, h.Cookies.NewRefreshCookie(newRefreshToken))
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Token refreshed"})
+	h.respondWithJSON(w, http.StatusOK, map[string]string{"message": "Token refreshed"})
 }
 
 // Extract the user ID from the request context.

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"log/slog"
 	"net/http"
 )
@@ -15,4 +16,15 @@ func (h *Handler) respondWithError(w http.ResponseWriter, userMsg string, intern
 
 	// Return the sanitized message to the client
 	http.Error(w, userMsg, status)
+}
+
+func (h *Handler) respondWithJSON(w http.ResponseWriter, status int, payload interface{}, args ...any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+
+	if err := json.NewEncoder(w).Encode(payload); err != nil {
+		// Append any extra context (like userID) to the log arguments
+		logArgs := append([]any{"error", err.Error()}, args...)
+		slog.Error("failed to write JSON response", logArgs...)
+	}
 }
