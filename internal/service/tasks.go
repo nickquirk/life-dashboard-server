@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
-	"golang.org/x/oauth2"
 	"google.golang.org/api/tasks/v1"
 	"gorm.io/gorm/clause"
 )
@@ -105,6 +104,10 @@ func (s *service) CreateTask(ctx context.Context, req domain.CreateTaskRequest) 
 	// Call Google API
 	createdGTask, err := insertCall.Do()
 	if err != nil {
+		if s.isTokenError(err) {
+			slog.Warn("unauthorized token during task create", "userID", userID, "taskListID", taskListID)
+			return domain.CreateTaskResponse{}, errors.New("unauthorized: refresh token invalid")
+		}
 		slog.Error("Google API task insert failed", "error", err, "userID", userID, "taskListID", taskListID)
 		return domain.CreateTaskResponse{}, fmt.Errorf("google api insert failed: %w", err)
 	}
@@ -400,6 +403,10 @@ func (s *service) UpdateTask(ctx context.Context, req domain.UpdateTaskRequest) 
 		// Capture the response to get the official 'Updated' timestamp
 		updatedGTask, err := srv.Tasks.Patch(taskListID, taskID, googleTask).Do()
 		if err != nil {
+			if s.isTokenError(err) {
+				slog.Warn("unauthorized token during task update", "userID", userID, "taskID", taskID)
+				return domain.UpdateTaskResponse{}, errors.New("unauthorized: refresh token invalid")
+			}
 			slog.Error("failed to patch task on Google", "error", err, "taskID", taskID, "taskListID", taskListID)
 			return domain.UpdateTaskResponse{}, fmt.Errorf("failed to sync to Google: %w", err)
 		}
@@ -496,14 +503,6 @@ func (s *service) DeleteTasks(ctx context.Context, req domain.DeleteTasksRequest
 	}
 
 	return domain.DeleteTasksResponse{IDs: req.TaskIDs}, nil
-}
-
-func (s *service) isTokenError(err error) bool {
-	var retrieveErr *oauth2.RetrieveError
-	if errors.As(err, &retrieveErr) {
-		return true
-	}
-	return false
 }
 
 // Private helper to handle the "Delete Old + Create New" dance

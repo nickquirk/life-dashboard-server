@@ -87,6 +87,10 @@ func (h *Handler) updateRoutine(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.Service.UpdateRoutine(req)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			h.respondWithError(w, "Routine not found", err, http.StatusNotFound, "userID", userID, "routineID", routineID)
+			return
+		}
 		h.respondWithError(w, "Failed to update routine", err, http.StatusInternalServerError, "userID", userID, "routineID", routineID)
 		return
 	}
@@ -226,6 +230,10 @@ func (h *Handler) updateRoutineInstance(w http.ResponseWriter, r *http.Request) 
 
 	resp, err := h.Service.UpdateRoutineInstance(req)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			h.respondWithError(w, "Routine instance not found", err, http.StatusNotFound, "userID", userID, "instanceID", instanceID)
+			return
+		}
 		h.respondWithError(w, "Failed to update routine instance", err, http.StatusInternalServerError, "userID", userID, "instanceID", instanceID)
 		return
 	}

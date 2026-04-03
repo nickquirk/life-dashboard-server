@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
@@ -26,7 +28,10 @@ func (s *service) GetCalendarEvents(ctx context.Context, req domain.GetCalendarE
 		TimeMax(tMax).
 		Do()
 	if err != nil {
-		// could clean up tokens here?
+		if s.isTokenError(err) {
+			slog.Warn("unauthorized token during calendar event fetch", "userID", req.UserID)
+			return domain.GetCalendarEventsResponse{}, errors.New("unauthorized: refresh token invalid")
+		}
 		return domain.GetCalendarEventsResponse{}, err
 	}
 

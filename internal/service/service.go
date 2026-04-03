@@ -2,10 +2,12 @@ package service
 
 import (
 	"context"
+	"errors"
 
 	"github.com/nickquirk/life-dashboard-server/internal/crypto"
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
 	"github.com/nickquirk/life-dashboard-server/internal/repository"
+	"golang.org/x/oauth2"
 	"gorm.io/gorm"
 )
 
@@ -67,6 +69,14 @@ type service struct {
 func NewServiceWithRepos(userRepo repository.UserRepository, taskRepo repository.TaskRepository,
 	calendarRepo repository.CalendarRepository, zoneRepo repository.ZoneRepository, routineRepo repository.RoutineRepository, feedbackRepo repository.FeedbackRepository, scratchpadRepo repository.ScratchpadRepository) Service {
 	return &service{userRepo: userRepo, taskRepo: taskRepo, calendarRepo: calendarRepo, zoneRepo: zoneRepo, routineRepo: routineRepo, feedbackRepo: feedbackRepo, scratchpadRepo: scratchpadRepo}
+}
+
+func (s *service) isTokenError(err error) bool {
+	var retrieveErr *oauth2.RetrieveError
+	if errors.As(err, &retrieveErr) {
+		return true
+	}
+	return false
 }
 
 func (s service) Ping() error {

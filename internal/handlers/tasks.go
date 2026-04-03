@@ -38,6 +38,10 @@ func (h *Handler) syncTaskLists(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.Service.SyncTaskLists(ctx, domain.SyncTaskListsRequest{UserID: userID})
 	if err != nil {
+		if strings.Contains(err.Error(), "unauthorized: refresh token invalid") {
+			h.respondWithError(w, "Google session expired. Please log in again.", err, http.StatusUnauthorized, "userID", userID)
+			return
+		}
 		h.respondWithError(w, "Failed to sync task lists", err, http.StatusInternalServerError, "userID", userID)
 		return
 	}
@@ -66,6 +70,10 @@ func (h *Handler) createTask(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.Service.CreateTask(ctx, req)
 	if err != nil {
+		if strings.Contains(err.Error(), "unauthorized: refresh token invalid") {
+			h.respondWithError(w, "Google session expired. Please log in again.", err, http.StatusUnauthorized, "userID", userID)
+			return
+		}
 		h.respondWithError(w, "Failed to create task", err, http.StatusInternalServerError, "userID", userID, "taskListID", taskListID)
 		return
 	}
@@ -139,6 +147,10 @@ func (h *Handler) updateTask(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.Service.UpdateTask(ctx, req)
 	if err != nil {
+		if strings.Contains(err.Error(), "unauthorized: refresh token invalid") {
+			h.respondWithError(w, "Google session expired. Please log in again.", err, http.StatusUnauthorized, "userID", userID)
+			return
+		}
 		h.respondWithError(w, "Failed to update task", err, http.StatusInternalServerError, "userID", userID, "taskID", taskID)
 		return
 	}

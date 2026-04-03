@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
@@ -47,6 +48,10 @@ func (h *Handler) getCalendarEvents(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.Service.GetCalendarEvents(ctx, dto)
 	if err != nil {
+		if strings.Contains(err.Error(), "unauthorized: refresh token invalid") {
+			h.respondWithError(w, "Google session expired. Please log in again.", err, http.StatusUnauthorized, "userID", userID)
+			return
+		}
 		h.respondWithError(w, "Failed to fetch calendar events", err, http.StatusInternalServerError, "userID", userID)
 		return
 	}
