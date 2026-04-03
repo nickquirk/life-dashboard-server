@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
@@ -99,7 +100,7 @@ func (h *Handler) getTasksInList(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resp)
 }
 
-// POST /api/tasks/{taskListId}/sync - New Endpoint
+// POST /api/tasks/{taskListId}/sync
 func (h *Handler) syncTasksInList(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	taskListID := chi.URLParam(r, "taskListId")
@@ -112,6 +113,12 @@ func (h *Handler) syncTasksInList(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.Service.SyncTasks(ctx, domain.SyncTasksRequest{UserID: userID, TaskListID: taskListID})
 	if err != nil {
+		// Check if it's a token error and return a 401
+		if strings.Contains(err.Error(), "unauthorized: refresh token invalid") {
+			h.respondWithError(w, "Google session expired. Please log in again.", err, http.StatusUnauthorized, "userID", userID)
+			return
+		}
+		// Fallback for actual server errors
 		h.respondWithError(w, "Failed to sync tasks", err, http.StatusInternalServerError, "userID", userID, "taskListID", taskListID)
 		return
 	}
