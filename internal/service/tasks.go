@@ -437,21 +437,40 @@ func (s *service) DeleteTask(ctx context.Context, req domain.DeleteTaskRequest) 
 		return domain.DeleteTaskResponse{}, fmt.Errorf("task not found: %w", err)
 	}
 
+	// Fetch all tasks in the list to find subtasks that need to be cascaded
+	allTasks, err := s.taskRepo.GetTasks(taskListID)
+	if err != nil {
+		return domain.DeleteTaskResponse{}, fmt.Errorf("failed to fetch tasks for list: %w", err)
+	}
+
+	var tasksToDelete []string
+
+	// Add subtasks first
+	for _, t := range allTasks {
+		if t.Parent != nil && *t.Parent == taskID {
+			tasksToDelete = append(tasksToDelete, t.ID)
+		}
+	}
+	// Add parent task itself last
+	tasksToDelete = append(tasksToDelete, taskID)
+
 	// Delete from Google Tasks API
 	srv, err := s.getGoogleTaskService(ctx, userID)
 	if err != nil {
 		return domain.DeleteTaskResponse{}, fmt.Errorf("failed to get Google client: %w", err)
 	}
 
-	err = srv.Tasks.Delete(taskListID, taskID).Do()
-	if err != nil {
-		// Log but continue - task might already be deleted on Google's side
-		slog.Warn("could not delete task from Google Tasks", "error", err, "taskID", taskID, "taskListID", taskListID)
+	for _, id := range tasksToDelete {
+		err = srv.Tasks.Delete(taskListID, id).Do()
+		if err != nil {
+			// Log but continue - task might already be deleted on Google's side
+			slog.Warn("could not delete task from Google Tasks", "error", err, "taskID", id, "taskListID", taskListID)
+		}
 	}
 
-	// Delete from local database
-	if err := s.taskRepo.DeleteTask(taskID); err != nil {
-		return domain.DeleteTaskResponse{}, fmt.Errorf("failed to delete task from database: %w", err)
+	// Delete from local database (leveraging DeleteTasks to handle the batch)
+	if err := s.taskRepo.DeleteTasks(tasksToDelete); err != nil {
+		return domain.DeleteTaskResponse{}, fmt.Errorf("failed to delete tasks from database: %w", err)
 	}
 
 	return domain.DeleteTaskResponse{ID: taskID}, nil
@@ -474,11 +493,34 @@ func (s *service) DeleteTasks(ctx context.Context, req domain.DeleteTasksRequest
 		taskListMap[taskListID] = append(taskListMap[taskListID], taskID)
 	}
 
-	// Verify ownership for each task list
-	for taskListID := range taskListMap {
+	var finalTasksToDelete []string
+
+	// Verify ownership and find subtasks for each task list
+	for taskListID, taskIDs := range taskListMap {
 		if err := s.taskRepo.VerifyTaskListOwner(userID, taskListID); err != nil {
 			return domain.DeleteTasksResponse{}, fmt.Errorf("task not found: %w", err)
 		}
+
+		// Fetch all tasks to locate subtasks to cascade delete
+		allListTasks, err := s.taskRepo.GetTasks(taskListID)
+		if err == nil {
+			deletingMap := make(map[string]bool)
+			for _, id := range taskIDs {
+				deletingMap[id] = true
+			}
+
+			// Identify subtasks of the tasks we are deleting
+			for _, t := range allListTasks {
+				if t.Parent != nil && deletingMap[*t.Parent] {
+					if !deletingMap[t.ID] { // Add if not already included
+						taskIDs = append(taskIDs, t.ID)
+						deletingMap[t.ID] = true
+					}
+				}
+			}
+			taskListMap[taskListID] = taskIDs
+		}
+		finalTasksToDelete = append(finalTasksToDelete, taskListMap[taskListID]...)
 	}
 
 	// Delete from Google Tasks API
@@ -491,18 +533,19 @@ func (s *service) DeleteTasks(ctx context.Context, req domain.DeleteTasksRequest
 		for _, taskID := range taskIDs {
 			err := srv.Tasks.Delete(taskListID, taskID).Do()
 			if err != nil {
-				// Log but continue - task might already be deleted on Google's side
 				slog.Warn("could not delete task from Google Tasks", "error", err, "taskID", taskID, "taskListID", taskListID)
 			}
 		}
 	}
 
 	// Delete from local database
-	if err := s.taskRepo.DeleteTasks(req.TaskIDs); err != nil {
+	if err := s.taskRepo.DeleteTasks(finalTasksToDelete); err != nil {
 		return domain.DeleteTasksResponse{}, fmt.Errorf("failed to delete tasks from database: %w", err)
 	}
 
-	return domain.DeleteTasksResponse{IDs: req.TaskIDs}, nil
+	// Note: Returning finalTasksToDelete means your frontend will be explicitly
+	// notified of the removed subtasks, ensuring your UI stays perfectly synced.
+	return domain.DeleteTasksResponse{IDs: finalTasksToDelete}, nil
 }
 
 // Private helper to handle the "Delete Old + Create New" dance
