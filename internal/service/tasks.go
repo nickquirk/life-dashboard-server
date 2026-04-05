@@ -443,34 +443,36 @@ func (s *service) DeleteTask(ctx context.Context, req domain.DeleteTaskRequest) 
 		return domain.DeleteTaskResponse{}, fmt.Errorf("failed to fetch tasks for list: %w", err)
 	}
 
-	var tasksToDelete []string
+	var subtaskIDs []string
 
-	// Add subtasks first
+	// Identify subtasks
 	for _, t := range allTasks {
 		if t.Parent != nil && *t.Parent == taskID {
-			tasksToDelete = append(tasksToDelete, t.ID)
+			subtaskIDs = append(subtaskIDs, t.ID)
 		}
 	}
-	// Add parent task itself last
-	tasksToDelete = append(tasksToDelete, taskID)
 
-	// Delete from Google Tasks API
+	// Delete from Google Tasks API (Google doesn't care about order, but doing children first is safe)
 	srv, err := s.getGoogleTaskService(ctx, userID)
 	if err != nil {
 		return domain.DeleteTaskResponse{}, fmt.Errorf("failed to get Google client: %w", err)
 	}
 
-	for _, id := range tasksToDelete {
-		err = srv.Tasks.Delete(taskListID, id).Do()
-		if err != nil {
-			// Log but continue - task might already be deleted on Google's side
-			slog.Warn("could not delete task from Google Tasks", "error", err, "taskID", id, "taskListID", taskListID)
+	for _, id := range subtaskIDs {
+		_ = srv.Tasks.Delete(taskListID, id).Do() // Ignore errors if already deleted
+	}
+	_ = srv.Tasks.Delete(taskListID, taskID).Do()
+
+	// Delete from local database: explicitly delete CHILDREN FIRST to satisfy MySQL constraints
+	if len(subtaskIDs) > 0 {
+		if err := s.taskRepo.DeleteTasks(subtaskIDs); err != nil {
+			return domain.DeleteTaskResponse{}, fmt.Errorf("failed to delete subtasks from database: %w", err)
 		}
 	}
 
-	// Delete from local database (leveraging DeleteTasks to handle the batch)
-	if err := s.taskRepo.DeleteTasks(tasksToDelete); err != nil {
-		return domain.DeleteTaskResponse{}, fmt.Errorf("failed to delete tasks from database: %w", err)
+	// Now it is safe to delete the PARENT
+	if err := s.taskRepo.DeleteTask(taskID); err != nil {
+		return domain.DeleteTaskResponse{}, fmt.Errorf("failed to delete parent task from database: %w", err)
 	}
 
 	return domain.DeleteTaskResponse{ID: taskID}, nil
@@ -493,7 +495,8 @@ func (s *service) DeleteTasks(ctx context.Context, req domain.DeleteTasksRequest
 		taskListMap[taskListID] = append(taskListMap[taskListID], taskID)
 	}
 
-	var finalTasksToDelete []string
+	var childIDs []string
+	var parentIDs = req.TaskIDs
 
 	// Verify ownership and find subtasks for each task list
 	for taskListID, taskIDs := range taskListMap {
@@ -513,14 +516,14 @@ func (s *service) DeleteTasks(ctx context.Context, req domain.DeleteTasksRequest
 			for _, t := range allListTasks {
 				if t.Parent != nil && deletingMap[*t.Parent] {
 					if !deletingMap[t.ID] { // Add if not already included
-						taskIDs = append(taskIDs, t.ID)
+						childIDs = append(childIDs, t.ID)
 						deletingMap[t.ID] = true
+						// Also track this for Google API deletion
+						taskListMap[taskListID] = append(taskListMap[taskListID], t.ID)
 					}
 				}
 			}
-			taskListMap[taskListID] = taskIDs
 		}
-		finalTasksToDelete = append(finalTasksToDelete, taskListMap[taskListID]...)
 	}
 
 	// Delete from Google Tasks API
@@ -531,20 +534,26 @@ func (s *service) DeleteTasks(ctx context.Context, req domain.DeleteTasksRequest
 
 	for taskListID, taskIDs := range taskListMap {
 		for _, taskID := range taskIDs {
-			err := srv.Tasks.Delete(taskListID, taskID).Do()
-			if err != nil {
-				slog.Warn("could not delete task from Google Tasks", "error", err, "taskID", taskID, "taskListID", taskListID)
-			}
+			_ = srv.Tasks.Delete(taskListID, taskID).Do()
 		}
 	}
 
-	// Delete from local database
-	if err := s.taskRepo.DeleteTasks(finalTasksToDelete); err != nil {
-		return domain.DeleteTasksResponse{}, fmt.Errorf("failed to delete tasks from database: %w", err)
+	// Delete from local database: CHILDREN FIRST
+	if len(childIDs) > 0 {
+		if err := s.taskRepo.DeleteTasks(childIDs); err != nil {
+			return domain.DeleteTasksResponse{}, fmt.Errorf("failed to delete subtasks from database: %w", err)
+		}
 	}
 
-	// Note: Returning finalTasksToDelete means your frontend will be explicitly
-	// notified of the removed subtasks, ensuring your UI stays perfectly synced.
+	// Delete from local database: PARENTS LAST
+	if len(parentIDs) > 0 {
+		if err := s.taskRepo.DeleteTasks(parentIDs); err != nil {
+			return domain.DeleteTasksResponse{}, fmt.Errorf("failed to delete parent tasks from database: %w", err)
+		}
+	}
+
+	// Combine IDs so the frontend knows exactly what was removed
+	finalTasksToDelete := append(parentIDs, childIDs...)
 	return domain.DeleteTasksResponse{IDs: finalTasksToDelete}, nil
 }
 
