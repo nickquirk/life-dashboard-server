@@ -4,17 +4,19 @@ import "github.com/nickquirk/life-dashboard-server/internal/domain"
 
 func (s *service) CreateRoutine(req domain.CreateRoutineRequest) (domain.CreateRoutineResponse, error) {
 	created, err := s.routineRepo.CreateRoutine(domain.Routine{
-		UserID:       req.UserID,
-		Title:        req.Title,
-		DurationMins: req.DurationMins,
+		UserID:          req.UserID,
+		Title:           req.Title,
+		DurationMins:    req.DurationMins,
+		TargetTotalMins: req.TargetTotalMins,
 	})
 	if err != nil {
 		return domain.CreateRoutineResponse{}, err
 	}
 	return domain.CreateRoutineResponse{
-		ID:           created.ID,
-		Title:        created.Title,
-		DurationMins: created.DurationMins,
+		ID:              created.ID,
+		Title:           created.Title,
+		DurationMins:    created.DurationMins,
+		TargetTotalMins: req.TargetTotalMins,
 	}, nil
 }
 
@@ -36,6 +38,9 @@ func (s *service) UpdateRoutine(req domain.UpdateRoutineRequest) (domain.UpdateR
 	}
 	if req.DurationMins != nil {
 		updates["duration_mins"] = *req.DurationMins
+	}
+	if req.TargetTotalMins != nil {
+		updates["target_total_mins"] = *req.TargetTotalMins
 	}
 
 	if len(updates) == 0 {
