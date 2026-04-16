@@ -252,22 +252,25 @@ type UpsertScratchpadResponse struct {
 // ------ Routines ---------
 
 type RoutineResponse struct {
-	ID           uint   `json:"id"`
-	UserID       uint   `json:"userId"`
-	Title        string `json:"title"`
-	DurationMins int    `json:"durationMins"`
+	ID              uint   `json:"id"`
+	UserID          uint   `json:"userId"`
+	Title           string `json:"title"`
+	DurationMins    int    `json:"durationMins"`
+	TargetTotalMins *int   `json:"targetTotalMins,omitempty"`
 }
 
 type CreateRoutineRequest struct {
-	UserID       uint   `json:"-"`
-	Title        string `json:"title"`
-	DurationMins int    `json:"durationMins"`
+	UserID          uint   `json:"-"`
+	Title           string `json:"title"`
+	DurationMins    int    `json:"durationMins"`
+	TargetTotalMins *int   `json:"targetTotalMins,omitempty"`
 }
 
 type CreateRoutineResponse struct {
-	ID           uint   `json:"id"`
-	Title        string `json:"title"`
-	DurationMins int    `json:"durationMins"`
+	ID              uint   `json:"id"`
+	Title           string `json:"title"`
+	DurationMins    int    `json:"durationMins"`
+	TargetTotalMins *int   `json:"targetTotalMins,omitempty"`
 }
 
 type GetRoutineRequest struct {
@@ -279,16 +282,18 @@ type GetRoutineResponse struct {
 }
 
 type UpdateRoutineRequest struct {
-	ID           uint    `json:"-"`
-	UserID       uint    `json:"-"`
-	Title        *string `json:"title"`
-	DurationMins *int    `json:"durationMins"`
+	ID              uint    `json:"-"`
+	UserID          uint    `json:"-"`
+	Title           *string `json:"title"`
+	DurationMins    *int    `json:"durationMins"`
+	TargetTotalMins *int    `json:"targetTotalMins,omitempty"`
 }
 
 type UpdateRoutineResponse struct {
-	ID           uint   `json:"id"`
-	Title        string `json:"title"`
-	DurationMins int    `json:"durationMins"`
+	ID              uint   `json:"id"`
+	Title           string `json:"title"`
+	DurationMins    int    `json:"durationMins"`
+	TargetTotalMins *int   `json:"targetTotalMins,omitempty"`
 }
 
 type DeleteRoutineRequest struct {
