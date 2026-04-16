@@ -251,14 +251,6 @@ type UpsertScratchpadResponse struct {
 
 // ------ Routines ---------
 
-type RoutineResponse struct {
-	ID              uint   `json:"id"`
-	UserID          uint   `json:"userId"`
-	Title           string `json:"title"`
-	DurationMins    int    `json:"durationMins"`
-	TargetTotalMins *int   `json:"targetTotalMins,omitempty"`
-}
-
 type CreateRoutineRequest struct {
 	UserID          uint   `json:"-"`
 	Title           string `json:"title"`
