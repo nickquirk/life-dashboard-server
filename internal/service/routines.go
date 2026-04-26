@@ -8,6 +8,7 @@ func (s *service) CreateRoutine(req domain.CreateRoutineRequest) (domain.CreateR
 		Title:           req.Title,
 		DurationMins:    req.DurationMins,
 		TargetTotalMins: req.TargetTotalMins,
+		ResetPeriod:     req.ResetPeriod,
 	})
 	if err != nil {
 		return domain.CreateRoutineResponse{}, err
@@ -17,6 +18,7 @@ func (s *service) CreateRoutine(req domain.CreateRoutineRequest) (domain.CreateR
 		Title:           created.Title,
 		DurationMins:    created.DurationMins,
 		TargetTotalMins: req.TargetTotalMins,
+		ResetPeriod:     created.ResetPeriod,
 	}, nil
 }
 
@@ -46,6 +48,13 @@ func (s *service) UpdateRoutine(req domain.UpdateRoutineRequest) (domain.UpdateR
 			updates["target_total_mins"] = nil
 		} else {
 			updates["target_total_mins"] = *req.TargetTotalMins
+		}
+	}
+	if req.ResetPeriod != nil {
+		if *req.ResetPeriod == "" || *req.ResetPeriod == "one_off" {
+			updates["reset_period"] = nil
+		} else {
+			updates["reset_period"] = *req.ResetPeriod
 		}
 	}
 

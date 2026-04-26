@@ -94,10 +94,11 @@ type Routine struct {
 	UpdatedAt time.Time      `json:"updatedAt"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"` // "-" hides this from the frontend entirely
 
-	UserID          uint   `gorm:"index;not null" json:"userId"`
-	Title           string `json:"title"`
-	DurationMins    int    `json:"durationMins"`
-	TargetTotalMins *int   `json:"targetTotalMins,omitempty"`
+	UserID          uint    `gorm:"index;not null" json:"userId"`
+	Title           string  `json:"title"`
+	DurationMins    int     `json:"durationMins"`
+	TargetTotalMins *int    `json:"targetTotalMins,omitempty"`
+	ResetPeriod     *string `json:"resetPeriod,omitempty"` // NULL = one_off, "weekly", "monthly"
 }
 
 type RoutineInstance struct {

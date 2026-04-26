@@ -252,17 +252,19 @@ type UpsertScratchpadResponse struct {
 // ------ Routines ---------
 
 type CreateRoutineRequest struct {
-	UserID          uint   `json:"-"`
-	Title           string `json:"title"`
-	DurationMins    int    `json:"durationMins"`
-	TargetTotalMins *int   `json:"targetTotalMins,omitempty"`
+	UserID          uint    `json:"-"`
+	Title           string  `json:"title"`
+	DurationMins    int     `json:"durationMins"`
+	TargetTotalMins *int    `json:"targetTotalMins,omitempty"`
+	ResetPeriod     *string `json:"resetPeriod,omitempty"`
 }
 
 type CreateRoutineResponse struct {
-	ID              uint   `json:"id"`
-	Title           string `json:"title"`
-	DurationMins    int    `json:"durationMins"`
-	TargetTotalMins *int   `json:"targetTotalMins,omitempty"`
+	ID              uint    `json:"id"`
+	Title           string  `json:"title"`
+	DurationMins    int     `json:"durationMins"`
+	TargetTotalMins *int    `json:"targetTotalMins,omitempty"`
+	ResetPeriod     *string `json:"resetPeriod,omitempty"`
 }
 
 type GetRoutineRequest struct {
@@ -279,13 +281,15 @@ type UpdateRoutineRequest struct {
 	Title           *string `json:"title"`
 	DurationMins    *int    `json:"durationMins"`
 	TargetTotalMins *int    `json:"targetTotalMins,omitempty"`
+	ResetPeriod     *string `json:"resetPeriod,omitempty"`
 }
 
 type UpdateRoutineResponse struct {
-	ID              uint   `json:"id"`
-	Title           string `json:"title"`
-	DurationMins    int    `json:"durationMins"`
-	TargetTotalMins *int   `json:"targetTotalMins,omitempty"`
+	ID              uint    `json:"id"`
+	Title           string  `json:"title"`
+	DurationMins    int     `json:"durationMins"`
+	TargetTotalMins *int    `json:"targetTotalMins,omitempty"`
+	ResetPeriod     *string `json:"resetPeriod,omitempty"`
 }
 
 type DeleteRoutineRequest struct {
