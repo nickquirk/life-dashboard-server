@@ -17,7 +17,7 @@ func (s *service) CreateRoutine(req domain.CreateRoutineRequest) (domain.CreateR
 		ID:              created.ID,
 		Title:           created.Title,
 		DurationMins:    created.DurationMins,
-		TargetTotalMins: req.TargetTotalMins,
+		TargetTotalMins: created.TargetTotalMins,
 		ResetPeriod:     created.ResetPeriod,
 	}, nil
 }
