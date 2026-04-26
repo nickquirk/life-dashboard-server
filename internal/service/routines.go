@@ -39,8 +39,14 @@ func (s *service) UpdateRoutine(req domain.UpdateRoutineRequest) (domain.UpdateR
 	if req.DurationMins != nil {
 		updates["duration_mins"] = *req.DurationMins
 	}
+	// If TTM is set then routine becomes a time goal
 	if req.TargetTotalMins != nil {
-		updates["target_total_mins"] = *req.TargetTotalMins
+		// If FE sends zero then convert back to regular routine
+		if *req.TargetTotalMins == 0 {
+			updates["target_total_mins"] = nil
+		} else {
+			updates["target_total_mins"] = *req.TargetTotalMins
+		}
 	}
 
 	if len(updates) == 0 {
