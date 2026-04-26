@@ -50,9 +50,9 @@ func (r *GormRoutineRepository) GetRoutinesByUserID(userID uint) ([]domain.Routi
 		Table("routines AS r").
 		Select(`
 			r.*,
-			COALESCE(SUM(CASE WHEN `+inPeriod+`
-				THEN COALESCE(ri.duration_mins, r.duration_mins)
-				ELSE 0 END), 0) AS scheduled_mins,
+			COALESCE(SUM(CASE WHEN ri.id IS NOT NULL AND `+inPeriod+`
+			THEN COALESCE(ri.duration_mins, r.duration_mins)
+			ELSE 0 END), 0) AS scheduled_mins,
 			COALESCE(SUM(CASE WHEN ri.status = 'completed' AND `+inPeriod+`
 				THEN COALESCE(ri.duration_mins, r.duration_mins)
 				ELSE 0 END), 0) AS completed_mins,
