@@ -271,8 +271,16 @@ type GetRoutineRequest struct {
 	UserID uint `json:"-"`
 }
 
+type RoutineWithStats struct {
+	Routine
+	ScheduledMins  int `json:"scheduledMins"`
+	CompletedMins  int `json:"completedMins"`
+	InstanceCount  int `json:"instanceCount"`
+	CompletedCount int `json:"completedCount"`
+}
+
 type GetRoutineResponse struct {
-	Routines []Routine `json:"routines"`
+	Routines []RoutineWithStats `json:"routines"`
 }
 
 type UpdateRoutineRequest struct {
