@@ -84,10 +84,11 @@ func (s *service) DeleteRoutine(req domain.DeleteRoutineRequest) (domain.DeleteR
 
 func (s *service) CreateRoutineInstance(req domain.CreateRoutineInstanceRequest) (domain.CreateRoutineInstanceResponse, error) {
 	created, err := s.routineRepo.CreateInstance(domain.RoutineInstance{
-		UserID:    req.UserID,
-		RoutineID: req.RoutineID,
-		Date:      req.Date,
-		Status:    "needsAction",
+		UserID:       req.UserID,
+		RoutineID:    req.RoutineID,
+		Date:         req.Date,
+		Status:       "needsAction",
+		DurationMins: req.DurationMins,
 	})
 	if err != nil {
 		return domain.CreateRoutineInstanceResponse{}, err

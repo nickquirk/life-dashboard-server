@@ -312,9 +312,10 @@ type DeleteRoutineResponse struct {
 // ------ Routine Instances ---------
 
 type CreateRoutineInstanceRequest struct {
-	UserID    uint      `json:"-"`
-	RoutineID uint      `json:"routineId"`
-	Date      time.Time `json:"date"`
+	UserID       uint      `json:"-"`
+	RoutineID    uint      `json:"routineId"`
+	Date         time.Time `json:"date"`
+	DurationMins *int      `json:"durationMins,omitempty"`
 }
 
 type CreateRoutineInstanceResponse struct {
