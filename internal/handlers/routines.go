@@ -33,6 +33,11 @@ func (h *Handler) createRoutine(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.Service.CreateRoutine(req)
 	if err != nil {
+		if errors.Is(err, domain.ErrInvalidInput) {
+			h.respondWithError(w, err.Error(), err, http.StatusBadRequest, "userID", userID)
+			return
+		}
+		// POss change to opaque error
 		h.respondWithError(w, "Failed to create routine", err, http.StatusInternalServerError, "userID", userID)
 		return
 	}
@@ -87,6 +92,10 @@ func (h *Handler) updateRoutine(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.Service.UpdateRoutine(req)
 	if err != nil {
+		if errors.Is(err, domain.ErrInvalidInput) {
+			h.respondWithError(w, err.Error(), err, http.StatusBadRequest, "userID", userID, "routineID", routineID)
+			return
+		}
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			h.respondWithError(w, "Routine not found", err, http.StatusNotFound, "userID", userID, "routineID", routineID)
 			return
