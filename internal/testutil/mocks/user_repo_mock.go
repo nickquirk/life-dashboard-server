@@ -1,6 +1,10 @@
 package mocks
 
-import "github.com/nickquirk/life-dashboard-server/internal/domain"
+import (
+	"time"
+
+	"github.com/nickquirk/life-dashboard-server/internal/domain"
+)
 
 // MockUserRepository implements repository.UserRepository with function fields.
 type MockUserRepository struct {
@@ -8,8 +12,9 @@ type MockUserRepository struct {
 	GetFunc                       func(domain.GetUserRequest) (domain.GetUserResponse, error)
 	GetEmailFunc                  func(userID uint) (string, error)
 	GetUsersWithRefreshTokensFunc func() ([]uint, error)
-	UpdateAppRefreshTokenFunc     func(userID uint, hashedToken string) error
-	GetAppRefreshTokenFunc        func(userID uint) (string, error)
+	CreateSessionFunc             func(userID uint, hashedToken string, expiresAt time.Time, deviceInfo string) error
+	ValidateSessionFunc           func(userID uint, hashedToken string) (bool, error)
+	DeleteSessionFunc             func(userID uint, hashedToken string) error
 	DeleteUserAndDataFunc         func(userID uint) error
 }
 
@@ -41,18 +46,25 @@ func (m *MockUserRepository) GetUsersWithRefreshTokens() ([]uint, error) {
 	return nil, nil
 }
 
-func (m *MockUserRepository) UpdateAppRefreshToken(userID uint, hashedToken string) error {
-	if m.UpdateAppRefreshTokenFunc != nil {
-		return m.UpdateAppRefreshTokenFunc(userID, hashedToken)
+func (m *MockUserRepository) CreateSession(userID uint, hashedToken string, expiresAt time.Time, deviceInfo string) error {
+	if m.CreateSessionFunc != nil {
+		return m.CreateSessionFunc(userID, hashedToken, expiresAt, deviceInfo)
 	}
 	return nil
 }
 
-func (m *MockUserRepository) GetAppRefreshToken(userID uint) (string, error) {
-	if m.GetAppRefreshTokenFunc != nil {
-		return m.GetAppRefreshTokenFunc(userID)
+func (m *MockUserRepository) ValidateSession(userID uint, hashedToken string) (bool, error) {
+	if m.ValidateSessionFunc != nil {
+		return m.ValidateSessionFunc(userID, hashedToken)
 	}
-	return "", nil
+	return false, nil
+}
+
+func (m *MockUserRepository) DeleteSession(userID uint, hashedToken string) error {
+	if m.DeleteSessionFunc != nil {
+		return m.DeleteSessionFunc(userID, hashedToken)
+	}
+	return nil
 }
 
 func (m *MockUserRepository) DeleteUserAndData(userID uint) error {

@@ -111,13 +111,17 @@ func (h *Handler) refreshToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Rotate the session: Delete the old one and create a new one
-	_ = h.Service.DeleteSession(userID, providedHash)
+	// Rotate the session: delete the old one and create a new one. If the delete
+	// fails the old refresh token would remain valid, so treat it as fatal.
+	if err := h.Service.DeleteSession(userID, providedHash); err != nil {
+		h.respondWithError(w, "Token refresh failed", err, http.StatusInternalServerError, "userID", userID)
+		return
+	}
 
 	newHash := utils.HashRefreshToken(newRefreshToken)
-	expiresAt := time.Now().Add(30 * 24 * time.Hour) // Match your cookie expiry of 30 days
+	expiresAt := time.Now().Add(30 * 24 * time.Hour) // Match cookie expiry of 30 days
 
-	if err := h.Service.CreateSession(userID, newHash, expiresAt); err != nil {
+	if err := h.Service.CreateSession(userID, newHash, expiresAt, r.UserAgent()); err != nil {
 		h.respondWithError(w, "Token refresh failed", err, http.StatusInternalServerError)
 		return
 	}

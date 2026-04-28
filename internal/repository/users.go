@@ -19,11 +19,15 @@ type UserRepository interface {
 	Get(domain.GetUserRequest) (domain.GetUserResponse, error)
 	GetEmail(userID uint) (string, error)
 	GetUsersWithRefreshTokens() ([]uint, error)
-	CreateSession(userID uint, hashedToken string, expiresAt time.Time) error
+	CreateSession(userID uint, hashedToken string, expiresAt time.Time, deviceInfo string) error
 	ValidateSession(userID uint, hashedToken string) (bool, error)
 	DeleteSession(userID uint, hashedToken string) error
 	DeleteUserAndData(userID uint) error
 }
+
+// MaxSessionsPerUser caps how many active sessions a user can hold at once.
+// On overflow, the session with the soonest expiry is evicted.
+const MaxSessionsPerUser = 10
 
 func (r GormUserRepository) Create(c domain.CreateUserRequest) (domain.CreateUserResponse, error) {
 	var user domain.User
@@ -141,14 +145,44 @@ func (r GormUserRepository) GetUsersWithRefreshTokens() ([]uint, error) {
 	return userIDs, nil
 }
 
-// Create a new session
-func (r GormUserRepository) CreateSession(userID uint, hashedToken string, expiresAt time.Time) error {
-	session := domain.Session{
-		UserID:          userID,
-		AppRefreshToken: hashedToken,
-		ExpiresAt:       expiresAt,
-	}
-	return r.Db.Create(&session).Error
+// CreateSession inserts a new session, opportunistically purges expired rows for
+// the same user, and evicts the oldest active session when the per-user cap is hit.
+func (r GormUserRepository) CreateSession(userID uint, hashedToken string, expiresAt time.Time, deviceInfo string) error {
+	return r.Db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("user_id = ? AND expires_at <= ?", userID, time.Now()).Delete(&domain.Session{}).Error; err != nil {
+			return err
+		}
+
+		var activeCount int64
+		if err := tx.Model(&domain.Session{}).Where("user_id = ?", userID).Count(&activeCount).Error; err != nil {
+			return err
+		}
+
+		if activeCount >= int64(MaxSessionsPerUser) {
+			toRemove := int(activeCount) - MaxSessionsPerUser + 1
+			var oldest []domain.Session
+			if err := tx.Where("user_id = ?", userID).Order("expires_at ASC").Limit(toRemove).Find(&oldest).Error; err != nil {
+				return err
+			}
+			ids := make([]uint, len(oldest))
+			for i, s := range oldest {
+				ids[i] = s.ID
+			}
+			if len(ids) > 0 {
+				if err := tx.Delete(&domain.Session{}, ids).Error; err != nil {
+					return err
+				}
+			}
+		}
+
+		session := domain.Session{
+			UserID:          userID,
+			AppRefreshToken: hashedToken,
+			ExpiresAt:       expiresAt,
+			DeviceInfo:      deviceInfo,
+		}
+		return tx.Create(&session).Error
+	})
 }
 
 // Find a specific session by the hashed token

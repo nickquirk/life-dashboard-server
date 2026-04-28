@@ -19,7 +19,7 @@ type Service interface {
 	CreateUser(user domain.CreateUserRequest) (domain.CreateUserResponse, error)
 	GetUser(domain.GetUserRequest) (domain.GetUserResponse, error)
 	GetUserEmail(userID uint) (string, error)
-	CreateSession(userID uint, hashedToken string, expiresAt time.Time) error
+	CreateSession(userID uint, hashedToken string, expiresAt time.Time, deviceInfo string) error
 	ValidateSession(userID uint, hashedToken string) (bool, error)
 	DeleteSession(userID uint, hashedToken string) error
 	DeleteAccount(userID uint) error

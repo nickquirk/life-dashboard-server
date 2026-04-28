@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
 	"github.com/nickquirk/life-dashboard-server/internal/testutil/mocks"
@@ -68,31 +69,34 @@ func TestGetUser_RepoError(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// --- UpdateAppRefreshToken ---
+// --- CreateSession ---
 
-func TestUpdateAppRefreshToken_Success(t *testing.T) {
+func TestCreateSession_Success(t *testing.T) {
+	expiry := time.Now().Add(30 * 24 * time.Hour)
 	repo := &mocks.MockUserRepository{
-		UpdateAppRefreshTokenFunc: func(userID uint, hash string) error {
+		CreateSessionFunc: func(userID uint, hash string, expiresAt time.Time, deviceInfo string) error {
 			assert.Equal(t, uint(1), userID)
 			assert.Equal(t, "hashed-token", hash)
+			assert.Equal(t, expiry, expiresAt)
+			assert.Equal(t, "Chrome on Mac", deviceInfo)
 			return nil
 		},
 	}
 	svc := newTestService(repo)
 
-	err := svc.UpdateAppRefreshToken(1, "hashed-token")
+	err := svc.CreateSession(1, "hashed-token", expiry, "Chrome on Mac")
 	assert.NoError(t, err)
 }
 
-func TestUpdateAppRefreshToken_Error(t *testing.T) {
+func TestCreateSession_Error(t *testing.T) {
 	repo := &mocks.MockUserRepository{
-		UpdateAppRefreshTokenFunc: func(userID uint, hash string) error {
+		CreateSessionFunc: func(userID uint, hash string, expiresAt time.Time, deviceInfo string) error {
 			return errors.New("db error")
 		},
 	}
 	svc := newTestService(repo)
 
-	err := svc.UpdateAppRefreshToken(1, "hash")
+	err := svc.CreateSession(1, "hash", time.Now(), "")
 	assert.Error(t, err)
 }
 
@@ -127,29 +131,75 @@ func TestDeleteAccount_RepoError(t *testing.T) {
 	assert.Equal(t, "delete failed", err.Error())
 }
 
-// --- GetAppRefreshToken ---
+// --- ValidateSession ---
 
-func TestGetAppRefreshToken_Success(t *testing.T) {
+func TestValidateSession_Valid(t *testing.T) {
 	repo := &mocks.MockUserRepository{
-		GetAppRefreshTokenFunc: func(userID uint) (string, error) {
-			return "stored-hash", nil
+		ValidateSessionFunc: func(userID uint, hash string) (bool, error) {
+			assert.Equal(t, uint(1), userID)
+			assert.Equal(t, "stored-hash", hash)
+			return true, nil
 		},
 	}
 	svc := newTestService(repo)
 
-	token, err := svc.GetAppRefreshToken(1)
+	ok, err := svc.ValidateSession(1, "stored-hash")
 	require.NoError(t, err)
-	assert.Equal(t, "stored-hash", token)
+	assert.True(t, ok)
 }
 
-func TestGetAppRefreshToken_Error(t *testing.T) {
+func TestValidateSession_Invalid(t *testing.T) {
 	repo := &mocks.MockUserRepository{
-		GetAppRefreshTokenFunc: func(userID uint) (string, error) {
-			return "", errors.New("db error")
+		ValidateSessionFunc: func(userID uint, hash string) (bool, error) {
+			return false, nil
 		},
 	}
 	svc := newTestService(repo)
 
-	_, err := svc.GetAppRefreshToken(1)
+	ok, err := svc.ValidateSession(1, "stored-hash")
+	require.NoError(t, err)
+	assert.False(t, ok)
+}
+
+func TestValidateSession_Error(t *testing.T) {
+	repo := &mocks.MockUserRepository{
+		ValidateSessionFunc: func(userID uint, hash string) (bool, error) {
+			return false, errors.New("db error")
+		},
+	}
+	svc := newTestService(repo)
+
+	_, err := svc.ValidateSession(1, "hash")
+	assert.Error(t, err)
+}
+
+// --- DeleteSession ---
+
+func TestDeleteSession_Success(t *testing.T) {
+	called := false
+	repo := &mocks.MockUserRepository{
+		DeleteSessionFunc: func(userID uint, hash string) error {
+			called = true
+			assert.Equal(t, uint(1), userID)
+			assert.Equal(t, "hash", hash)
+			return nil
+		},
+	}
+	svc := newTestService(repo)
+
+	err := svc.DeleteSession(1, "hash")
+	require.NoError(t, err)
+	assert.True(t, called)
+}
+
+func TestDeleteSession_Error(t *testing.T) {
+	repo := &mocks.MockUserRepository{
+		DeleteSessionFunc: func(userID uint, hash string) error {
+			return errors.New("db error")
+		},
+	}
+	svc := newTestService(repo)
+
+	err := svc.DeleteSession(1, "hash")
 	assert.Error(t, err)
 }

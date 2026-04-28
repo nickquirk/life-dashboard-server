@@ -2,6 +2,7 @@ package mocks
 
 import (
 	"context"
+	"time"
 
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
 )
@@ -13,8 +14,9 @@ type MockService struct {
 	CreateUserFunc          func(domain.CreateUserRequest) (domain.CreateUserResponse, error)
 	GetUserFunc             func(domain.GetUserRequest) (domain.GetUserResponse, error)
 	GetUserEmailFunc        func(userID uint) (string, error)
-	UpdateAppRefreshTokenFunc func(userID uint, hashedToken string) error
-	GetAppRefreshTokenFunc  func(userID uint) (string, error)
+	CreateSessionFunc       func(userID uint, hashedToken string, expiresAt time.Time, deviceInfo string) error
+	ValidateSessionFunc     func(userID uint, hashedToken string) (bool, error)
+	DeleteSessionFunc       func(userID uint, hashedToken string) error
 	TriggerGlobalSyncFunc   func(ctx context.Context, projectID, location, queue, workerURL, serviceAccountEmail string) error
 	SyncSingleUserFunc      func(ctx context.Context, userID uint) error
 	SyncTaskListsFunc       func(ctx context.Context, req domain.SyncTaskListsRequest) (domain.SyncTaskListsResponse, error)
@@ -72,18 +74,25 @@ func (m *MockService) GetUserEmail(userID uint) (string, error) {
 	return "", nil
 }
 
-func (m *MockService) UpdateAppRefreshToken(userID uint, hashedToken string) error {
-	if m.UpdateAppRefreshTokenFunc != nil {
-		return m.UpdateAppRefreshTokenFunc(userID, hashedToken)
+func (m *MockService) CreateSession(userID uint, hashedToken string, expiresAt time.Time, deviceInfo string) error {
+	if m.CreateSessionFunc != nil {
+		return m.CreateSessionFunc(userID, hashedToken, expiresAt, deviceInfo)
 	}
 	return nil
 }
 
-func (m *MockService) GetAppRefreshToken(userID uint) (string, error) {
-	if m.GetAppRefreshTokenFunc != nil {
-		return m.GetAppRefreshTokenFunc(userID)
+func (m *MockService) ValidateSession(userID uint, hashedToken string) (bool, error) {
+	if m.ValidateSessionFunc != nil {
+		return m.ValidateSessionFunc(userID, hashedToken)
 	}
-	return "", nil
+	return false, nil
+}
+
+func (m *MockService) DeleteSession(userID uint, hashedToken string) error {
+	if m.DeleteSessionFunc != nil {
+		return m.DeleteSessionFunc(userID, hashedToken)
+	}
+	return nil
 }
 
 func (m *MockService) TriggerGlobalSync(ctx context.Context, projectID, location, queue, workerURL, serviceAccountEmail string) error {

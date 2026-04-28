@@ -127,10 +127,9 @@ func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	hashedRefreshToken := utils.HashRefreshToken(rawRefreshToken)
-	expiresAt := time.Now().Add(30 * 24 * time.Hour) // Match your cookie expiry
+	expiresAt := time.Now().Add(30 * 24 * time.Hour) // Match cookie expiry of 30 days
 
-	// Update this in your service layer to call CreateSession
-	if err := h.Service.CreateSession(user.ID, hashedRefreshToken, expiresAt); err != nil {
+	if err := h.Service.CreateSession(user.ID, hashedRefreshToken, expiresAt, r.UserAgent()); err != nil {
 		h.respondWithError(w, "Authentication failed", err, http.StatusInternalServerError)
 		return
 	}

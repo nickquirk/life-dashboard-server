@@ -26,8 +26,8 @@ func (s service) GetUserEmail(userID uint) (string, error) {
 	return s.userRepo.GetEmail(userID)
 }
 
-func (s service) CreateSession(userID uint, hashedToken string, expiresAt time.Time) error {
-	return s.userRepo.CreateSession(userID, hashedToken, expiresAt)
+func (s service) CreateSession(userID uint, hashedToken string, expiresAt time.Time, deviceInfo string) error {
+	return s.userRepo.CreateSession(userID, hashedToken, expiresAt, deviceInfo)
 }
 
 func (s service) ValidateSession(userID uint, hashedToken string) (bool, error) {

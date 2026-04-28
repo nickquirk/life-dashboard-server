@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
 	"github.com/nickquirk/life-dashboard-server/internal/testutil/mocks"
@@ -38,22 +39,32 @@ func TestLogout_ClearsCookies(t *testing.T) {
 func TestRefreshToken_Success(t *testing.T) {
 	t.Setenv("JWT_SECRET", "test-secret-key-for-unit-tests-32chars!")
 
-	// Create an expired JWT so GetUserIdFromExpiredToken works
 	rawRefresh := "test-refresh-token-value"
-	expectedHash := utils.HashRefreshToken(rawRefresh)
+	providedHash := utils.HashRefreshToken(rawRefresh)
 
-	// We need a valid (but can be expired) JWT with user ID 1
 	token, err := utils.GenerateToken(1, "user@example.com")
 	require.NoError(t, err)
 
+	deleteCalled := false
+	createCalled := false
 	svc := &mocks.MockService{
-		GetAppRefreshTokenFunc: func(userID uint) (string, error) {
-			return expectedHash, nil
+		ValidateSessionFunc: func(userID uint, hash string) (bool, error) {
+			assert.Equal(t, uint(1), userID)
+			assert.Equal(t, providedHash, hash)
+			return true, nil
 		},
 		GetUserEmailFunc: func(userID uint) (string, error) {
 			return "user@example.com", nil
 		},
-		UpdateAppRefreshTokenFunc: func(userID uint, hash string) error {
+		DeleteSessionFunc: func(userID uint, hash string) error {
+			deleteCalled = true
+			assert.Equal(t, providedHash, hash)
+			return nil
+		},
+		CreateSessionFunc: func(userID uint, hash string, expiresAt time.Time, deviceInfo string) error {
+			createCalled = true
+			assert.NotEqual(t, providedHash, hash, "should rotate to a new hash")
+			assert.True(t, expiresAt.After(time.Now()))
 			return nil
 		},
 	}
@@ -67,8 +78,41 @@ func TestRefreshToken_Success(t *testing.T) {
 	h.refreshToken(rr, r)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.True(t, deleteCalled, "old session should be deleted")
+	assert.True(t, createCalled, "new session should be created")
 	cookies := rr.Result().Cookies()
 	assert.GreaterOrEqual(t, len(cookies), 2)
+}
+
+func TestRefreshToken_DeleteSessionFails(t *testing.T) {
+	t.Setenv("JWT_SECRET", "test-secret-key-for-unit-tests-32chars!")
+
+	token, err := utils.GenerateToken(1, "user@example.com")
+	require.NoError(t, err)
+
+	createCalled := false
+	svc := &mocks.MockService{
+		ValidateSessionFunc: func(userID uint, hash string) (bool, error) { return true, nil },
+		GetUserEmailFunc:    func(userID uint) (string, error) { return "user@example.com", nil },
+		DeleteSessionFunc: func(userID uint, hash string) error {
+			return errors.New("db error")
+		},
+		CreateSessionFunc: func(userID uint, hash string, expiresAt time.Time, deviceInfo string) error {
+			createCalled = true
+			return nil
+		},
+	}
+
+	h := testHandler(svc)
+	r := httptest.NewRequest(http.MethodPost, "/api/auth/refresh", nil)
+	r.AddCookie(&http.Cookie{Name: "life-dashboard", Value: token})
+	r.AddCookie(&http.Cookie{Name: "life-dashboard-refresh", Value: "raw"})
+	rr := httptest.NewRecorder()
+
+	h.refreshToken(rr, r)
+
+	assert.Equal(t, http.StatusInternalServerError, rr.Code)
+	assert.False(t, createCalled, "new session must not be created if old delete failed")
 }
 
 func TestRefreshToken_MissingJWTCookie(t *testing.T) {
@@ -99,15 +143,15 @@ func TestRefreshToken_MissingRefreshCookie(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, rr.Code)
 }
 
-func TestRefreshToken_HashMismatch(t *testing.T) {
+func TestRefreshToken_InvalidSession(t *testing.T) {
 	t.Setenv("JWT_SECRET", "test-secret-key-for-unit-tests-32chars!")
 
 	token, err := utils.GenerateToken(1, "user@example.com")
 	require.NoError(t, err)
 
 	svc := &mocks.MockService{
-		GetAppRefreshTokenFunc: func(userID uint) (string, error) {
-			return "different-hash-value", nil
+		ValidateSessionFunc: func(userID uint, hash string) (bool, error) {
+			return false, nil
 		},
 	}
 
@@ -126,14 +170,13 @@ func TestRefreshToken_UserNotFound(t *testing.T) {
 	t.Setenv("JWT_SECRET", "test-secret-key-for-unit-tests-32chars!")
 
 	rawRefresh := "test-refresh-token"
-	expectedHash := utils.HashRefreshToken(rawRefresh)
 
 	token, err := utils.GenerateToken(1, "user@example.com")
 	require.NoError(t, err)
 
 	svc := &mocks.MockService{
-		GetAppRefreshTokenFunc: func(userID uint) (string, error) {
-			return expectedHash, nil
+		ValidateSessionFunc: func(userID uint, hash string) (bool, error) {
+			return true, nil
 		},
 		GetUserEmailFunc: func(userID uint) (string, error) {
 			return "", errors.New("not found")
