@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/nickquirk/life-dashboard-server/internal/config"
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
@@ -126,7 +127,10 @@ func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	hashedRefreshToken := utils.HashRefreshToken(rawRefreshToken)
-	if err := h.Service.UpdateAppRefreshToken(user.ID, hashedRefreshToken); err != nil {
+	expiresAt := time.Now().Add(30 * 24 * time.Hour) // Match your cookie expiry
+
+	// Update this in your service layer to call CreateSession
+	if err := h.Service.CreateSession(user.ID, hashedRefreshToken, expiresAt); err != nil {
 		h.respondWithError(w, "Authentication failed", err, http.StatusInternalServerError)
 		return
 	}

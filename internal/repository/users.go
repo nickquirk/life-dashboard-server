@@ -2,6 +2,7 @@ package repository
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/nickquirk/life-dashboard-server/internal/crypto"
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
@@ -18,8 +19,9 @@ type UserRepository interface {
 	Get(domain.GetUserRequest) (domain.GetUserResponse, error)
 	GetEmail(userID uint) (string, error)
 	GetUsersWithRefreshTokens() ([]uint, error)
-	UpdateAppRefreshToken(userID uint, hashedToken string) error
-	GetAppRefreshToken(userID uint) (string, error)
+	CreateSession(userID uint, hashedToken string, expiresAt time.Time) error
+	ValidateSession(userID uint, hashedToken string) (bool, error)
+	DeleteSession(userID uint, hashedToken string) error
 	DeleteUserAndData(userID uint) error
 }
 
@@ -139,17 +141,29 @@ func (r GormUserRepository) GetUsersWithRefreshTokens() ([]uint, error) {
 	return userIDs, nil
 }
 
-func (r GormUserRepository) UpdateAppRefreshToken(userID uint, hashedToken string) error {
-	return r.Db.Model(&domain.User{}).Where("id = ?", userID).Update("app_refresh_token", hashedToken).Error
+// Create a new session
+func (r GormUserRepository) CreateSession(userID uint, hashedToken string, expiresAt time.Time) error {
+	session := domain.Session{
+		UserID:          userID,
+		AppRefreshToken: hashedToken,
+		ExpiresAt:       expiresAt,
+	}
+	return r.Db.Create(&session).Error
 }
 
-func (r GormUserRepository) GetAppRefreshToken(userID uint) (string, error) {
-	var token string
-	err := r.Db.Model(&domain.User{}).Where("id = ?", userID).Pluck("app_refresh_token", &token).Error
-	if err != nil {
-		return "", err
-	}
-	return token, nil
+// Find a specific session by the hashed token
+func (r GormUserRepository) ValidateSession(userID uint, hashedToken string) (bool, error) {
+	var count int64
+	err := r.Db.Model(&domain.Session{}).
+		Where("user_id = ? AND app_refresh_token = ? AND expires_at > ?", userID, hashedToken, time.Now()).
+		Count(&count).Error
+
+	return count > 0, err
+}
+
+// Delete a session (for logout or token rotation)
+func (r GormUserRepository) DeleteSession(userID uint, hashedToken string) error {
+	return r.Db.Where("user_id = ? AND app_refresh_token = ?", userID, hashedToken).Delete(&domain.Session{}).Error
 }
 
 func (r GormUserRepository) DeleteUserAndData(userID uint) error {

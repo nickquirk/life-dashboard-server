@@ -8,12 +8,20 @@ import (
 
 type User struct {
 	gorm.Model
-	Email           string    `gorm:"unique;not null;size:255"`
-	Picture         string    `gorm:"type:text"`
-	AccessToken     string    `gorm:"type:text"`
-	RefreshToken    string    `gorm:"type:text"`
-	TokenExpiry     time.Time `gorm:"type:datetime"`
-	AppRefreshToken string    `gorm:"type:text"` // SHA-256 hash of the app-level refresh token
+	Email        string    `gorm:"unique;not null;size:255"`
+	Picture      string    `gorm:"type:text"`
+	AccessToken  string    `gorm:"type:text"`
+	RefreshToken string    `gorm:"type:text"`
+	TokenExpiry  time.Time `gorm:"type:datetime"`
+	Sessions     []Session `gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+}
+
+type Session struct {
+	ID              uint      `gorm:"primarykey"`
+	UserID          uint      `gorm:"index;not null"`
+	AppRefreshToken string    `gorm:"type:text;not null"` // The hashed refresh token
+	ExpiresAt       time.Time `gorm:"type:datetime;not null"`
+	DeviceInfo      string    `gorm:"type:text"` // e.g., "MacBook Safari"
 }
 
 type TaskList struct {

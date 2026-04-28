@@ -70,6 +70,7 @@ func InitDb() (*gorm.DB, error) {
 
 func InitMigration(db *gorm.DB) {
 	db.AutoMigrate(domain.User{})
+	db.AutoMigrate(domain.Session{})
 	db.AutoMigrate(domain.TaskList{})
 	db.AutoMigrate(domain.Task{})
 	db.AutoMigrate(domain.Zone{})

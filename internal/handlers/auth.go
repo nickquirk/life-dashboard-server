@@ -2,10 +2,10 @@ package handlers
 
 import (
 	"context"
-	"crypto/subtle"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"time" // Added for session expiration
 
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
 	"github.com/nickquirk/life-dashboard-server/internal/utils"
@@ -38,13 +38,18 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, h.Cookies.ExpireSessionCookie())
 	http.SetCookie(w, h.Cookies.ExpireRefreshCookie())
 
-	// Best-effort: invalidate refresh token in DB if we can identify the user
-	if jwtCookie, err := r.Cookie("life-dashboard"); err == nil {
-		if userID, err := utils.GetUserIdFromExpiredToken(jwtCookie.Value); err == nil {
-			if err := h.Service.UpdateAppRefreshToken(userID, ""); err != nil {
-				slog.Warn("failed to invalidate refresh token on logout", "error", err, "userID", userID)
+	// Best-effort: invalidate the specific session in the DB using the refresh token
+	if refreshCookie, err := r.Cookie("life-dashboard-refresh"); err == nil {
+		if jwtCookie, err := r.Cookie("life-dashboard"); err == nil {
+			if userID, err := utils.GetUserIdFromExpiredToken(jwtCookie.Value); err == nil {
+				hashedToken := utils.HashRefreshToken(refreshCookie.Value)
+
+				// Delete this specific session, leaving other devices untouched
+				if err := h.Service.DeleteSession(userID, hashedToken); err != nil {
+					slog.Warn("failed to delete session on logout", "error", err, "userID", userID)
+				}
+				slog.Info("user logged out", "userID", userID)
 			}
-			slog.Info("user logged out", "userID", userID)
 		}
 	}
 
@@ -65,26 +70,23 @@ func (h *Handler) refreshToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//  Get the refresh token from cookie
+	// Get the refresh token from cookie
 	refreshCookie, err := r.Cookie("life-dashboard-refresh")
 	if err != nil {
 		h.respondWithError(w, "Unauthorized", err, http.StatusUnauthorized, "userID", userID)
 		return
 	}
 
-	// Validate refresh token against stored hash
+	// Hash the incoming token
 	providedHash := utils.HashRefreshToken(refreshCookie.Value)
-	storedHash, err := h.Service.GetAppRefreshToken(userID)
-	if err != nil || storedHash == "" {
+
+	// Validate the session exists and hasn't expired
+	isValid, err := h.Service.ValidateSession(userID, providedHash)
+	if err != nil || !isValid {
 		if err == nil {
-			err = fmt.Errorf("no stored refresh token")
+			err = fmt.Errorf("invalid or expired refresh token")
 		}
 		h.respondWithError(w, "Unauthorized", err, http.StatusUnauthorized, "userID", userID)
-		return
-	}
-
-	if subtle.ConstantTimeCompare([]byte(providedHash), []byte(storedHash)) != 1 {
-		h.respondWithError(w, "Unauthorized", fmt.Errorf("refresh token hash mismatch"), http.StatusUnauthorized, "userID", userID)
 		return
 	}
 
@@ -102,15 +104,20 @@ func (h *Handler) refreshToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Rotate refresh token
+	// Generate a new refresh token (rotation)
 	newRefreshToken, err := utils.GenerateRefreshToken()
 	if err != nil {
 		h.respondWithError(w, "Token refresh failed", err, http.StatusInternalServerError)
 		return
 	}
 
+	// Rotate the session: Delete the old one and create a new one
+	_ = h.Service.DeleteSession(userID, providedHash)
+
 	newHash := utils.HashRefreshToken(newRefreshToken)
-	if err := h.Service.UpdateAppRefreshToken(userID, newHash); err != nil {
+	expiresAt := time.Now().Add(30 * 24 * time.Hour) // Match your cookie expiry of 30 days
+
+	if err := h.Service.CreateSession(userID, newHash, expiresAt); err != nil {
 		h.respondWithError(w, "Token refresh failed", err, http.StatusInternalServerError)
 		return
 	}
