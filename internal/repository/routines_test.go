@@ -193,7 +193,21 @@ func TestGetRoutinesByUserID_Weekly_ThisWeekInstanceIncluded(t *testing.T) {
 	assert.Equal(t, 1, got.InstanceCount)
 }
 
-// 8. Soft-deleted instance is excluded from all aggregates.
+// 8. Routines belonging to another user are not returned.
+func TestGetRoutinesByUserID_MultiUserIsolation(t *testing.T) {
+	const otherUserID uint = 2
+
+	repo, db := newRepo(t)
+	seedRoutine(t, db, domain.Routine{UserID: testUserID, Title: "User1 Routine", DurationMins: 30})
+	seedRoutine(t, db, domain.Routine{UserID: otherUserID, Title: "User2 Routine", DurationMins: 30})
+
+	out, err := repo.GetRoutinesByUserID(testUserID)
+	require.NoError(t, err)
+	require.Len(t, out, 1)
+	assert.Equal(t, "User1 Routine", out[0].Title)
+}
+
+// 9. Soft-deleted instance is excluded from all aggregates.
 func TestGetRoutinesByUserID_SoftDeletedInstanceExcluded(t *testing.T) {
 	repo, db := newRepo(t)
 	r := seedRoutine(t, db, domain.Routine{
