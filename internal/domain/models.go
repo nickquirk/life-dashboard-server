@@ -107,6 +107,7 @@ type Routine struct {
 	DurationMins    int     `json:"durationMins"`
 	TargetTotalMins *int    `json:"targetTotalMins,omitempty"`
 	ResetPeriod     *string `json:"resetPeriod,omitempty"` // NULL = one_off, "weekly", "monthly"
+	IsArchived      bool    `gorm:"not null;default:false;index" json:"isArchived"`
 }
 
 type RoutineInstance struct {
