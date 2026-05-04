@@ -366,6 +366,7 @@ type DeleteRoutineInstanceResponse struct {
 }
 
 // ------ Notes ---------
+
 type CreateNoteRequest struct {
 	UserID  uint   `json:"-"`
 	Title   string `json:"title"`
@@ -375,9 +376,94 @@ type CreateNoteRequest struct {
 }
 
 type CreateNoteResponse struct {
+	ID         uint       `json:"id"`
+	Title      string     `json:"title"`
+	Type       string     `json:"type"`
+	Content    string     `json:"content,omitempty"`
+	Color      string     `json:"color,omitempty"`
+	IsPinned   bool       `json:"isPinned"`
+	IsArchived bool       `json:"isArchived"`
+	Items      []NoteItem `json:"items,omitempty"`
+}
+
+type GetNotesRequest struct {
+	UserID uint `json:"-"`
+}
+
+type GetNotesResponse struct {
+	Notes []Note `json:"notes"`
+}
+
+type UpdateNoteRequest struct {
+	ID         uint    `json:"-"`
+	UserID     uint    `json:"-"`
+	Title      *string `json:"title"`
+	Type       *string `json:"type"`
+	Content    *string `json:"content"`
+	Color      *string `json:"color"`
+	IsPinned   *bool   `json:"isPinned"`
+	IsArchived *bool   `json:"isArchived"`
+}
+
+type UpdateNoteResponse struct {
+	ID uint `json:"id"`
+}
+
+type DeleteNoteRequest struct {
+	ID     uint `json:"-"`
+	UserID uint `json:"-"`
+}
+
+type DeleteNoteResponse struct {
+	ID uint `json:"id"`
+}
+
+// ------ Note Items ---------
+
+type CreateNoteItemRequest struct {
+	UserID   uint   `json:"-"`
+	NoteID   uint   `json:"-"`
+	Content  string `json:"content"`
+	Position int    `json:"position"`
+}
+
+type CreateNoteItemResponse struct {
+	ID          uint   `json:"id"`
+	NoteID      uint   `json:"noteId"`
+	Content     string `json:"content"`
+	IsCompleted bool   `json:"isCompleted"`
+	Position    int    `json:"position"`
+}
+
+type UpdateNoteItemRequest struct {
+	ID          uint    `json:"-"`
+	UserID      uint    `json:"-"`
+	NoteID      uint    `json:"-"`
+	Content     *string `json:"content"`
+	IsCompleted *bool   `json:"isCompleted"`
+	Position    *int    `json:"position"`
+}
+
+type UpdateNoteItemResponse struct {
+	ID uint `json:"id"`
+}
+
+type DeleteNoteItemRequest struct {
+	ID     uint `json:"-"`
+	UserID uint `json:"-"`
+	NoteID uint `json:"-"`
+}
+
+type DeleteNoteItemResponse struct {
+	ID uint `json:"id"`
+}
+
+type ReorderNoteItemsRequest struct {
 	UserID  uint   `json:"-"`
-	Title   string `json:"title"`
-	Type    string `json:"type"`
-	Content string `json:"content,omitempty"`
-	Color   string `json:"color,omitempty"`
+	NoteID  uint   `json:"-"`
+	ItemIDs []uint `json:"itemIds"`
+}
+
+type ReorderNoteItemsResponse struct {
+	NoteID uint `json:"noteId"`
 }

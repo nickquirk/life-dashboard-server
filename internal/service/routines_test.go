@@ -12,7 +12,7 @@ import (
 )
 
 func newRoutineService(repo *mocks.MockRoutineRepository) Service {
-	return NewServiceWithRepos(nil, nil, nil, nil, repo, nil, nil)
+	return NewServiceWithRepos(nil, nil, nil, nil, repo, nil, nil, nil)
 }
 
 func ptrInt(v int) *int       { return &v }

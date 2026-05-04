@@ -6,13 +6,11 @@ user.json
 credentials.json
 
 # --- Configuration ---
-# 1. Ignore ALL config variations (dev, prod, test, local)
+# Ignore ALL config variations (dev, prod, test, local)
 config.*.yaml
-
-# 2. Exception: Allow the example template to be committed
-!config.example.yaml
 
 # Project summary files 
 repomix-output.xml
 repomix-output-be.xml
 gorm.db
+docs/*

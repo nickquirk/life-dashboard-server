@@ -44,6 +44,14 @@ type MockService struct {
 	GetRoutineInstancesFunc    func(req domain.GetRoutineInstancesRequest) (domain.GetRoutineInstancesResponse, error)
 	UpdateRoutineInstanceFunc  func(req domain.UpdateRoutineInstanceRequest) (domain.UpdateRoutineInstanceResponse, error)
 	DeleteRoutineInstanceFunc  func(req domain.DeleteRoutineInstanceRequest) (domain.DeleteRoutineInstanceResponse, error)
+	CreateNoteFunc             func(req domain.CreateNoteRequest) (domain.CreateNoteResponse, error)
+	GetNotesFunc               func(req domain.GetNotesRequest) (domain.GetNotesResponse, error)
+	UpdateNoteFunc             func(req domain.UpdateNoteRequest) (domain.UpdateNoteResponse, error)
+	DeleteNoteFunc             func(req domain.DeleteNoteRequest) (domain.DeleteNoteResponse, error)
+	CreateNoteItemFunc         func(req domain.CreateNoteItemRequest) (domain.CreateNoteItemResponse, error)
+	UpdateNoteItemFunc         func(req domain.UpdateNoteItemRequest) (domain.UpdateNoteItemResponse, error)
+	DeleteNoteItemFunc         func(req domain.DeleteNoteItemRequest) (domain.DeleteNoteItemResponse, error)
+	ReorderNoteItemsFunc       func(req domain.ReorderNoteItemsRequest) (domain.ReorderNoteItemsResponse, error)
 }
 
 func (m *MockService) Ping() error {
@@ -282,5 +290,61 @@ func (m *MockService) DeleteRoutineInstance(req domain.DeleteRoutineInstanceRequ
 		return m.DeleteRoutineInstanceFunc(req)
 	}
 	return domain.DeleteRoutineInstanceResponse{}, nil
+}
+
+func (m *MockService) CreateNote(req domain.CreateNoteRequest) (domain.CreateNoteResponse, error) {
+	if m.CreateNoteFunc != nil {
+		return m.CreateNoteFunc(req)
+	}
+	return domain.CreateNoteResponse{}, nil
+}
+
+func (m *MockService) GetNotes(req domain.GetNotesRequest) (domain.GetNotesResponse, error) {
+	if m.GetNotesFunc != nil {
+		return m.GetNotesFunc(req)
+	}
+	return domain.GetNotesResponse{}, nil
+}
+
+func (m *MockService) UpdateNote(req domain.UpdateNoteRequest) (domain.UpdateNoteResponse, error) {
+	if m.UpdateNoteFunc != nil {
+		return m.UpdateNoteFunc(req)
+	}
+	return domain.UpdateNoteResponse{}, nil
+}
+
+func (m *MockService) DeleteNote(req domain.DeleteNoteRequest) (domain.DeleteNoteResponse, error) {
+	if m.DeleteNoteFunc != nil {
+		return m.DeleteNoteFunc(req)
+	}
+	return domain.DeleteNoteResponse{}, nil
+}
+
+func (m *MockService) CreateNoteItem(req domain.CreateNoteItemRequest) (domain.CreateNoteItemResponse, error) {
+	if m.CreateNoteItemFunc != nil {
+		return m.CreateNoteItemFunc(req)
+	}
+	return domain.CreateNoteItemResponse{}, nil
+}
+
+func (m *MockService) UpdateNoteItem(req domain.UpdateNoteItemRequest) (domain.UpdateNoteItemResponse, error) {
+	if m.UpdateNoteItemFunc != nil {
+		return m.UpdateNoteItemFunc(req)
+	}
+	return domain.UpdateNoteItemResponse{}, nil
+}
+
+func (m *MockService) DeleteNoteItem(req domain.DeleteNoteItemRequest) (domain.DeleteNoteItemResponse, error) {
+	if m.DeleteNoteItemFunc != nil {
+		return m.DeleteNoteItemFunc(req)
+	}
+	return domain.DeleteNoteItemResponse{}, nil
+}
+
+func (m *MockService) ReorderNoteItems(req domain.ReorderNoteItemsRequest) (domain.ReorderNoteItemsResponse, error) {
+	if m.ReorderNoteItemsFunc != nil {
+		return m.ReorderNoteItemsFunc(req)
+	}
+	return domain.ReorderNoteItemsResponse{}, nil
 }
 

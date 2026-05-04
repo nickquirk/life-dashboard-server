@@ -13,14 +13,14 @@ import (
 )
 
 func newTaskService(taskRepo *mocks.MockTaskRepository) Service {
-	return NewServiceWithRepos(nil, taskRepo, nil, nil, nil, nil, nil)
+	return NewServiceWithRepos(nil, taskRepo, nil, nil, nil, nil, nil, nil)
 }
 
 // newTaskServiceWithUserRepo creates a service with both a user and task repo.
 // Needed for tests that exercise code paths reaching the Google client (which
 // calls userRepo.Get to obtain tokens).
 func newTaskServiceWithUserRepo(userRepo *mocks.MockUserRepository, taskRepo *mocks.MockTaskRepository) Service {
-	return NewServiceWithRepos(userRepo, taskRepo, nil, nil, nil, nil, nil)
+	return NewServiceWithRepos(userRepo, taskRepo, nil, nil, nil, nil, nil, nil)
 }
 
 func intPtr(v int) *int { return &v }
