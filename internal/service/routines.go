@@ -50,6 +50,10 @@ func (s *service) UpdateRoutine(req domain.UpdateRoutineRequest) (domain.UpdateR
 		updates["duration_mins"] = *req.DurationMins
 	}
 
+	if req.IsArchived != nil {
+		updates["is_archived"] = *req.IsArchived
+	}
+
 	// Track whether the caller is demoting this routine back to a regular one
 	// so we can also strip the now-meaningless reset period.
 	clearingTarget := false

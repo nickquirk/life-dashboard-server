@@ -290,6 +290,7 @@ type UpdateRoutineRequest struct {
 	DurationMins    *int    `json:"durationMins"`
 	TargetTotalMins *int    `json:"targetTotalMins,omitempty"`
 	ResetPeriod     *string `json:"resetPeriod,omitempty"`
+	IsArchived      *bool   `json:"isArcived,omitempty"`
 }
 
 type UpdateRoutineResponse struct {
@@ -298,6 +299,7 @@ type UpdateRoutineResponse struct {
 	DurationMins    int     `json:"durationMins"`
 	TargetTotalMins *int    `json:"targetTotalMins,omitempty"`
 	ResetPeriod     *string `json:"resetPeriod,omitempty"`
+	IsArchived      *bool   `json:"isArcived,omitempty"`
 }
 
 type DeleteRoutineRequest struct {
