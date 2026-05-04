@@ -207,7 +207,92 @@ func TestGetRoutinesByUserID_MultiUserIsolation(t *testing.T) {
 	assert.Equal(t, "User1 Routine", out[0].Title)
 }
 
-// 9. Soft-deleted instance is excluded from all aggregates.
+// 9a. Archived routine is excluded from GetRoutinesByUserID.
+func TestGetRoutinesByUserID_ArchivedExcluded(t *testing.T) {
+	repo, db := newRepo(t)
+	seedRoutine(t, db, domain.Routine{
+		Title:        "Active",
+		DurationMins: 15,
+	})
+	seedRoutine(t, db, domain.Routine{
+		Title:        "Archived",
+		DurationMins: 15,
+		IsArchived:   true,
+	})
+
+	out, err := repo.GetRoutinesByUserID(testUserID)
+	require.NoError(t, err)
+	require.Len(t, out, 1)
+	assert.Equal(t, "Active", out[0].Title)
+}
+
+// 9b. Archived routine's instances are still returned by GetInstancesByUserID.
+// Design point: archiving hides the template from the sidebar without
+// destroying historical instances.
+func TestGetInstancesByUserID_ArchivedRoutineInstancesRetained(t *testing.T) {
+	repo, db := newRepo(t)
+	r := seedRoutine(t, db, domain.Routine{
+		Title:        "Archived",
+		DurationMins: 30,
+		IsArchived:   true,
+	})
+	seedInstance(t, db, domain.RoutineInstance{
+		RoutineID: r.ID,
+		Date:      time.Now(),
+		Status:    "completed",
+	})
+
+	now := time.Now()
+	out, err := repo.GetInstancesByUserID(
+		testUserID,
+		now.AddDate(0, 0, -1),
+		now.AddDate(0, 0, 1),
+	)
+	require.NoError(t, err)
+	require.Len(t, out, 1)
+	assert.Equal(t, r.ID, out[0].RoutineID)
+	assert.Equal(t, "completed", out[0].Status)
+	assert.Equal(t, "Archived", out[0].Routine.Title)
+}
+
+// 9c. Unarchiving restores the routine to GetRoutinesByUserID with its
+// original stats intact (instances were never touched).
+func TestGetRoutinesByUserID_UnarchiveRestoresStats(t *testing.T) {
+	repo, db := newRepo(t)
+	r := seedRoutine(t, db, domain.Routine{
+		Title:        "Read",
+		DurationMins: 15,
+	})
+	seedInstance(t, db, domain.RoutineInstance{
+		RoutineID: r.ID,
+		Date:      time.Now(),
+		Status:    "completed",
+	})
+	seedInstance(t, db, domain.RoutineInstance{
+		RoutineID: r.ID,
+		Date:      time.Now(),
+		Status:    "needsAction",
+	})
+
+	require.NoError(t, repo.UpdateRoutine(testUserID, r.ID, map[string]interface{}{
+		"is_archived": true,
+	}))
+	hidden, err := repo.GetRoutinesByUserID(testUserID)
+	require.NoError(t, err)
+	require.Len(t, hidden, 0)
+
+	require.NoError(t, repo.UpdateRoutine(testUserID, r.ID, map[string]interface{}{
+		"is_archived": false,
+	}))
+	got := getOnly(t, repo)
+	assert.Equal(t, "Read", got.Title)
+	assert.Equal(t, 30, got.ScheduledMins)
+	assert.Equal(t, 15, got.CompletedMins)
+	assert.Equal(t, 2, got.InstanceCount)
+	assert.Equal(t, 1, got.CompletedCount)
+}
+
+// 10. Soft-deleted instance is excluded from all aggregates.
 func TestGetRoutinesByUserID_SoftDeletedInstanceExcluded(t *testing.T) {
 	repo, db := newRepo(t)
 	r := seedRoutine(t, db, domain.Routine{
