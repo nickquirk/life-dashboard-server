@@ -67,7 +67,7 @@ func (r *GormRoutineRepository) GetRoutinesByUserID(userID uint) ([]domain.Routi
 			weekStart, monthStart,
 		).
 		Joins("LEFT JOIN routine_instances AS ri ON ri.routine_id = r.id AND ri.deleted_at IS NULL").
-		Where("r.user_id = ? AND r.deleted_at IS NULL", userID).
+		Where("r.user_id = ? AND r.deleted_at IS NULL AND r.is_archived = false", userID).
 		Group("r.id").
 		Scan(&routines).Error
 	return routines, err
