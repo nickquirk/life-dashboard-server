@@ -364,3 +364,20 @@ type DeleteRoutineInstanceRequest struct {
 type DeleteRoutineInstanceResponse struct {
 	ID uint `json:"id"`
 }
+
+// ------ Notes ---------
+type CreateNoteRequest struct {
+	UserID  uint   `json:"-"`
+	Title   string `json:"title"`
+	Type    string `json:"type"`
+	Content string `json:"content,omitempty"`
+	Color   string `json:"color,omitempty"`
+}
+
+type CreateNoteResponse struct {
+	UserID  uint   `json:"-"`
+	Title   string `json:"title"`
+	Type    string `json:"type"`
+	Content string `json:"content,omitempty"`
+	Color   string `json:"color,omitempty"`
+}
