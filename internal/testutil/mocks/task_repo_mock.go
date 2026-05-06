@@ -24,6 +24,7 @@ type MockTaskRepository struct {
 	DeleteTaskFunc                  func(taskID string) error
 	DeleteTasksFunc                 func(taskIDs []string) error
 	MarkTasksCompletedExcludingFunc func(taskListID string, activeIDs []string) error
+	ReorderSubtasksFunc             func(userID uint, parentTaskID string, orderedIDs []string) error
 	BeginTxFunc                     func() *gorm.DB
 	WithTxFunc                      func(tx *gorm.DB) repository.TaskRepository
 }
@@ -122,6 +123,13 @@ func (m *MockTaskRepository) DeleteTasks(taskIDs []string) error {
 func (m *MockTaskRepository) MarkTasksCompletedExcluding(taskListID string, activeIDs []string) error {
 	if m.MarkTasksCompletedExcludingFunc != nil {
 		return m.MarkTasksCompletedExcludingFunc(taskListID, activeIDs)
+	}
+	return nil
+}
+
+func (m *MockTaskRepository) ReorderSubtasks(userID uint, parentTaskID string, orderedIDs []string) error {
+	if m.ReorderSubtasksFunc != nil {
+		return m.ReorderSubtasksFunc(userID, parentTaskID, orderedIDs)
 	}
 	return nil
 }

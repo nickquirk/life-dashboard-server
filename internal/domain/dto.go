@@ -67,6 +67,7 @@ type CreateTaskRequest struct {
 	Quadrant     *int       `json:"quadrant,omitempty"`
 	DurationMins *int       `json:"durationMins,omitempty"`
 	Date         *time.Time `json:"date,omitempty"`
+	Position     *int       `json:"position,omitempty"` // Local subtask sibling order
 }
 
 type CreateTaskResponse struct {
@@ -82,6 +83,7 @@ type CreateTaskResponse struct {
 	Date         *time.Time `json:"date,omitempty"`
 	Subtasks     []Task     `json:"subtasks,omitempty"`
 	Quadrant     int        `json:"quadrant"`
+	Position     int        `json:"position"`
 }
 
 type GetTasksRequest struct {
@@ -116,6 +118,8 @@ type UpdateTaskRequest struct {
 	// Google Fields
 	Status *string    `json:"status"` // "needsAction" or "completed"
 	Due    *time.Time `json:"due"`
+	// Local-only sibling order for subtasks
+	Position *int `json:"position"`
 }
 
 type UpdateTaskResponse struct {
@@ -138,6 +142,16 @@ type DeleteTasksRequest struct {
 
 type DeleteTasksResponse struct {
 	IDs []string `json:"ids"`
+}
+
+type ReorderSubtasksRequest struct {
+	UserID       uint     `json:"-"`
+	ParentTaskID string   `json:"-"`
+	TaskIDs      []string `json:"taskIds"`
+}
+
+type ReorderSubtasksResponse struct {
+	ParentTaskID string `json:"parentTaskId"`
 }
 
 // ------ Calendar ---------

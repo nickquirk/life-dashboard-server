@@ -607,3 +607,26 @@ func TestService_DeleteTasks_GroupsTasksByList(t *testing.T) {
 	assert.Contains(t, verifiedLists, "listA")
 	assert.Contains(t, verifiedLists, "listB")
 }
+
+// --- ReorderSubtasks ---
+
+func TestService_ReorderSubtasks_PassesIDsThrough(t *testing.T) {
+	var capturedParent string
+	var capturedIDs []string
+	repo := &mocks.MockTaskRepository{
+		ReorderSubtasksFunc: func(userID uint, parentTaskID string, orderedIDs []string) error {
+			capturedParent = parentTaskID
+			capturedIDs = orderedIDs
+			return nil
+		},
+	}
+	svc := newTaskService(repo)
+
+	resp, err := svc.ReorderSubtasks(domain.ReorderSubtasksRequest{
+		UserID: 1, ParentTaskID: "p1", TaskIDs: []string{"c", "a", "b"},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "p1", resp.ParentTaskID)
+	assert.Equal(t, "p1", capturedParent)
+	assert.Equal(t, []string{"c", "a", "b"}, capturedIDs)
+}

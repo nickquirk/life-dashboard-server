@@ -27,6 +27,7 @@ type MockService struct {
 	UpdateTaskFunc          func(ctx context.Context, req domain.UpdateTaskRequest) (domain.UpdateTaskResponse, error)
 	DeleteTaskFunc          func(ctx context.Context, req domain.DeleteTaskRequest) (domain.DeleteTaskResponse, error)
 	DeleteTasksFunc         func(ctx context.Context, req domain.DeleteTasksRequest) (domain.DeleteTasksResponse, error)
+	ReorderSubtasksFunc     func(req domain.ReorderSubtasksRequest) (domain.ReorderSubtasksResponse, error)
 	GetCalendarEventsFunc   func(ctx context.Context, req domain.GetCalendarEventsRequest) (domain.GetCalendarEventsResponse, error)
 	CreateZoneFunc          func(req domain.CreateZoneRequest) (domain.CreateZoneResponse, error)
 	GetZonesFunc            func(req domain.GetZonesRequest) (domain.GetZonesResponse, error)
@@ -171,6 +172,13 @@ func (m *MockService) DeleteTasks(ctx context.Context, req domain.DeleteTasksReq
 		return m.DeleteTasksFunc(ctx, req)
 	}
 	return domain.DeleteTasksResponse{}, nil
+}
+
+func (m *MockService) ReorderSubtasks(req domain.ReorderSubtasksRequest) (domain.ReorderSubtasksResponse, error) {
+	if m.ReorderSubtasksFunc != nil {
+		return m.ReorderSubtasksFunc(req)
+	}
+	return domain.ReorderSubtasksResponse{}, nil
 }
 
 func (m *MockService) GetCalendarEvents(ctx context.Context, req domain.GetCalendarEventsRequest) (domain.GetCalendarEventsResponse, error) {

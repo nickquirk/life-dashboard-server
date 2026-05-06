@@ -51,6 +51,7 @@ type Task struct {
 	Date         *time.Time `gorm:"type:datetime" json:"date,omitempty"`
 	Subtasks     []Task     `gorm:"foreignKey:Parent;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"subtasks,omitempty"` // So we can preload subtasks
 	Quadrant     int        `gorm:"default:0" json:"quadrant"`
+	Position     int        `gorm:"not null;default:0" json:"position"` // Local sibling order under Parent
 
 	// Add timestamp for GORM to handle internal housekeeping
 	CreatedAt time.Time

@@ -2,12 +2,14 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
+	"gorm.io/gorm"
 )
 
 // GET /api/tasks
@@ -202,4 +204,44 @@ func (h *Handler) deleteTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.respondWithJSON(w, http.StatusOK, resp, "userID", userID, "taskID", taskID)
+}
+
+// PUT /api/tasks/{id}/subtasks/reorder
+func (h *Handler) reorderSubtasks(w http.ResponseWriter, r *http.Request) {
+	userID, ok := h.GetUserID(r)
+	if !ok {
+		h.respondWithError(w, "User not found", fmt.Errorf("user ID not in context"), http.StatusUnauthorized)
+		return
+	}
+
+	parentTaskID := chi.URLParam(r, "id")
+	if parentTaskID == "" {
+		h.respondWithError(w, "Invalid task ID", fmt.Errorf("missing task id"), http.StatusBadRequest, "userID", userID)
+		return
+	}
+
+	var req domain.ReorderSubtasksRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.respondWithError(w, "Invalid request body", err, http.StatusBadRequest, "userID", userID)
+		return
+	}
+
+	req.UserID = userID
+	req.ParentTaskID = parentTaskID
+
+	resp, err := h.Service.ReorderSubtasks(req)
+	if err != nil {
+		if errors.Is(err, domain.ErrInvalidInput) {
+			h.respondWithError(w, err.Error(), err, http.StatusBadRequest, "userID", userID, "parentTaskID", parentTaskID)
+			return
+		}
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			h.respondWithError(w, "Task not found", err, http.StatusNotFound, "userID", userID, "parentTaskID", parentTaskID)
+			return
+		}
+		h.respondWithError(w, "Failed to reorder subtasks", err, http.StatusInternalServerError, "userID", userID, "parentTaskID", parentTaskID)
+		return
+	}
+
+	h.respondWithJSON(w, http.StatusOK, resp, "userID", userID, "parentTaskID", parentTaskID)
 }
