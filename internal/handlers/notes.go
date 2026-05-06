@@ -49,7 +49,9 @@ func (h *Handler) getNotes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.Service.GetNotes(domain.GetNotesRequest{UserID: userID})
+	archived := r.URL.Query().Get("archived") == "true"
+
+	resp, err := h.Service.GetNotes(domain.GetNotesRequest{UserID: userID, Archived: archived})
 	if err != nil {
 		h.respondWithError(w, "Failed to fetch notes", err, http.StatusInternalServerError, "userID", userID)
 		return

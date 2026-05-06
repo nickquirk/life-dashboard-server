@@ -35,7 +35,7 @@ func (s *service) CreateNote(req domain.CreateNoteRequest) (domain.CreateNoteRes
 }
 
 func (s *service) GetNotes(req domain.GetNotesRequest) (domain.GetNotesResponse, error) {
-	notes, err := s.noteRepo.GetNotesByUserID(req.UserID)
+	notes, err := s.noteRepo.GetNotesByUserID(req.UserID, req.Archived)
 	if err != nil {
 		return domain.GetNotesResponse{}, err
 	}

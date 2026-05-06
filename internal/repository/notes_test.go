@@ -53,7 +53,7 @@ func TestNoteRepo_CreateAndGet_WithItemsPreloaded(t *testing.T) {
 	seedNoteItem(t, db, domain.NoteItem{NoteID: n.ID, Content: "Bread", Position: 1})
 	seedNoteItem(t, db, domain.NoteItem{NoteID: n.ID, Content: "Apples", Position: 0})
 
-	notes, err := repo.GetNotesByUserID(testUserID)
+	notes, err := repo.GetNotesByUserID(testUserID, false)
 	require.NoError(t, err)
 	require.Len(t, notes, 1)
 	require.Len(t, notes[0].Items, 2)
@@ -68,22 +68,27 @@ func TestNoteRepo_GetByUserID_MultiUserIsolation(t *testing.T) {
 	seedNote(t, db, domain.Note{UserID: testUserID, Title: "Mine"})
 	seedNote(t, db, domain.Note{UserID: otherUser, Title: "Theirs"})
 
-	notes, err := repo.GetNotesByUserID(testUserID)
+	notes, err := repo.GetNotesByUserID(testUserID, false)
 	require.NoError(t, err)
 	require.Len(t, notes, 1)
 	assert.Equal(t, "Mine", notes[0].Title)
 }
 
-// GetByUserID excludes archived notes.
-func TestNoteRepo_GetByUserID_ExcludesArchived(t *testing.T) {
+// GetByUserID returns active or archived notes based on the archived flag.
+func TestNoteRepo_GetByUserID_FiltersByArchived(t *testing.T) {
 	repo, db := newNoteRepo(t)
 	seedNote(t, db, domain.Note{Title: "Active"})
 	seedNote(t, db, domain.Note{Title: "Archived", IsArchived: true})
 
-	notes, err := repo.GetNotesByUserID(testUserID)
+	active, err := repo.GetNotesByUserID(testUserID, false)
 	require.NoError(t, err)
-	require.Len(t, notes, 1)
-	assert.Equal(t, "Active", notes[0].Title)
+	require.Len(t, active, 1)
+	assert.Equal(t, "Active", active[0].Title)
+
+	archived, err := repo.GetNotesByUserID(testUserID, true)
+	require.NoError(t, err)
+	require.Len(t, archived, 1)
+	assert.Equal(t, "Archived", archived[0].Title)
 }
 
 // GetByUserID returns pinned notes first.
@@ -92,10 +97,26 @@ func TestNoteRepo_GetByUserID_PinnedFirst(t *testing.T) {
 	seedNote(t, db, domain.Note{Title: "Normal"})
 	seedNote(t, db, domain.Note{Title: "Pinned", IsPinned: true})
 
-	notes, err := repo.GetNotesByUserID(testUserID)
+	notes, err := repo.GetNotesByUserID(testUserID, false)
 	require.NoError(t, err)
 	require.Len(t, notes, 2)
 	assert.Equal(t, "Pinned", notes[0].Title)
+}
+
+// GetByUserID orders by creation time so edits don't shuffle the list.
+func TestNoteRepo_GetByUserID_OrderStableAcrossEdits(t *testing.T) {
+	repo, db := newNoteRepo(t)
+	first := seedNote(t, db, domain.Note{Title: "First"})
+	seedNote(t, db, domain.Note{Title: "Second"})
+
+	require.NoError(t, repo.UpdateNote(testUserID, first.ID, map[string]interface{}{"title": "First (edited)"}))
+
+	notes, err := repo.GetNotesByUserID(testUserID, false)
+	require.NoError(t, err)
+	require.Len(t, notes, 2)
+	// Second was created later, so it stays on top regardless of which note was edited last.
+	assert.Equal(t, "Second", notes[0].Title)
+	assert.Equal(t, "First (edited)", notes[1].Title)
 }
 
 // UpdateNote returns ErrRecordNotFound when note doesn't belong to user.

@@ -10,7 +10,7 @@ import (
 
 type NoteRepository interface {
 	CreateNote(domain.Note) (domain.Note, error)
-	GetNotesByUserID(userID uint) ([]domain.Note, error)
+	GetNotesByUserID(userID uint, archived bool) ([]domain.Note, error)
 	GetNoteByID(userID, noteID uint) (domain.Note, error)
 	UpdateNote(userID, noteID uint, updates map[string]interface{}) error
 	DeleteNote(userID, noteID uint) error
@@ -33,14 +33,14 @@ func (r *GormNoteRepository) CreateNote(note domain.Note) (domain.Note, error) {
 	return note, err
 }
 
-func (r *GormNoteRepository) GetNotesByUserID(userID uint) ([]domain.Note, error) {
+func (r *GormNoteRepository) GetNotesByUserID(userID uint, archived bool) ([]domain.Note, error) {
 	var notes []domain.Note
 	err := r.Db.
 		Preload("Items", func(db *gorm.DB) *gorm.DB {
 			return db.Order("position ASC")
 		}).
-		Where("user_id = ? AND is_archived = ?", userID, false).
-		Order("is_pinned DESC, updated_at DESC").
+		Where("user_id = ? AND is_archived = ?", userID, archived).
+		Order("is_pinned DESC, created_at DESC").
 		Find(&notes).Error
 	return notes, err
 }

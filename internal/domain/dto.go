@@ -387,7 +387,8 @@ type CreateNoteResponse struct {
 }
 
 type GetNotesRequest struct {
-	UserID uint `json:"-"`
+	UserID   uint `json:"-"`
+	Archived bool `json:"-"`
 }
 
 type GetNotesResponse struct {

@@ -6,7 +6,7 @@ import "github.com/nickquirk/life-dashboard-server/internal/domain"
 // Nil fields return zero values.
 type MockNoteRepository struct {
 	CreateNoteFunc        func(domain.Note) (domain.Note, error)
-	GetNotesByUserIDFunc  func(userID uint) ([]domain.Note, error)
+	GetNotesByUserIDFunc  func(userID uint, archived bool) ([]domain.Note, error)
 	GetNoteByIDFunc       func(userID, noteID uint) (domain.Note, error)
 	UpdateNoteFunc        func(userID, noteID uint, updates map[string]interface{}) error
 	DeleteNoteFunc        func(userID, noteID uint) error
@@ -25,9 +25,9 @@ func (m *MockNoteRepository) CreateNote(n domain.Note) (domain.Note, error) {
 	return domain.Note{}, nil
 }
 
-func (m *MockNoteRepository) GetNotesByUserID(userID uint) ([]domain.Note, error) {
+func (m *MockNoteRepository) GetNotesByUserID(userID uint, archived bool) ([]domain.Note, error) {
 	if m.GetNotesByUserIDFunc != nil {
-		return m.GetNotesByUserIDFunc(userID)
+		return m.GetNotesByUserIDFunc(userID, archived)
 	}
 	return nil, nil
 }
