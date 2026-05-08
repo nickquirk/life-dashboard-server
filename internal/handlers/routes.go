@@ -54,6 +54,7 @@ func GetRoutes(mx *chi.Mux, h *Handler) error {
 			auth.Get("/tasks/{taskListId}", h.getTasksInList)
 			auth.Post("/tasks/{taskListId}/sync", h.syncTasksInList)
 			auth.Patch("/tasks/{id}", h.updateTask)
+			auth.Put("/tasks/{id}/subtasks/reorder", h.reorderSubtasks)
 			auth.Delete("/tasks/batch", h.deleteTasks)
 			auth.Delete("/tasks/{id}", h.deleteTask)
 			// Calendar Events
@@ -78,6 +79,16 @@ func GetRoutes(mx *chi.Mux, h *Handler) error {
 			// Scratchpad
 			auth.Get("/scratchpad", h.getScratchpad)
 			auth.Put("/scratchpad", h.upsertScratchpad)
+			// Notes
+			auth.Get("/notes", h.getNotes)
+			auth.Post("/notes", h.createNote)
+			auth.Patch("/notes/{id}", h.updateNote)
+			auth.Delete("/notes/{id}", h.deleteNote)
+			// Note Items
+			auth.Post("/notes/{id}/items", h.createNoteItem)
+			auth.Put("/notes/{id}/items/reorder", h.reorderNoteItems)
+			auth.Patch("/notes/{id}/items/{itemId}", h.updateNoteItem)
+			auth.Delete("/notes/{id}/items/{itemId}", h.deleteNoteItem)
 		})
 	})
 	return nil

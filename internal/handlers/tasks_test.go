@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -327,4 +328,51 @@ func TestDeleteTask_Error(t *testing.T) {
 	h.deleteTask(rr, r)
 
 	assert.Equal(t, http.StatusInternalServerError, rr.Code)
+}
+
+// --- reorderSubtasks ---
+
+func TestReorderSubtasks_Success(t *testing.T) {
+	svc := &mocks.MockService{
+		ReorderSubtasksFunc: func(req domain.ReorderSubtasksRequest) (domain.ReorderSubtasksResponse, error) {
+			return domain.ReorderSubtasksResponse{ParentTaskID: req.ParentTaskID}, nil
+		},
+	}
+	h := testHandler(svc)
+	body, _ := json.Marshal(domain.ReorderSubtasksRequest{TaskIDs: []string{"c", "a", "b"}})
+	r := httptest.NewRequest(http.MethodPut, "/api/tasks/p1/subtasks/reorder", bytes.NewReader(body))
+	r = withUserAndChi(r, 1, "id", "p1")
+	rr := httptest.NewRecorder()
+
+	h.reorderSubtasks(rr, r)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Contains(t, rr.Body.String(), `"parentTaskId":"p1"`)
+}
+
+func TestReorderSubtasks_NoUser(t *testing.T) {
+	h := testHandler(&mocks.MockService{})
+	r := httptest.NewRequest(http.MethodPut, "/api/tasks/p1/subtasks/reorder", nil)
+	rr := httptest.NewRecorder()
+
+	h.reorderSubtasks(rr, r)
+
+	assert.Equal(t, http.StatusUnauthorized, rr.Code)
+}
+
+func TestReorderSubtasks_ValidationError_Returns400(t *testing.T) {
+	svc := &mocks.MockService{
+		ReorderSubtasksFunc: func(req domain.ReorderSubtasksRequest) (domain.ReorderSubtasksResponse, error) {
+			return domain.ReorderSubtasksResponse{}, fmt.Errorf("%w: bad child", domain.ErrInvalidInput)
+		},
+	}
+	h := testHandler(svc)
+	body, _ := json.Marshal(domain.ReorderSubtasksRequest{TaskIDs: []string{"x"}})
+	r := httptest.NewRequest(http.MethodPut, "/api/tasks/p1/subtasks/reorder", bytes.NewReader(body))
+	r = withUserAndChi(r, 1, "id", "p1")
+	rr := httptest.NewRecorder()
+
+	h.reorderSubtasks(rr, r)
+
+	assert.Equal(t, http.StatusBadRequest, rr.Code)
 }

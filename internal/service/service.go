@@ -33,6 +33,7 @@ type Service interface {
 	UpdateTask(ctx context.Context, req domain.UpdateTaskRequest) (domain.UpdateTaskResponse, error)
 	DeleteTask(ctx context.Context, req domain.DeleteTaskRequest) (domain.DeleteTaskResponse, error)
 	DeleteTasks(ctx context.Context, req domain.DeleteTasksRequest) (domain.DeleteTasksResponse, error)
+	ReorderSubtasks(req domain.ReorderSubtasksRequest) (domain.ReorderSubtasksResponse, error)
 	// ------ Calendar ---------
 	GetCalendarEvents(ctx context.Context, req domain.GetCalendarEventsRequest) (domain.GetCalendarEventsResponse, error)
 	// ------ Zones ---------
@@ -54,6 +55,15 @@ type Service interface {
 	// ------ Scratchpad ---------
 	GetScratchpad(req domain.GetScratchpadRequest) (domain.GetScratchpadResponse, error)
 	UpsertScratchpad(req domain.UpsertScratchpadRequest) (domain.UpsertScratchpadResponse, error)
+	// ------ Notes ---------
+	CreateNote(req domain.CreateNoteRequest) (domain.CreateNoteResponse, error)
+	GetNotes(req domain.GetNotesRequest) (domain.GetNotesResponse, error)
+	UpdateNote(req domain.UpdateNoteRequest) (domain.UpdateNoteResponse, error)
+	DeleteNote(req domain.DeleteNoteRequest) (domain.DeleteNoteResponse, error)
+	CreateNoteItem(req domain.CreateNoteItemRequest) (domain.CreateNoteItemResponse, error)
+	UpdateNoteItem(req domain.UpdateNoteItemRequest) (domain.UpdateNoteItemResponse, error)
+	DeleteNoteItem(req domain.DeleteNoteItemRequest) (domain.DeleteNoteItemResponse, error)
+	ReorderNoteItems(req domain.ReorderNoteItemsRequest) (domain.ReorderNoteItemsResponse, error)
 }
 
 type service struct {
@@ -65,12 +75,13 @@ type service struct {
 	routineRepo    repository.RoutineRepository
 	feedbackRepo   repository.FeedbackRepository
 	scratchpadRepo repository.ScratchpadRepository
+	noteRepo       repository.NoteRepository
 }
 
 // NewServiceWithRepos creates a Service with injected repositories
 func NewServiceWithRepos(userRepo repository.UserRepository, taskRepo repository.TaskRepository,
-	calendarRepo repository.CalendarRepository, zoneRepo repository.ZoneRepository, routineRepo repository.RoutineRepository, feedbackRepo repository.FeedbackRepository, scratchpadRepo repository.ScratchpadRepository) Service {
-	return &service{userRepo: userRepo, taskRepo: taskRepo, calendarRepo: calendarRepo, zoneRepo: zoneRepo, routineRepo: routineRepo, feedbackRepo: feedbackRepo, scratchpadRepo: scratchpadRepo}
+	calendarRepo repository.CalendarRepository, zoneRepo repository.ZoneRepository, routineRepo repository.RoutineRepository, feedbackRepo repository.FeedbackRepository, scratchpadRepo repository.ScratchpadRepository, noteRepo repository.NoteRepository) Service {
+	return &service{userRepo: userRepo, taskRepo: taskRepo, calendarRepo: calendarRepo, zoneRepo: zoneRepo, routineRepo: routineRepo, feedbackRepo: feedbackRepo, scratchpadRepo: scratchpadRepo, noteRepo: noteRepo}
 }
 
 func (s *service) isTokenError(err error) bool {
@@ -107,5 +118,6 @@ func NewService(db *gorm.DB, encryptor crypto.TokenEncryptor) Service {
 		routineRepo:    &repository.GormRoutineRepository{Db: db},
 		feedbackRepo:   &repository.GormFeedbackRepository{Db: db},
 		scratchpadRepo: &repository.GormScratchpadRepository{Db: db},
+		noteRepo:       &repository.GormNoteRepository{Db: db},
 	}
 }

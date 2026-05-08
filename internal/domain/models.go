@@ -51,6 +51,7 @@ type Task struct {
 	Date         *time.Time `gorm:"type:datetime" json:"date,omitempty"`
 	Subtasks     []Task     `gorm:"foreignKey:Parent;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"subtasks,omitempty"` // So we can preload subtasks
 	Quadrant     int        `gorm:"default:0" json:"quadrant"`
+	Position     int        `gorm:"not null;default:0" json:"position"` // Local sibling order under Parent
 
 	// Add timestamp for GORM to handle internal housekeeping
 	CreatedAt time.Time
@@ -122,4 +123,41 @@ type RoutineInstance struct {
 	Date         time.Time `gorm:"index:idx_ri_user_date,priority:2;type:datetime" json:"date"`
 	Status       string    `json:"status"`                 // "needsAction" or "completed"
 	DurationMins *int      `json:"durationMins,omitempty"` // Only populated if user overrides the template
+}
+
+// Define supported types for notes
+const (
+	NoteTypeText      = "text"
+	NoteTypeChecklist = "checklist"
+	NoteTypeBullet    = "bullet"
+)
+
+type Note struct {
+	ID        uint           `gorm:"primarykey" json:"id"`
+	CreatedAt time.Time      `json:"createdAt"`
+	UpdatedAt time.Time      `json:"updatedAt"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+
+	UserID     uint   `gorm:"index;not null" json:"userId"`
+	Title      string `json:"title"`
+	Type       string `gorm:"type:varchar(20);not null;default:'text'" json:"type"` // text, checklist, bullet
+	Content    string `gorm:"type:text" json:"content"`                             // Used ONLY if Type == 'text'
+	Color      string `json:"color"`
+	IsPinned   bool   `gorm:"default:false" json:"isPinned"`
+	IsArchived bool   `gorm:"default:false;index" json:"isArchived"`
+
+	// Items are only populated if Type == 'checklist' or 'bullet'
+	Items []NoteItem `gorm:"foreignKey:NoteID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"items,omitempty"`
+}
+
+type NoteItem struct {
+	ID        uint           `gorm:"primarykey" json:"id"`
+	CreatedAt time.Time      `json:"createdAt"`
+	UpdatedAt time.Time      `json:"updatedAt"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+
+	NoteID      uint   `gorm:"index;not null" json:"noteId"`
+	Content     string `json:"content"`
+	IsCompleted bool   `gorm:"default:false" json:"isCompleted"` // Ignored by FE if parent type is 'bullet'
+	Position    int    `gorm:"not null;default:0" json:"position"`
 }

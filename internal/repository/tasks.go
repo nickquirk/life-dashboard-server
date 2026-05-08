@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
@@ -29,6 +30,7 @@ type TaskRepository interface {
 	DeleteTask(taskID string) error
 	DeleteTasks(taskIDs []string) error
 	MarkTasksCompletedExcluding(taskListID string, activeIDs []string) error
+	ReorderSubtasks(userID uint, parentTaskID string, orderedIDs []string) error
 	// Transaction support
 	BeginTx() *gorm.DB
 	WithTx(tx *gorm.DB) TaskRepository
@@ -90,7 +92,10 @@ func (r *GormTaskRepository) CreateTask(task domain.Task) error {
 
 func (r *GormTaskRepository) GetTasks(taskListID string) ([]domain.Task, error) {
 	var tasks []domain.Task
-	err := r.Db.Where("task_list_id = ?", taskListID).Find(&tasks).Error
+	err := r.Db.
+		Where("task_list_id = ?", taskListID).
+		Order("position ASC, created_at ASC").
+		Find(&tasks).Error
 	return tasks, err
 }
 
@@ -139,6 +144,41 @@ func (r *GormTaskRepository) MarkTasksCompletedExcluding(taskListID string, acti
 		Not("id IN ?", activeIDs).
 		Where("status != ?", "completed"). // Optimization: don't update if already completed
 		Update("status", "completed").Error
+}
+
+func (r *GormTaskRepository) ReorderSubtasks(userID uint, parentTaskID string, orderedIDs []string) error {
+	return r.Db.Transaction(func(tx *gorm.DB) error {
+		// Verify the parent exists and belongs to a task list owned by this user.
+		var parent domain.Task
+		if err := tx.First(&parent, "id = ?", parentTaskID).Error; err != nil {
+			return gorm.ErrRecordNotFound
+		}
+		var ownedListID string
+		if err := tx.Model(&domain.TaskList{}).
+			Select("id").
+			Where("id = ? AND user_id = ?", parent.TaskListID, userID).
+			First(&ownedListID).Error; err != nil {
+			return gorm.ErrRecordNotFound
+		}
+
+		if len(orderedIDs) > 0 {
+			var count int64
+			if err := tx.Model(&domain.Task{}).
+				Where("id IN ? AND parent = ?", orderedIDs, parentTaskID).
+				Count(&count).Error; err != nil {
+				return err
+			}
+			if count != int64(len(orderedIDs)) {
+				return fmt.Errorf("%w: some task IDs are not subtasks of this parent", domain.ErrInvalidInput)
+			}
+		}
+		for i, id := range orderedIDs {
+			if err := tx.Model(&domain.Task{}).Where("id = ?", id).Update("position", i).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 // Start a transaction

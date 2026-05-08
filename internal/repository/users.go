@@ -236,6 +236,20 @@ func (r GormUserRepository) DeleteUserAndData(userID uint) error {
 		return err
 	}
 
+	// Permanently delete Note Items (Child) — must come before Notes
+	if err := tx.Unscoped().
+		Where("note_id IN (SELECT id FROM notes WHERE user_id = ?)", userID).
+		Delete(&domain.NoteItem{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Permanently delete Notes (Parent)
+	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&domain.Note{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
 	// Permanently delete Zones
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&domain.Zone{}).Error; err != nil {
 		tx.Rollback()

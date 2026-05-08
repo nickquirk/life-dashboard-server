@@ -67,6 +67,7 @@ type CreateTaskRequest struct {
 	Quadrant     *int       `json:"quadrant,omitempty"`
 	DurationMins *int       `json:"durationMins,omitempty"`
 	Date         *time.Time `json:"date,omitempty"`
+	Position     *int       `json:"position,omitempty"` // Local subtask sibling order
 }
 
 type CreateTaskResponse struct {
@@ -82,6 +83,7 @@ type CreateTaskResponse struct {
 	Date         *time.Time `json:"date,omitempty"`
 	Subtasks     []Task     `json:"subtasks,omitempty"`
 	Quadrant     int        `json:"quadrant"`
+	Position     int        `json:"position"`
 }
 
 type GetTasksRequest struct {
@@ -116,6 +118,8 @@ type UpdateTaskRequest struct {
 	// Google Fields
 	Status *string    `json:"status"` // "needsAction" or "completed"
 	Due    *time.Time `json:"due"`
+	// Local-only sibling order for subtasks
+	Position *int `json:"position"`
 }
 
 type UpdateTaskResponse struct {
@@ -138,6 +142,16 @@ type DeleteTasksRequest struct {
 
 type DeleteTasksResponse struct {
 	IDs []string `json:"ids"`
+}
+
+type ReorderSubtasksRequest struct {
+	UserID       uint     `json:"-"`
+	ParentTaskID string   `json:"-"`
+	TaskIDs      []string `json:"taskIds"`
+}
+
+type ReorderSubtasksResponse struct {
+	ParentTaskID string `json:"parentTaskId"`
 }
 
 // ------ Calendar ---------
@@ -363,4 +377,108 @@ type DeleteRoutineInstanceRequest struct {
 
 type DeleteRoutineInstanceResponse struct {
 	ID uint `json:"id"`
+}
+
+// ------ Notes ---------
+
+type CreateNoteRequest struct {
+	UserID  uint   `json:"-"`
+	Title   string `json:"title"`
+	Type    string `json:"type"`
+	Content string `json:"content,omitempty"`
+	Color   string `json:"color,omitempty"`
+}
+
+type CreateNoteResponse struct {
+	ID         uint       `json:"id"`
+	Title      string     `json:"title"`
+	Type       string     `json:"type"`
+	Content    string     `json:"content,omitempty"`
+	Color      string     `json:"color,omitempty"`
+	IsPinned   bool       `json:"isPinned"`
+	IsArchived bool       `json:"isArchived"`
+	Items      []NoteItem `json:"items,omitempty"`
+}
+
+type GetNotesRequest struct {
+	UserID   uint `json:"-"`
+	Archived bool `json:"-"`
+}
+
+type GetNotesResponse struct {
+	Notes []Note `json:"notes"`
+}
+
+type UpdateNoteRequest struct {
+	ID         uint    `json:"-"`
+	UserID     uint    `json:"-"`
+	Title      *string `json:"title"`
+	Type       *string `json:"type"`
+	Content    *string `json:"content"`
+	Color      *string `json:"color"`
+	IsPinned   *bool   `json:"isPinned"`
+	IsArchived *bool   `json:"isArchived"`
+}
+
+type UpdateNoteResponse struct {
+	ID uint `json:"id"`
+}
+
+type DeleteNoteRequest struct {
+	ID     uint `json:"-"`
+	UserID uint `json:"-"`
+}
+
+type DeleteNoteResponse struct {
+	ID uint `json:"id"`
+}
+
+// ------ Note Items ---------
+
+type CreateNoteItemRequest struct {
+	UserID   uint   `json:"-"`
+	NoteID   uint   `json:"-"`
+	Content  string `json:"content"`
+	Position int    `json:"position"`
+}
+
+type CreateNoteItemResponse struct {
+	ID          uint   `json:"id"`
+	NoteID      uint   `json:"noteId"`
+	Content     string `json:"content"`
+	IsCompleted bool   `json:"isCompleted"`
+	Position    int    `json:"position"`
+}
+
+type UpdateNoteItemRequest struct {
+	ID          uint    `json:"-"`
+	UserID      uint    `json:"-"`
+	NoteID      uint    `json:"-"`
+	Content     *string `json:"content"`
+	IsCompleted *bool   `json:"isCompleted"`
+	Position    *int    `json:"position"`
+}
+
+type UpdateNoteItemResponse struct {
+	ID uint `json:"id"`
+}
+
+type DeleteNoteItemRequest struct {
+	ID     uint `json:"-"`
+	UserID uint `json:"-"`
+	NoteID uint `json:"-"`
+}
+
+type DeleteNoteItemResponse struct {
+	ID uint `json:"id"`
+}
+
+type ReorderNoteItemsRequest struct {
+	UserID  uint   `json:"-"`
+	NoteID  uint   `json:"-"`
+	ItemIDs []uint `json:"itemIds"`
+}
+
+type ReorderNoteItemsResponse struct {
+	NoteID uint `json:"noteId"`
 }

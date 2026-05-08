@@ -132,6 +132,9 @@ func (s *service) CreateTask(ctx context.Context, req domain.CreateTaskRequest) 
 	if req.Date != nil {
 		newTask.Date = req.Date
 	}
+	if req.Position != nil {
+		newTask.Position = *req.Position
+	}
 
 	// If Google returned it, use it. If not, use what we requested.
 	if createdGTask.Parent != "" {
@@ -159,6 +162,7 @@ func (s *service) CreateTask(ctx context.Context, req domain.CreateTaskRequest) 
 		DurationMins: newTask.DurationMins,
 		Date:         newTask.Date,
 		Quadrant:     newTask.Quadrant,
+		Position:     newTask.Position,
 	}, nil
 }
 
@@ -361,6 +365,11 @@ func (s *service) UpdateTask(ctx context.Context, req domain.UpdateTaskRequest) 
 		} else {
 			updates["date"] = nil
 		}
+	}
+
+	// Local-only sibling order for subtasks; no Google sync.
+	if req.Position != nil {
+		updates["position"] = *req.Position
 	}
 
 	// Handle Google Sync
@@ -654,4 +663,11 @@ func (s *service) moveTask(ctx context.Context, userID uint, currentTask domain.
 	}
 
 	return tx.Commit().Error
+}
+
+func (s *service) ReorderSubtasks(req domain.ReorderSubtasksRequest) (domain.ReorderSubtasksResponse, error) {
+	if err := s.taskRepo.ReorderSubtasks(req.UserID, req.ParentTaskID, req.TaskIDs); err != nil {
+		return domain.ReorderSubtasksResponse{}, err
+	}
+	return domain.ReorderSubtasksResponse{ParentTaskID: req.ParentTaskID}, nil
 }

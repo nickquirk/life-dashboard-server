@@ -78,6 +78,7 @@ func InitMigration(db *gorm.DB) {
 	db.AutoMigrate(domain.Scratchpad{})
 	db.AutoMigrate(domain.Routine{})
 	db.AutoMigrate(domain.RoutineInstance{})
+	db.AutoMigrate(&domain.Note{}, &domain.NoteItem{})
 
 	// The single-session app_refresh_token column on users was replaced by the
 	// sessions table. AutoMigrate doesn't drop columns, so do it explicitly.
