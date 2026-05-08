@@ -97,18 +97,36 @@ type Scratchpad struct {
 	Content string `gorm:"type:text" json:"content"`
 }
 
+type GoalType string
+
+const (
+	GoalTypeTime  GoalType = "time"
+	GoalTypeCount GoalType = "count"
+)
+
+type Goal struct {
+	Type   GoalType `json:"type"`
+	Target int      `json:"target"`
+}
+
 type Routine struct {
 	ID        uint           `gorm:"primarykey" json:"id"`
 	CreatedAt time.Time      `json:"createdAt"`
 	UpdatedAt time.Time      `json:"updatedAt"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"` // "-" hides this from the frontend entirely
 
-	UserID          uint    `gorm:"index;not null" json:"userId"`
-	Title           string  `json:"title"`
-	DurationMins    int     `json:"durationMins"`
-	TargetTotalMins *int    `json:"targetTotalMins,omitempty"`
-	ResetPeriod     *string `json:"resetPeriod,omitempty"` // NULL = one_off, "weekly", "monthly"
-	IsArchived      bool    `gorm:"not null;default:false;index" json:"isArchived"`
+	UserID       uint   `gorm:"index;not null" json:"userId"`
+	Title        string `json:"title"`
+	DurationMins int    `json:"durationMins"`
+
+	// Storage columns — hidden from JSON; clients see `goal` instead.
+	GoalType   *string `gorm:"column:goal_type" json:"-"`
+	GoalTarget *int    `gorm:"column:goal_target" json:"-"`
+	// Transient assembled view, populated by AfterFind. Not persisted.
+	Goal *Goal `gorm:"-" json:"goal,omitempty"`
+
+	ResetPeriod *string `json:"resetPeriod,omitempty"` // NULL = one_off, "weekly", "monthly"
+	IsArchived  bool    `gorm:"not null;default:false;index" json:"isArchived"`
 }
 
 type RoutineInstance struct {
