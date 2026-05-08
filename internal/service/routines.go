@@ -58,30 +58,22 @@ func (s *service) UpdateRoutine(req domain.UpdateRoutineRequest) (domain.UpdateR
 	if req.DurationMins != nil {
 		updates["duration_mins"] = *req.DurationMins
 	}
-
 	if req.IsArchived != nil {
 		updates["is_archived"] = *req.IsArchived
 	}
 
-	// Track whether the caller is demoting this routine back to a regular one
-	// so we can also strip the now-meaningless reset period.
-	clearingTarget := false
-	if req.TargetTotalMins != nil {
-		if *req.TargetTotalMins == 0 {
-			updates["target_total_mins"] = nil
-			clearingTarget = true
+	// Goal write: nil means "no change", Target == 0 means "clear", anything else
+	// sets both columns. Switching goal types is implicit — both columns are
+	// overwritten in a single update.
+	clearingGoal := false
+	if req.Goal != nil {
+		if req.Goal.Target == 0 {
+			updates["goal_type"] = nil
+			updates["goal_target"] = nil
+			clearingGoal = true
 		} else {
-			updates["target_total_mins"] = *req.TargetTotalMins
-		}
-	}
-
-	// If TTM is set then routine becomes a time goal
-	if req.TargetTotalMins != nil {
-		// If FE sends zero then convert back to regular routine
-		if *req.TargetTotalMins == 0 {
-			updates["target_total_mins"] = nil
-		} else {
-			updates["target_total_mins"] = *req.TargetTotalMins
+			updates["goal_type"] = string(req.Goal.Type)
+			updates["goal_target"] = req.Goal.Target
 		}
 	}
 
@@ -91,10 +83,9 @@ func (s *service) UpdateRoutine(req domain.UpdateRoutineRequest) (domain.UpdateR
 		} else {
 			updates["reset_period"] = *req.ResetPeriod
 		}
-	} else if clearingTarget {
-		// The caller cleared the target without specifying a new reset period.
-		// Don't leave 'weekly'/'monthly' stranded on a non-goal routine — it
-		// would surprise the user if they later re-add a target.
+	} else if clearingGoal {
+		// Caller cleared the goal without specifying a new reset period.
+		// Don't leave 'weekly'/'monthly' stranded on a non-goal routine.
 		updates["reset_period"] = nil
 	}
 
@@ -102,8 +93,7 @@ func (s *service) UpdateRoutine(req domain.UpdateRoutineRequest) (domain.UpdateR
 		return domain.UpdateRoutineResponse{}, nil
 	}
 
-	err := s.routineRepo.UpdateRoutine(req.UserID, req.ID, updates)
-	if err != nil {
+	if err := s.routineRepo.UpdateRoutine(req.UserID, req.ID, updates); err != nil {
 		return domain.UpdateRoutineResponse{}, err
 	}
 
