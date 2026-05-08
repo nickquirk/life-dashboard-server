@@ -7,22 +7,31 @@ func (s *service) CreateRoutine(req domain.CreateRoutineRequest) (domain.CreateR
 		return domain.CreateRoutineResponse{}, err
 	}
 
-	created, err := s.routineRepo.CreateRoutine(domain.Routine{
-		UserID:          req.UserID,
-		Title:           req.Title,
-		DurationMins:    req.DurationMins,
-		TargetTotalMins: req.TargetTotalMins,
-		ResetPeriod:     req.ResetPeriod,
-	})
+	routine := domain.Routine{
+		UserID:       req.UserID,
+		Title:        req.Title,
+		DurationMins: req.DurationMins,
+		ResetPeriod:  req.ResetPeriod,
+	}
+	// Only persist a goal if Target > 0 (Target == 0 is the "no goal" / "clear" sentinel).
+	if req.Goal != nil && req.Goal.Target > 0 {
+		gTypeStr := string(req.Goal.Type) // *string is what GORM expects on the column
+		gTarget := req.Goal.Target
+		routine.GoalType = &gTypeStr
+		routine.GoalTarget = &gTarget
+		routine.Goal = &domain.Goal{Type: req.Goal.Type, Target: gTarget}
+	}
+
+	created, err := s.routineRepo.CreateRoutine(routine)
 	if err != nil {
 		return domain.CreateRoutineResponse{}, err
 	}
 	return domain.CreateRoutineResponse{
-		ID:              created.ID,
-		Title:           created.Title,
-		DurationMins:    created.DurationMins,
-		TargetTotalMins: created.TargetTotalMins,
-		ResetPeriod:     created.ResetPeriod,
+		ID:           created.ID,
+		Title:        created.Title,
+		DurationMins: created.DurationMins,
+		Goal:         created.Goal,
+		ResetPeriod:  created.ResetPeriod,
 	}, nil
 }
 
