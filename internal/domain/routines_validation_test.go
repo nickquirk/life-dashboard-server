@@ -21,10 +21,19 @@ func TestCreateRoutineRequest_Valid_Minimal(t *testing.T) {
 
 func TestCreateRoutineRequest_Valid_AllFields(t *testing.T) {
 	req := CreateRoutineRequest{
-		Title:           "Run",
-		DurationMins:    30,
-		TargetTotalMins: ptrInt(120),
-		ResetPeriod:     ptrStr(ResetPeriodWeekly),
+		Title:        "Run",
+		DurationMins: 30,
+		Goal:         &Goal{Type: GoalTypeTime, Target: 120},
+		ResetPeriod:  ptrStr(ResetPeriodWeekly),
+	}
+	require.NoError(t, req.Validate())
+}
+
+func TestCreateRoutineRequest_Valid_CountGoal(t *testing.T) {
+	req := CreateRoutineRequest{
+		Title:        "Pushups",
+		DurationMins: 10,
+		Goal:         &Goal{Type: GoalTypeCount, Target: 50},
 	}
 	require.NoError(t, req.Validate())
 }
@@ -60,14 +69,53 @@ func TestCreateRoutineRequest_DurationOutOfRange(t *testing.T) {
 	}
 }
 
-func TestCreateRoutineRequest_TargetOutOfRange(t *testing.T) {
+func TestCreateRoutineRequest_TimeGoalOutOfRange(t *testing.T) {
 	cases := []int{-1, 30*24*60 + 1}
 	for _, ttm := range cases {
-		req := CreateRoutineRequest{Title: "Read", DurationMins: 15, TargetTotalMins: ptrInt(ttm)}
+		req := CreateRoutineRequest{
+			Title:        "Read",
+			DurationMins: 15,
+			Goal:         &Goal{Type: GoalTypeTime, Target: ttm},
+		}
 		err := req.Validate()
 		require.Error(t, err, "expected error for target=%d", ttm)
 		assert.True(t, errors.Is(err, ErrInvalidInput))
 	}
+}
+
+func TestCreateRoutineRequest_CountGoalOutOfRange(t *testing.T) {
+	cases := []int{-1, 1001}
+	for _, ttm := range cases {
+		req := CreateRoutineRequest{
+			Title:        "Pushups",
+			DurationMins: 10,
+			Goal:         &Goal{Type: GoalTypeCount, Target: ttm},
+		}
+		err := req.Validate()
+		require.Error(t, err, "expected error for target=%d", ttm)
+		assert.True(t, errors.Is(err, ErrInvalidInput))
+	}
+}
+
+func TestCreateRoutineRequest_InvalidGoalType(t *testing.T) {
+	req := CreateRoutineRequest{
+		Title:        "Read",
+		DurationMins: 15,
+		Goal:         &Goal{Type: "distance", Target: 5},
+	}
+	err := req.Validate()
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, ErrInvalidInput))
+}
+
+func TestCreateRoutineRequest_GoalTargetZeroAccepted(t *testing.T) {
+	// Target == 0 is the "clear goal" sentinel; Type is ignored.
+	req := CreateRoutineRequest{
+		Title:        "Read",
+		DurationMins: 15,
+		Goal:         &Goal{Target: 0},
+	}
+	require.NoError(t, req.Validate())
 }
 
 func TestCreateRoutineRequest_InvalidResetPeriod(t *testing.T) {
@@ -127,19 +175,41 @@ func TestUpdateRoutineRequest_DurationOutOfRange(t *testing.T) {
 	}
 }
 
-func TestUpdateRoutineRequest_TargetZeroAccepted(t *testing.T) {
-	// Zero is valid in updates — it's the "clear the target" sentinel.
-	req := UpdateRoutineRequest{TargetTotalMins: ptrInt(0)}
+func TestUpdateRoutineRequest_NilGoalAccepted(t *testing.T) {
+	// nil Goal means "no change".
+	req := UpdateRoutineRequest{Goal: nil}
 	require.NoError(t, req.Validate())
 }
 
-func TestUpdateRoutineRequest_TargetOutOfRange(t *testing.T) {
+func TestUpdateRoutineRequest_GoalTargetZeroAccepted(t *testing.T) {
+	// Target == 0 is the "clear goal" sentinel; Type is ignored.
+	req := UpdateRoutineRequest{Goal: &Goal{Target: 0}}
+	require.NoError(t, req.Validate())
+}
+
+func TestUpdateRoutineRequest_TimeGoalOutOfRange(t *testing.T) {
 	for _, ttm := range []int{-1, 30*24*60 + 1} {
-		req := UpdateRoutineRequest{TargetTotalMins: ptrInt(ttm)}
+		req := UpdateRoutineRequest{Goal: &Goal{Type: GoalTypeTime, Target: ttm}}
 		err := req.Validate()
 		require.Error(t, err, "target=%d", ttm)
 		assert.True(t, errors.Is(err, ErrInvalidInput))
 	}
+}
+
+func TestUpdateRoutineRequest_CountGoalOutOfRange(t *testing.T) {
+	for _, ttm := range []int{-1, 1001} {
+		req := UpdateRoutineRequest{Goal: &Goal{Type: GoalTypeCount, Target: ttm}}
+		err := req.Validate()
+		require.Error(t, err, "target=%d", ttm)
+		assert.True(t, errors.Is(err, ErrInvalidInput))
+	}
+}
+
+func TestUpdateRoutineRequest_InvalidGoalType(t *testing.T) {
+	req := UpdateRoutineRequest{Goal: &Goal{Type: "distance", Target: 5}}
+	err := req.Validate()
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, ErrInvalidInput))
 }
 
 func TestUpdateRoutineRequest_InvalidResetPeriod(t *testing.T) {

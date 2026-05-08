@@ -29,8 +29,36 @@ var validResetPeriods = map[string]struct{}{
 const (
 	maxRoutineTitleLen     = 200
 	maxRoutineDurationMins = 24 * 60      // 1 day — a single routine longer than that is almost certainly a typo
-	maxRoutineTargetMins   = 30 * 24 * 60 // 30 days; generous headroom for monthly goals
+	maxRoutineGoalMins     = 30 * 24 * 60 // 30 days; generous headroom for monthly goals
+	maxRoutineGoalCount    = 1000         // far above any realistic count goal
 )
+
+func validateGoal(g *Goal) error {
+	if g == nil {
+		return nil // not changing the goal
+	}
+	if g.Target == 0 {
+		return nil // sentinel for "clear goal"; Type is ignored
+	}
+	if g.Target < 0 {
+		return fmt.Errorf("%w: goal.target must be positive", ErrInvalidInput)
+	}
+	switch g.Type {
+	case GoalTypeTime:
+		if g.Target > maxRoutineGoalMins {
+			return fmt.Errorf("%w: time goal target must be between 1 and %d minutes",
+				ErrInvalidInput, maxRoutineGoalMins)
+		}
+	case GoalTypeCount:
+		if g.Target > maxRoutineGoalCount {
+			return fmt.Errorf("%w: count goal target must be between 1 and %d",
+				ErrInvalidInput, maxRoutineGoalCount)
+		}
+	default:
+		return fmt.Errorf("%w: goal.type must be 'time' or 'count'", ErrInvalidInput)
+	}
+	return nil
+}
 
 func (r *CreateRoutineRequest) Validate() error {
 	title := strings.TrimSpace(r.Title)
@@ -45,8 +73,8 @@ func (r *CreateRoutineRequest) Validate() error {
 	if r.DurationMins <= 0 || r.DurationMins > maxRoutineDurationMins {
 		return fmt.Errorf("%w: durationMins must be between 1 and %d", ErrInvalidInput, maxRoutineDurationMins)
 	}
-	if r.TargetTotalMins != nil && (*r.TargetTotalMins < 0 || *r.TargetTotalMins > maxRoutineTargetMins) {
-		return fmt.Errorf("%w: targetTotalMins must be between 0 and %d", ErrInvalidInput, maxRoutineTargetMins)
+	if err := validateGoal(r.Goal); err != nil {
+		return err
 	}
 	if r.ResetPeriod != nil {
 		if _, ok := validResetPeriods[*r.ResetPeriod]; !ok {
@@ -70,8 +98,8 @@ func (r *UpdateRoutineRequest) Validate() error {
 	if r.DurationMins != nil && (*r.DurationMins <= 0 || *r.DurationMins > maxRoutineDurationMins) {
 		return fmt.Errorf("%w: durationMins must be between 1 and %d", ErrInvalidInput, maxRoutineDurationMins)
 	}
-	if r.TargetTotalMins != nil && (*r.TargetTotalMins < 0 || *r.TargetTotalMins > maxRoutineTargetMins) {
-		return fmt.Errorf("%w: targetTotalMins must be between 0 and %d", ErrInvalidInput, maxRoutineTargetMins)
+	if err := validateGoal(r.Goal); err != nil {
+		return err
 	}
 	if r.ResetPeriod != nil {
 		if _, ok := validResetPeriods[*r.ResetPeriod]; !ok {

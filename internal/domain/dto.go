@@ -266,19 +266,19 @@ type UpsertScratchpadResponse struct {
 // ------ Routines ---------
 
 type CreateRoutineRequest struct {
-	UserID          uint    `json:"-"`
-	Title           string  `json:"title"`
-	DurationMins    int     `json:"durationMins"`
-	TargetTotalMins *int    `json:"targetTotalMins,omitempty"`
-	ResetPeriod     *string `json:"resetPeriod,omitempty"`
+	UserID       uint    `json:"-"`
+	Title        string  `json:"title"`
+	DurationMins int     `json:"durationMins"`
+	Goal         *Goal   `json:"goal,omitempty"`
+	ResetPeriod  *string `json:"resetPeriod,omitempty"`
 }
 
 type CreateRoutineResponse struct {
-	ID              uint    `json:"id"`
-	Title           string  `json:"title"`
-	DurationMins    int     `json:"durationMins"`
-	TargetTotalMins *int    `json:"targetTotalMins,omitempty"`
-	ResetPeriod     *string `json:"resetPeriod,omitempty"`
+	ID           uint    `json:"id"`
+	Title        string  `json:"title"`
+	DurationMins int     `json:"durationMins"`
+	Goal         *Goal   `json:"goal,omitempty"`
+	ResetPeriod  *string `json:"resetPeriod,omitempty"`
 }
 
 type GetRoutineRequest struct {
@@ -298,22 +298,22 @@ type GetRoutineResponse struct {
 }
 
 type UpdateRoutineRequest struct {
-	ID              uint    `json:"-"`
-	UserID          uint    `json:"-"`
-	Title           *string `json:"title"`
-	DurationMins    *int    `json:"durationMins"`
-	TargetTotalMins *int    `json:"targetTotalMins,omitempty"`
-	ResetPeriod     *string `json:"resetPeriod,omitempty"`
-	IsArchived      *bool   `json:"isArchived,omitempty"`
+	ID           uint    `json:"-"`
+	UserID       uint    `json:"-"`
+	Title        *string `json:"title"`
+	DurationMins *int    `json:"durationMins"`
+	Goal         *Goal   `json:"goal,omitempty"` // nil = no change; Target == 0 = clear goal (Type ignored)
+	ResetPeriod  *string `json:"resetPeriod,omitempty"`
+	IsArchived   *bool   `json:"isArchived,omitempty"`
 }
 
 type UpdateRoutineResponse struct {
-	ID              uint    `json:"id"`
-	Title           string  `json:"title"`
-	DurationMins    int     `json:"durationMins"`
-	TargetTotalMins *int    `json:"targetTotalMins,omitempty"`
-	ResetPeriod     *string `json:"resetPeriod,omitempty"`
-	IsArchived      *bool   `json:"isArchived,omitempty"`
+	ID           uint    `json:"id"`
+	Title        string  `json:"title"`
+	DurationMins int     `json:"durationMins"`
+	Goal         *Goal   `json:"goal,omitempty"`
+	ResetPeriod  *string `json:"resetPeriod,omitempty"`
+	IsArchived   *bool   `json:"isArchived,omitempty"`
 }
 
 type DeleteRoutineRequest struct {
