@@ -16,3 +16,4 @@ config.*.yaml
 repomix-output.xml
 repomix-output-be.xml
 gorm.db
+/docs*
