@@ -88,4 +88,21 @@ func InitMigration(db *gorm.DB) {
 			slog.Warn("failed to drop deprecated app_refresh_token column", "error", err)
 		}
 	}
+
+	// One-time migration: target_total_mins -> goal_type/goal_target.
+	// Safe to run repeatedly because the predicate excludes already-migrated rows.
+	if db.Migrator().HasColumn(&domain.Routine{}, "target_total_mins") {
+		if err := db.Exec(`
+        UPDATE routines
+        SET goal_type = 'time', goal_target = target_total_mins
+        WHERE target_total_mins IS NOT NULL
+          AND target_total_mins > 0
+          AND goal_target IS NULL
+    `).Error; err != nil {
+			slog.Warn("failed to backfill goal columns", "error", err)
+		}
+		if err := db.Migrator().DropColumn(&domain.Routine{}, "target_total_mins"); err != nil {
+			slog.Warn("failed to drop deprecated target_total_mins column", "error", err)
+		}
+	}
 }

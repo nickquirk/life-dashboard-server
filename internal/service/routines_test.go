@@ -80,12 +80,11 @@ func TestService_CreateRoutine_NilGoal_DoesNotPersistGoal(t *testing.T) {
 	assert.Nil(t, captured.Goal)
 }
 
-func TestService_CreateRoutine_ZeroTargetGoal_DoesNotPersistGoal(t *testing.T) {
-	// Target == 0 is the "no goal / clear" sentinel — create should ignore it.
-	var captured domain.Routine
+func TestService_CreateRoutine_ZeroTargetGoal_Rejected(t *testing.T) {
+	// Create has no "clear" sentinel — a Goal with Target==0 is invalid input.
 	repo := &mocks.MockRoutineRepository{
 		CreateRoutineFunc: func(r domain.Routine) (domain.Routine, error) {
-			captured = r
+			t.Fatalf("repo should not be called when validation fails")
 			return r, nil
 		},
 	}
@@ -95,10 +94,8 @@ func TestService_CreateRoutine_ZeroTargetGoal_DoesNotPersistGoal(t *testing.T) {
 		UserID: 1, Title: "Read", DurationMins: 15,
 		Goal: &domain.Goal{Type: domain.GoalTypeTime, Target: 0},
 	})
-	require.NoError(t, err)
-	assert.Nil(t, captured.GoalType)
-	assert.Nil(t, captured.GoalTarget)
-	assert.Nil(t, captured.Goal)
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, domain.ErrInvalidInput))
 }
 
 func TestService_CreateRoutine_CountGoal(t *testing.T) {
@@ -246,7 +243,7 @@ func TestService_UpdateRoutine_SetsGoalAndResetPeriod(t *testing.T) {
 
 	_, err := svc.UpdateRoutine(domain.UpdateRoutineRequest{
 		ID: 1, UserID: 1,
-		Goal:        &domain.Goal{Type: domain.GoalTypeTime, Target: 120},
+		Goal:        domain.GoalUpdate{Set: true, Value: &domain.Goal{Type: domain.GoalTypeTime, Target: 120}},
 		ResetPeriod: ptrStr(domain.ResetPeriodWeekly),
 	})
 	require.NoError(t, err)
@@ -269,15 +266,15 @@ func TestService_UpdateRoutine_SwitchesGoalType(t *testing.T) {
 
 	_, err := svc.UpdateRoutine(domain.UpdateRoutineRequest{
 		ID: 1, UserID: 1,
-		Goal: &domain.Goal{Type: domain.GoalTypeCount, Target: 50},
+		Goal: domain.GoalUpdate{Set: true, Value: &domain.Goal{Type: domain.GoalTypeCount, Target: 50}},
 	})
 	require.NoError(t, err)
 	assert.Equal(t, "count", captured["goal_type"])
 	assert.Equal(t, 50, captured["goal_target"])
 }
 
-func TestService_UpdateRoutine_ZeroTargetClearsGoalAndResetPeriod(t *testing.T) {
-	// FE sends Goal.Target=0 with no ResetPeriod -> demote back to a regular routine.
+func TestService_UpdateRoutine_NullGoalClearsGoalAndResetPeriod(t *testing.T) {
+	// FE sends "goal": null with no ResetPeriod -> demote back to a regular routine.
 	// We expect goal_type, goal_target, and reset_period all cleared so a stranded
 	// weekly/monthly value is wiped.
 	var captured map[string]interface{}
@@ -290,7 +287,7 @@ func TestService_UpdateRoutine_ZeroTargetClearsGoalAndResetPeriod(t *testing.T) 
 	svc := newRoutineService(repo)
 
 	_, err := svc.UpdateRoutine(domain.UpdateRoutineRequest{
-		ID: 1, UserID: 1, Goal: &domain.Goal{Target: 0},
+		ID: 1, UserID: 1, Goal: domain.GoalUpdate{Set: true, Value: nil},
 	})
 	require.NoError(t, err)
 
@@ -302,7 +299,7 @@ func TestService_UpdateRoutine_ZeroTargetClearsGoalAndResetPeriod(t *testing.T) 
 	assert.Nil(t, captured["reset_period"])
 }
 
-func TestService_UpdateRoutine_ZeroTargetWithExplicitResetPeriod_RespectsCaller(t *testing.T) {
+func TestService_UpdateRoutine_NullGoalWithExplicitResetPeriod_RespectsCaller(t *testing.T) {
 	// If the caller clears the goal AND sets a reset_period explicitly, honour
 	// the caller's reset_period rather than overriding it to nil.
 	var captured map[string]interface{}
@@ -316,7 +313,7 @@ func TestService_UpdateRoutine_ZeroTargetWithExplicitResetPeriod_RespectsCaller(
 
 	_, err := svc.UpdateRoutine(domain.UpdateRoutineRequest{
 		ID: 1, UserID: 1,
-		Goal:        &domain.Goal{Target: 0},
+		Goal:        domain.GoalUpdate{Set: true, Value: nil},
 		ResetPeriod: ptrStr(domain.ResetPeriodWeekly),
 	})
 	require.NoError(t, err)

@@ -298,13 +298,13 @@ type GetRoutineResponse struct {
 }
 
 type UpdateRoutineRequest struct {
-	ID           uint    `json:"-"`
-	UserID       uint    `json:"-"`
-	Title        *string `json:"title"`
-	DurationMins *int    `json:"durationMins"`
-	Goal         *Goal   `json:"goal,omitempty"` // nil = no change; Target == 0 = clear goal (Type ignored)
-	ResetPeriod  *string `json:"resetPeriod,omitempty"`
-	IsArchived   *bool   `json:"isArchived,omitempty"`
+	ID           uint       `json:"-"`
+	UserID       uint       `json:"-"`
+	Title        *string    `json:"title"`
+	DurationMins *int       `json:"durationMins"`
+	Goal         GoalUpdate `json:"goal"`
+	ResetPeriod  *string    `json:"resetPeriod,omitempty"`
+	IsArchived   *bool      `json:"isArchived,omitempty"`
 }
 
 type UpdateRoutineResponse struct {

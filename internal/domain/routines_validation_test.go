@@ -108,14 +108,16 @@ func TestCreateRoutineRequest_InvalidGoalType(t *testing.T) {
 	assert.True(t, errors.Is(err, ErrInvalidInput))
 }
 
-func TestCreateRoutineRequest_GoalTargetZeroAccepted(t *testing.T) {
-	// Target == 0 is the "clear goal" sentinel; Type is ignored.
+func TestCreateRoutineRequest_GoalTargetZeroRejected(t *testing.T) {
+	// Create has no "clear goal" sentinel — omit Goal entirely instead.
 	req := CreateRoutineRequest{
 		Title:        "Read",
 		DurationMins: 15,
-		Goal:         &Goal{Target: 0},
+		Goal:         &Goal{Type: GoalTypeTime, Target: 0},
 	}
-	require.NoError(t, req.Validate())
+	err := req.Validate()
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, ErrInvalidInput))
 }
 
 func TestCreateRoutineRequest_InvalidResetPeriod(t *testing.T) {
@@ -175,21 +177,21 @@ func TestUpdateRoutineRequest_DurationOutOfRange(t *testing.T) {
 	}
 }
 
-func TestUpdateRoutineRequest_NilGoalAccepted(t *testing.T) {
-	// nil Goal means "no change".
-	req := UpdateRoutineRequest{Goal: nil}
+func TestUpdateRoutineRequest_AbsentGoalAccepted(t *testing.T) {
+	// Goal field absent from JSON means "no change".
+	req := UpdateRoutineRequest{Goal: GoalUpdate{}}
 	require.NoError(t, req.Validate())
 }
 
-func TestUpdateRoutineRequest_GoalTargetZeroAccepted(t *testing.T) {
-	// Target == 0 is the "clear goal" sentinel; Type is ignored.
-	req := UpdateRoutineRequest{Goal: &Goal{Target: 0}}
+func TestUpdateRoutineRequest_NullGoalAccepted(t *testing.T) {
+	// Goal: null means "clear goal" — Set==true, Value==nil.
+	req := UpdateRoutineRequest{Goal: GoalUpdate{Set: true, Value: nil}}
 	require.NoError(t, req.Validate())
 }
 
 func TestUpdateRoutineRequest_TimeGoalOutOfRange(t *testing.T) {
 	for _, ttm := range []int{-1, 30*24*60 + 1} {
-		req := UpdateRoutineRequest{Goal: &Goal{Type: GoalTypeTime, Target: ttm}}
+		req := UpdateRoutineRequest{Goal: GoalUpdate{Set: true, Value: &Goal{Type: GoalTypeTime, Target: ttm}}}
 		err := req.Validate()
 		require.Error(t, err, "target=%d", ttm)
 		assert.True(t, errors.Is(err, ErrInvalidInput))
@@ -198,7 +200,7 @@ func TestUpdateRoutineRequest_TimeGoalOutOfRange(t *testing.T) {
 
 func TestUpdateRoutineRequest_CountGoalOutOfRange(t *testing.T) {
 	for _, ttm := range []int{-1, 1001} {
-		req := UpdateRoutineRequest{Goal: &Goal{Type: GoalTypeCount, Target: ttm}}
+		req := UpdateRoutineRequest{Goal: GoalUpdate{Set: true, Value: &Goal{Type: GoalTypeCount, Target: ttm}}}
 		err := req.Validate()
 		require.Error(t, err, "target=%d", ttm)
 		assert.True(t, errors.Is(err, ErrInvalidInput))
@@ -206,7 +208,7 @@ func TestUpdateRoutineRequest_CountGoalOutOfRange(t *testing.T) {
 }
 
 func TestUpdateRoutineRequest_InvalidGoalType(t *testing.T) {
-	req := UpdateRoutineRequest{Goal: &Goal{Type: "distance", Target: 5}}
+	req := UpdateRoutineRequest{Goal: GoalUpdate{Set: true, Value: &Goal{Type: "distance", Target: 5}}}
 	err := req.Validate()
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, ErrInvalidInput))

@@ -35,24 +35,19 @@ const (
 
 func validateGoal(g *Goal) error {
 	if g == nil {
-		return nil // not changing the goal
+		return nil // Create: no goal supplied. Update: handled by Set/Value branching upstream.
 	}
-	if g.Target == 0 {
-		return nil // sentinel for "clear goal"; Type is ignored
-	}
-	if g.Target < 0 {
+	if g.Target <= 0 {
 		return fmt.Errorf("%w: goal.target must be positive", ErrInvalidInput)
 	}
 	switch g.Type {
 	case GoalTypeTime:
 		if g.Target > maxRoutineGoalMins {
-			return fmt.Errorf("%w: time goal target must be between 1 and %d minutes",
-				ErrInvalidInput, maxRoutineGoalMins)
+			return fmt.Errorf("%w: time goal target must be 1..%d minutes", ErrInvalidInput, maxRoutineGoalMins)
 		}
 	case GoalTypeCount:
 		if g.Target > maxRoutineGoalCount {
-			return fmt.Errorf("%w: count goal target must be between 1 and %d",
-				ErrInvalidInput, maxRoutineGoalCount)
+			return fmt.Errorf("%w: count goal target must be 1..%d", ErrInvalidInput, maxRoutineGoalCount)
 		}
 	default:
 		return fmt.Errorf("%w: goal.type must be 'time' or 'count'", ErrInvalidInput)
@@ -98,8 +93,10 @@ func (r *UpdateRoutineRequest) Validate() error {
 	if r.DurationMins != nil && (*r.DurationMins <= 0 || *r.DurationMins > maxRoutineDurationMins) {
 		return fmt.Errorf("%w: durationMins must be between 1 and %d", ErrInvalidInput, maxRoutineDurationMins)
 	}
-	if err := validateGoal(r.Goal); err != nil {
-		return err
+	if r.Goal.Set && r.Goal.Value != nil {
+		if err := validateGoal(r.Goal.Value); err != nil {
+			return err
+		}
 	}
 	if r.ResetPeriod != nil {
 		if _, ok := validResetPeriods[*r.ResetPeriod]; !ok {

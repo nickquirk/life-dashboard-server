@@ -13,7 +13,7 @@ func (s *service) CreateRoutine(req domain.CreateRoutineRequest) (domain.CreateR
 		DurationMins: req.DurationMins,
 		ResetPeriod:  req.ResetPeriod,
 	}
-	// Only persist a goal if Target > 0 (Target == 0 is the "no goal" / "clear" sentinel).
+
 	if req.Goal != nil && req.Goal.Target > 0 {
 		gTypeStr := string(req.Goal.Type) // *string is what GORM expects on the column
 		gTarget := req.Goal.Target
@@ -66,14 +66,14 @@ func (s *service) UpdateRoutine(req domain.UpdateRoutineRequest) (domain.UpdateR
 	// sets both columns. Switching goal types is implicit — both columns are
 	// overwritten in a single update.
 	clearingGoal := false
-	if req.Goal != nil {
-		if req.Goal.Target == 0 {
+	if req.Goal.Set {
+		if req.Goal.Value == nil {
 			updates["goal_type"] = nil
 			updates["goal_target"] = nil
 			clearingGoal = true
 		} else {
-			updates["goal_type"] = string(req.Goal.Type)
-			updates["goal_target"] = req.Goal.Target
+			updates["goal_type"] = string(req.Goal.Value.Type)
+			updates["goal_target"] = req.Goal.Value.Target
 		}
 	}
 
