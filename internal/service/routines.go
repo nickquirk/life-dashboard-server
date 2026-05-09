@@ -62,9 +62,9 @@ func (s *service) UpdateRoutine(req domain.UpdateRoutineRequest) (domain.UpdateR
 		updates["is_archived"] = *req.IsArchived
 	}
 
-	// Goal write: nil means "no change", Target == 0 means "clear", anything else
-	// sets both columns. Switching goal types is implicit — both columns are
-	// overwritten in a single update.
+	// Goal write: req.Goal.Set distinguishes "field absent" from "field present".
+	// When set, a nil Value clears both columns; a non-nil Value overwrites them
+	// (which transparently handles type switches in a single update).
 	clearingGoal := false
 	if req.Goal.Set {
 		if req.Goal.Value == nil {

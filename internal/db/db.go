@@ -101,6 +101,11 @@ func InitMigration(db *gorm.DB) {
     `).Error; err != nil {
 			slog.Warn("failed to backfill goal columns", "error", err)
 		}
+
+		if err := db.Exec(`UPDATE routines ...`).Error; err != nil {
+			slog.Error("failed to backfill goal columns; aborting drop to preserve data", "error", err)
+			panic("Unable to backfill goal columns, exiting...")
+		}
 		if err := db.Migrator().DropColumn(&domain.Routine{}, "target_total_mins"); err != nil {
 			slog.Warn("failed to drop deprecated target_total_mins column", "error", err)
 		}

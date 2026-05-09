@@ -74,6 +74,31 @@ func TestCreateRoutine_ValidationError_Returns400AndExposesMessage(t *testing.T)
 	assert.Contains(t, rr.Body.String(), "title is required")
 }
 
+func TestCreateRoutine_DecodesGoalShape(t *testing.T) {
+	// Verify a real `"goal": {"type":..., "target":...}` JSON payload reaches
+	// the service as a populated *domain.Goal.
+	var captured domain.CreateRoutineRequest
+	svc := &mocks.MockService{
+		CreateRoutineFunc: func(req domain.CreateRoutineRequest) (domain.CreateRoutineResponse, error) {
+			captured = req
+			return domain.CreateRoutineResponse{ID: 9, Title: req.Title, DurationMins: req.DurationMins}, nil
+		},
+	}
+	h := testHandler(svc)
+	body := []byte(`{"title":"Read","durationMins":15,"goal":{"type":"time","target":30}}`)
+	r := httptest.NewRequest(http.MethodPost, "/api/routines", bytes.NewReader(body))
+	r = withUser(r, 1)
+	rr := httptest.NewRecorder()
+
+	h.createRoutine(rr, r)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+	if assert.NotNil(t, captured.Goal) {
+		assert.Equal(t, domain.GoalTypeTime, captured.Goal.Type)
+		assert.Equal(t, 30, captured.Goal.Target)
+	}
+}
+
 func TestCreateRoutine_ServiceError_Returns500(t *testing.T) {
 	svc := &mocks.MockService{
 		CreateRoutineFunc: func(req domain.CreateRoutineRequest) (domain.CreateRoutineResponse, error) {
@@ -152,6 +177,78 @@ func TestUpdateRoutine_ValidationError_Returns400(t *testing.T) {
 
 	assert.Equal(t, http.StatusBadRequest, rr.Code)
 	assert.Contains(t, rr.Body.String(), "durationMins must be between")
+}
+
+func TestUpdateRoutine_GoalSet_PassedToService(t *testing.T) {
+	// `"goal": {"type":..., "target":...}` reaches the service as
+	// GoalUpdate{Set: true, Value: <populated>}.
+	var captured domain.UpdateRoutineRequest
+	svc := &mocks.MockService{
+		UpdateRoutineFunc: func(req domain.UpdateRoutineRequest) (domain.UpdateRoutineResponse, error) {
+			captured = req
+			return domain.UpdateRoutineResponse{ID: req.ID}, nil
+		},
+	}
+	h := testHandler(svc)
+	body := []byte(`{"goal":{"type":"count","target":5}}`)
+	r := httptest.NewRequest(http.MethodPatch, "/api/routines/5", bytes.NewReader(body))
+	r = withUserAndChi(r, 1, "id", "5")
+	rr := httptest.NewRecorder()
+
+	h.updateRoutine(rr, r)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.True(t, captured.Goal.Set)
+	if assert.NotNil(t, captured.Goal.Value) {
+		assert.Equal(t, domain.GoalTypeCount, captured.Goal.Value.Type)
+		assert.Equal(t, 5, captured.Goal.Value.Target)
+	}
+}
+
+func TestUpdateRoutine_GoalNull_PassedToServiceAsClear(t *testing.T) {
+	// `"goal": null` must reach the service as GoalUpdate{Set: true, Value: nil}
+	// — the clear-goal sentinel that drives the demote-to-regular-routine path.
+	var captured domain.UpdateRoutineRequest
+	svc := &mocks.MockService{
+		UpdateRoutineFunc: func(req domain.UpdateRoutineRequest) (domain.UpdateRoutineResponse, error) {
+			captured = req
+			return domain.UpdateRoutineResponse{ID: req.ID}, nil
+		},
+	}
+	h := testHandler(svc)
+	body := []byte(`{"goal":null}`)
+	r := httptest.NewRequest(http.MethodPatch, "/api/routines/5", bytes.NewReader(body))
+	r = withUserAndChi(r, 1, "id", "5")
+	rr := httptest.NewRecorder()
+
+	h.updateRoutine(rr, r)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.True(t, captured.Goal.Set, "goal:null must set the Set flag")
+	assert.Nil(t, captured.Goal.Value, "goal:null must produce nil Value (the clear sentinel)")
+}
+
+func TestUpdateRoutine_GoalAbsent_NotPassed(t *testing.T) {
+	// Body without "goal" must reach the service as GoalUpdate{Set: false} —
+	// the "no change" signal. The service must NOT touch goal columns.
+	var captured domain.UpdateRoutineRequest
+	svc := &mocks.MockService{
+		UpdateRoutineFunc: func(req domain.UpdateRoutineRequest) (domain.UpdateRoutineResponse, error) {
+			captured = req
+			return domain.UpdateRoutineResponse{ID: req.ID}, nil
+		},
+	}
+	h := testHandler(svc)
+	body := []byte(`{"title":"New"}`)
+	r := httptest.NewRequest(http.MethodPatch, "/api/routines/5", bytes.NewReader(body))
+	r = withUserAndChi(r, 1, "id", "5")
+	rr := httptest.NewRecorder()
+
+	h.updateRoutine(rr, r)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.False(t, captured.Goal.Set, "absent goal must leave Set==false")
+	assert.Nil(t, captured.Goal.Value)
 }
 
 func TestUpdateRoutine_NotFound(t *testing.T) {
