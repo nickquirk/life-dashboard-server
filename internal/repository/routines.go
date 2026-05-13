@@ -70,7 +70,19 @@ func (r *GormRoutineRepository) GetRoutinesByUserID(userID uint) ([]domain.Routi
 		Where("r.user_id = ? AND r.deleted_at IS NULL AND r.is_archived = false", userID).
 		Group("r.id").
 		Scan(&routines).Error
-	return routines, err
+	if err != nil {
+		return nil, err
+	}
+
+	// GORM doesn't run AfterFind callbacks on `.Table(...).Scan(...)` queries
+	// because the table is referenced by name rather than by model. Hydrate
+	// the assembled Goal field manually using the same hook.
+	for i := range routines {
+		if err := routines[i].AfterFind(r.Db); err != nil {
+			return nil, err
+		}
+	}
+	return routines, nil
 }
 
 // startOfISOWeek returns midnight on the Monday of t's week, in t's location.
