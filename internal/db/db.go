@@ -92,6 +92,7 @@ func InitMigration(db *gorm.DB) {
 	// One-time migration: target_total_mins -> goal_type/goal_target.
 	// Safe to run repeatedly because the predicate excludes already-migrated rows.
 	if db.Migrator().HasColumn(&domain.Routine{}, "target_total_mins") {
+		// Backfill existing data
 		if err := db.Exec(`
         UPDATE routines
         SET goal_type = 'time', goal_target = target_total_mins
@@ -100,14 +101,12 @@ func InitMigration(db *gorm.DB) {
           AND goal_target IS NULL
     `).Error; err != nil {
 			slog.Warn("failed to backfill goal columns", "error", err)
-		}
-
-		if err := db.Exec(`UPDATE routines ...`).Error; err != nil {
-			slog.Error("failed to backfill goal columns; aborting drop to preserve data", "error", err)
-			panic("Unable to backfill goal columns, exiting...")
-		}
-		if err := db.Migrator().DropColumn(&domain.Routine{}, "target_total_mins"); err != nil {
-			slog.Warn("failed to drop deprecated target_total_mins column", "error", err)
+			panic("failed to backfill goal columns")
+		} else {
+			// Only drop the column if the backfill didn't throw an error
+			if err := db.Migrator().DropColumn(&domain.Routine{}, "target_total_mins"); err != nil {
+				slog.Warn("failed to drop deprecated target_total_mins column", "error", err)
+			}
 		}
 	}
 }
