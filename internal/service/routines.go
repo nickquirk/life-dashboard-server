@@ -155,6 +155,9 @@ func (s *service) UpdateRoutineInstance(req domain.UpdateRoutineInstanceRequest)
 	if req.DurationMins != nil {
 		updates["duration_mins"] = *req.DurationMins
 	}
+	if req.Label != nil {
+		updates["label"] = *req.Label
+	}
 
 	if len(updates) == 0 {
 		return domain.UpdateRoutineInstanceResponse{}, nil

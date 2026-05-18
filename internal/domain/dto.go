@@ -359,6 +359,7 @@ type UpdateRoutineInstanceRequest struct {
 	Date         *time.Time `json:"date"`
 	Status       *string    `json:"status"`
 	DurationMins *int       `json:"durationMins"`
+	Label        *string    `json:"label"` // nil = leave unchanged; "" = clear
 }
 
 type UpdateRoutineInstanceResponse struct {
@@ -368,6 +369,7 @@ type UpdateRoutineInstanceResponse struct {
 	Date         time.Time `json:"date"`
 	Status       string    `json:"status"`
 	DurationMins *int      `json:"durationMins,omitempty"`
+	Label        *string   `json:"label"`
 }
 
 type DeleteRoutineInstanceRequest struct {

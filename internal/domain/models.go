@@ -141,6 +141,7 @@ type RoutineInstance struct {
 	Date         time.Time `gorm:"index:idx_ri_user_date,priority:2;type:datetime" json:"date"`
 	Status       string    `json:"status"`                 // "needsAction" or "completed"
 	DurationMins *int      `json:"durationMins,omitempty"` // Only populated if user overrides the template
+	Label        string    `gorm:"size:200" json:"label"`  // Free-text per-instance annotation; "" = none
 }
 
 // Define supported types for notes
