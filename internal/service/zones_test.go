@@ -74,7 +74,8 @@ func TestService_GetZones_Empty(t *testing.T) {
 
 	resp, err := svc.GetZones(domain.GetZonesRequest{UserID: 1})
 	require.NoError(t, err)
-	assert.Nil(t, resp.Zones)
+	assert.NotNil(t, resp.Zones)
+	assert.Len(t, resp.Zones, 0)
 }
 
 func TestService_GetZones_Error(t *testing.T) {

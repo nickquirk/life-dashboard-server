@@ -30,7 +30,7 @@ func (r *GormRoutineRepository) CreateRoutine(routine domain.Routine) (domain.Ro
 }
 
 func (r *GormRoutineRepository) GetRoutinesByUserID(userID uint) ([]domain.RoutineWithStats, error) {
-	var routines []domain.RoutineWithStats
+	routines := make([]domain.RoutineWithStats, 0) // initialize to an empty slice and never return a bare nil on success
 
 	now := time.Now()
 	weekStart := startOfISOWeek(now)
@@ -118,7 +118,8 @@ func (r *GormRoutineRepository) CreateInstance(instance domain.RoutineInstance) 
 }
 
 func (r *GormRoutineRepository) GetInstancesByUserID(userID uint, start, end time.Time) ([]domain.RoutineInstance, error) {
-	var instances []domain.RoutineInstance
+	instances := make([]domain.RoutineInstance, 0)
+
 	err := r.Db.Preload("Routine").
 		Where("user_id = ? AND date >= ? AND date <= ?", userID, start, end).
 		Find(&instances).Error

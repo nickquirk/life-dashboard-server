@@ -48,7 +48,7 @@ func (r *GormTaskRepository) UpsertTaskLists(lists []domain.TaskList) error {
 }
 
 func (r *GormTaskRepository) GetTaskLists(userID uint) ([]domain.TaskList, error) {
-	var lists []domain.TaskList
+	lists := make([]domain.TaskList, 0)
 	err := r.Db.Where("user_id = ?", userID).Order("updated desc").Find(&lists).Error
 	return lists, err
 }
@@ -91,7 +91,7 @@ func (r *GormTaskRepository) CreateTask(task domain.Task) error {
 }
 
 func (r *GormTaskRepository) GetTasks(taskListID string) ([]domain.Task, error) {
-	var tasks []domain.Task
+	tasks := make([]domain.Task, 0)
 	err := r.Db.
 		Where("task_list_id = ?", taskListID).
 		Order("position ASC, created_at ASC").

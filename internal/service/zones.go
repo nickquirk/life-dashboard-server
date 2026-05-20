@@ -32,7 +32,7 @@ func (s *service) GetZones(req domain.GetZonesRequest) (domain.GetZonesResponse,
 		return domain.GetZonesResponse{}, err
 	}
 
-	var response domain.GetZonesResponse
+	response := domain.GetZonesResponse{Zones: []domain.ZoneResponse{}}
 	for _, z := range zones {
 		response.Zones = append(response.Zones, domain.ZoneResponse{
 			ID:         z.ID,
