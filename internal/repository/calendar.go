@@ -19,7 +19,7 @@ type CalendarRepository interface {
 }
 
 func (r *GormCalendarRepository) GetEvents(userID uint, start, end time.Time) ([]domain.CalendarEvent, error) {
-	var events []domain.CalendarEvent
+	events := make([]domain.CalendarEvent, 0)
 	// Fetch events overlapping the requested window
 	err := r.Db.Where("user_id = ? AND start >= ? AND end <= ?", userID, start, end).
 		Order("start asc").

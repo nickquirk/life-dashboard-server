@@ -35,7 +35,7 @@ func (s *service) GetCalendarEvents(ctx context.Context, req domain.GetCalendarE
 		return domain.GetCalendarEventsResponse{}, err
 	}
 
-	var events []domain.CalendarEvent
+	events := make([]domain.CalendarEvent, 0)
 
 	for _, item := range gEvents.Items {
 		var startTime, endTime time.Time
