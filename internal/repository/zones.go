@@ -23,7 +23,7 @@ func (r *GormZoneRepository) Create(zone domain.Zone) (domain.Zone, error) {
 }
 
 func (r *GormZoneRepository) GetByUserID(userID uint) ([]domain.Zone, error) {
-	var zones []domain.Zone
+	zones := make([]domain.Zone, 0)
 	err := r.Db.Where("user_id = ?", userID).Find(&zones).Error
 	return zones, err
 }

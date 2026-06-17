@@ -34,7 +34,7 @@ func (r *GormNoteRepository) CreateNote(note domain.Note) (domain.Note, error) {
 }
 
 func (r *GormNoteRepository) GetNotesByUserID(userID uint, archived bool) ([]domain.Note, error) {
-	var notes []domain.Note
+	notes := make([]domain.Note, 0)
 	err := r.Db.
 		Preload("Items", func(db *gorm.DB) *gorm.DB {
 			return db.Order("position ASC")

@@ -3,10 +3,12 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"time"
 
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
+	"google.golang.org/api/calendar/v3"
 )
 
 func (s *service) GetCalendarEvents(ctx context.Context, req domain.GetCalendarEventsRequest) (domain.GetCalendarEventsResponse, error) {
@@ -35,21 +37,15 @@ func (s *service) GetCalendarEvents(ctx context.Context, req domain.GetCalendarE
 		return domain.GetCalendarEventsResponse{}, err
 	}
 
-	var events []domain.CalendarEvent
+	events := make([]domain.CalendarEvent, 0)
 
 	for _, item := range gEvents.Items {
-		var startTime, endTime time.Time
-		var isAllDay bool
-
-		if item.Start.DateTime != "" {
-			startTime, _ = time.Parse(time.RFC3339, item.Start.DateTime)
-			endTime, _ = time.Parse(time.RFC3339, item.End.DateTime)
-		} else {
-			startTime, _ = time.Parse("2006-01-02", item.Start.Date)
-			endTime, _ = time.Parse("2006-01-02", item.End.Date)
-			isAllDay = true
+		startTime, endTime, isAllDay, err := parseEventTimes(item)
+		if err != nil {
+			slog.Warn("skipping calendar event with unparseable time",
+				"userID", req.UserID, "eventID", item.Id, "error", err)
+			continue
 		}
-
 		events = append(events, domain.CalendarEvent{
 			ID:       item.Id,
 			Title:    item.Summary,
@@ -65,4 +61,27 @@ func (s *service) GetCalendarEvents(ctx context.Context, req domain.GetCalendarE
 	}
 
 	return dto, nil
+}
+
+func parseEventTimes(item *calendar.Event) (start, end time.Time, isAllDay bool, err error) {
+	if item.Start.DateTime != "" {
+		start, err = time.Parse(time.RFC3339, item.Start.DateTime)
+		if err != nil {
+			return time.Time{}, time.Time{}, false, fmt.Errorf("start datetime %q: %w", item.Start.DateTime, err)
+		}
+		end, err = time.Parse(time.RFC3339, item.End.DateTime)
+		if err != nil {
+			return time.Time{}, time.Time{}, false, fmt.Errorf("end datetime %q: %w", item.End.DateTime, err)
+		}
+		return start, end, false, nil
+	}
+	start, err = time.Parse("2006-01-02", item.Start.Date)
+	if err != nil {
+		return time.Time{}, time.Time{}, false, fmt.Errorf("start date %q: %w", item.Start.Date, err)
+	}
+	end, err = time.Parse("2006-01-02", item.End.Date)
+	if err != nil {
+		return time.Time{}, time.Time{}, false, fmt.Errorf("end date %q: %w", item.End.Date, err)
+	}
+	return start, end, true, nil
 }
