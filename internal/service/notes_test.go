@@ -12,7 +12,7 @@ import (
 )
 
 func newNoteService(repo *mocks.MockNoteRepository) Service {
-	return NewServiceWithRepos(nil, nil, nil, nil, nil, nil, nil, repo)
+	return NewServiceWithRepos(nil, nil, nil, nil, nil, nil, nil, repo, nil)
 }
 
 func ptrBool(v bool) *bool { return &v }

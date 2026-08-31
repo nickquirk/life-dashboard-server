@@ -82,6 +82,24 @@ type Zone struct {
 	DaysActive []uint `json:"daysActive" gorm:"serializer:json"` // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
 }
 
+// Calendar display defaults, used when a user has no settings row yet.
+const (
+	DefaultCalendarStartHour = 5
+	DefaultCalendarEndHour   = 24
+)
+
+// UserSettings holds per-user preferences as a single JSON document. One row
+// per user, created lazily on the first write; a missing row means "all
+// defaults".
+//
+// The document shape lives in settings.go. Adding a setting means adding a
+// field there — no column, no migration.
+type UserSettings struct {
+	gorm.Model
+	UserID uint     `gorm:"uniqueIndex;not null" json:"userId"`
+	Data   Settings `gorm:"column:data" json:"data"`
+}
+
 type Feedback struct {
 	gorm.Model
 	UserID  uint    `gorm:"index;not null" json:"userId"`

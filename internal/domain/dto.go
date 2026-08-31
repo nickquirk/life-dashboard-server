@@ -263,6 +263,26 @@ type UpsertScratchpadResponse struct {
 	Content string `json:"content"`
 }
 
+// ------ User Settings ---------
+
+type GetUserSettingsRequest struct {
+	UserID uint `json:"-"`
+}
+
+// UpdateUserSettingsRequest carries the raw request body rather than decoded
+// fields, because the update is a merge over the user's stored document — see
+// Settings.ApplyPatch.
+type UpdateUserSettingsRequest struct {
+	UserID uint
+	Patch  []byte
+}
+
+// UserSettingsResponse embeds Settings so the wire format is the same document
+// that's stored: one shape to reason about, not two.
+type UserSettingsResponse struct {
+	Settings
+}
+
 // ------ Routines ---------
 
 type CreateRoutineRequest struct {

@@ -74,6 +74,7 @@ func InitMigration(db *gorm.DB) {
 	db.AutoMigrate(domain.TaskList{})
 	db.AutoMigrate(domain.Task{})
 	db.AutoMigrate(domain.Zone{})
+	db.AutoMigrate(domain.UserSettings{})
 	db.AutoMigrate(domain.Feedback{})
 	db.AutoMigrate(domain.Scratchpad{})
 	db.AutoMigrate(domain.Routine{})
@@ -106,6 +107,33 @@ func InitMigration(db *gorm.DB) {
 			// Only drop the column if the backfill didn't throw an error
 			if err := db.Migrator().DropColumn(&domain.Routine{}, "target_total_mins"); err != nil {
 				slog.Warn("failed to drop deprecated target_total_mins column", "error", err)
+			}
+		}
+	}
+
+	// One-time migration: the fixed calendar_* columns became a single JSON `data`
+	// document. Safe to run repeatedly — the predicate skips migrated rows, and the
+	// whole block is gated on the old column still existing.
+	if db.Migrator().HasColumn(&domain.UserSettings{}, "calendar_start_hour") {
+		if err := db.Exec(`
+			UPDATE user_settings
+			SET data = JSON_OBJECT(
+				'version', 1,
+				'calendar', JSON_OBJECT(
+					'startHour',    calendar_start_hour,
+					'endHour',      calendar_end_hour,
+					'dynamicRange', IF(calendar_dynamic_range, CAST('true' AS JSON), CAST('false' AS JSON))
+				)
+			)
+			WHERE data IS NULL
+		`).Error; err != nil {
+			slog.Warn("failed to backfill user settings data column", "error", err)
+			panic("failed to backfill user settings data column")
+		}
+
+		for _, col := range []string{"calendar_start_hour", "calendar_end_hour", "calendar_dynamic_range"} {
+			if err := db.Migrator().DropColumn(&domain.UserSettings{}, col); err != nil {
+				slog.Warn("failed to drop deprecated settings column", "column", col, "error", err)
 			}
 		}
 	}

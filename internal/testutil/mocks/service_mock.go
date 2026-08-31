@@ -10,49 +10,51 @@ import (
 // MockService implements service.Service with function fields.
 // Nil fields return zero values.
 type MockService struct {
-	PingFunc                func() error
-	CreateUserFunc          func(domain.CreateUserRequest) (domain.CreateUserResponse, error)
-	GetUserFunc             func(domain.GetUserRequest) (domain.GetUserResponse, error)
-	GetUserEmailFunc        func(userID uint) (string, error)
-	CreateSessionFunc       func(userID uint, hashedToken string, expiresAt time.Time, deviceInfo string) error
-	ValidateSessionFunc     func(userID uint, hashedToken string) (bool, error)
-	DeleteSessionFunc       func(userID uint, hashedToken string) error
-	TriggerGlobalSyncFunc   func(ctx context.Context, projectID, location, queue, workerURL, serviceAccountEmail string) error
-	SyncSingleUserFunc      func(ctx context.Context, userID uint) error
-	SyncTaskListsFunc       func(ctx context.Context, req domain.SyncTaskListsRequest) (domain.SyncTaskListsResponse, error)
-	GetTaskListsFunc        func(req domain.GetTaskListsRequest) (domain.GetTaskListsResponse, error)
-	CreateTaskFunc          func(ctx context.Context, req domain.CreateTaskRequest) (domain.CreateTaskResponse, error)
-	GetTasksFunc            func(ctx context.Context, req domain.GetTasksRequest) (domain.GetTasksResponse, error)
-	SyncTasksFunc           func(ctx context.Context, req domain.SyncTasksRequest) (domain.SyncTasksResponse, error)
-	UpdateTaskFunc          func(ctx context.Context, req domain.UpdateTaskRequest) (domain.UpdateTaskResponse, error)
-	DeleteTaskFunc          func(ctx context.Context, req domain.DeleteTaskRequest) (domain.DeleteTaskResponse, error)
-	DeleteTasksFunc         func(ctx context.Context, req domain.DeleteTasksRequest) (domain.DeleteTasksResponse, error)
-	ReorderSubtasksFunc     func(req domain.ReorderSubtasksRequest) (domain.ReorderSubtasksResponse, error)
-	GetCalendarEventsFunc   func(ctx context.Context, req domain.GetCalendarEventsRequest) (domain.GetCalendarEventsResponse, error)
-	CreateZoneFunc          func(req domain.CreateZoneRequest) (domain.CreateZoneResponse, error)
-	GetZonesFunc            func(req domain.GetZonesRequest) (domain.GetZonesResponse, error)
-	UpdateZoneFunc          func(req domain.UpdateZoneRequest) (domain.UpdateZoneResponse, error)
-	DeleteZoneFunc          func(req domain.DeleteZoneRequest) (domain.DeleteZoneResponse, error)
-	DeleteAccountFunc       func(userID uint) error
-	CreateFeedbackFunc func(req domain.CreateFeedbackRequest) (domain.CreateFeedbackResponse, error)
-	GetScratchpadFunc    func(req domain.GetScratchpadRequest) (domain.GetScratchpadResponse, error)
-	UpsertScratchpadFunc func(req domain.UpsertScratchpadRequest) (domain.UpsertScratchpadResponse, error)
-	CreateRoutineFunc          func(req domain.CreateRoutineRequest) (domain.CreateRoutineResponse, error)
-	GetRoutinesFunc            func(req domain.GetRoutineRequest) (domain.GetRoutineResponse, error)
-	UpdateRoutineFunc          func(req domain.UpdateRoutineRequest) (domain.UpdateRoutineResponse, error)
-	DeleteRoutineFunc          func(req domain.DeleteRoutineRequest) (domain.DeleteRoutineResponse, error)
-	CreateRoutineInstanceFunc  func(req domain.CreateRoutineInstanceRequest) (domain.CreateRoutineInstanceResponse, error)
-	GetRoutineInstancesFunc    func(req domain.GetRoutineInstancesRequest) (domain.GetRoutineInstancesResponse, error)
-	UpdateRoutineInstanceFunc  func(req domain.UpdateRoutineInstanceRequest) (domain.UpdateRoutineInstanceResponse, error)
-	DeleteRoutineInstanceFunc  func(req domain.DeleteRoutineInstanceRequest) (domain.DeleteRoutineInstanceResponse, error)
-	CreateNoteFunc             func(req domain.CreateNoteRequest) (domain.CreateNoteResponse, error)
-	GetNotesFunc               func(req domain.GetNotesRequest) (domain.GetNotesResponse, error)
-	UpdateNoteFunc             func(req domain.UpdateNoteRequest) (domain.UpdateNoteResponse, error)
-	DeleteNoteFunc             func(req domain.DeleteNoteRequest) (domain.DeleteNoteResponse, error)
-	CreateNoteItemFunc         func(req domain.CreateNoteItemRequest) (domain.CreateNoteItemResponse, error)
-	UpdateNoteItemFunc         func(req domain.UpdateNoteItemRequest) (domain.UpdateNoteItemResponse, error)
-	DeleteNoteItemFunc         func(req domain.DeleteNoteItemRequest) (domain.DeleteNoteItemResponse, error)
-	ReorderNoteItemsFunc       func(req domain.ReorderNoteItemsRequest) (domain.ReorderNoteItemsResponse, error)
+	PingFunc                  func() error
+	CreateUserFunc            func(domain.CreateUserRequest) (domain.CreateUserResponse, error)
+	GetUserFunc               func(domain.GetUserRequest) (domain.GetUserResponse, error)
+	GetUserEmailFunc          func(userID uint) (string, error)
+	CreateSessionFunc         func(userID uint, hashedToken string, expiresAt time.Time, deviceInfo string) error
+	ValidateSessionFunc       func(userID uint, hashedToken string) (bool, error)
+	DeleteSessionFunc         func(userID uint, hashedToken string) error
+	TriggerGlobalSyncFunc     func(ctx context.Context, projectID, location, queue, workerURL, serviceAccountEmail string) error
+	SyncSingleUserFunc        func(ctx context.Context, userID uint) error
+	SyncTaskListsFunc         func(ctx context.Context, req domain.SyncTaskListsRequest) (domain.SyncTaskListsResponse, error)
+	GetTaskListsFunc          func(req domain.GetTaskListsRequest) (domain.GetTaskListsResponse, error)
+	CreateTaskFunc            func(ctx context.Context, req domain.CreateTaskRequest) (domain.CreateTaskResponse, error)
+	GetTasksFunc              func(ctx context.Context, req domain.GetTasksRequest) (domain.GetTasksResponse, error)
+	SyncTasksFunc             func(ctx context.Context, req domain.SyncTasksRequest) (domain.SyncTasksResponse, error)
+	UpdateTaskFunc            func(ctx context.Context, req domain.UpdateTaskRequest) (domain.UpdateTaskResponse, error)
+	DeleteTaskFunc            func(ctx context.Context, req domain.DeleteTaskRequest) (domain.DeleteTaskResponse, error)
+	DeleteTasksFunc           func(ctx context.Context, req domain.DeleteTasksRequest) (domain.DeleteTasksResponse, error)
+	ReorderSubtasksFunc       func(req domain.ReorderSubtasksRequest) (domain.ReorderSubtasksResponse, error)
+	GetCalendarEventsFunc     func(ctx context.Context, req domain.GetCalendarEventsRequest) (domain.GetCalendarEventsResponse, error)
+	CreateZoneFunc            func(req domain.CreateZoneRequest) (domain.CreateZoneResponse, error)
+	GetZonesFunc              func(req domain.GetZonesRequest) (domain.GetZonesResponse, error)
+	UpdateZoneFunc            func(req domain.UpdateZoneRequest) (domain.UpdateZoneResponse, error)
+	DeleteZoneFunc            func(req domain.DeleteZoneRequest) (domain.DeleteZoneResponse, error)
+	DeleteAccountFunc         func(userID uint) error
+	CreateFeedbackFunc        func(req domain.CreateFeedbackRequest) (domain.CreateFeedbackResponse, error)
+	GetScratchpadFunc         func(req domain.GetScratchpadRequest) (domain.GetScratchpadResponse, error)
+	UpsertScratchpadFunc      func(req domain.UpsertScratchpadRequest) (domain.UpsertScratchpadResponse, error)
+	GetUserSettingsFunc       func(req domain.GetUserSettingsRequest) (domain.UserSettingsResponse, error)
+	UpdateUserSettingsFunc    func(req domain.UpdateUserSettingsRequest) (domain.UserSettingsResponse, error)
+	CreateRoutineFunc         func(req domain.CreateRoutineRequest) (domain.CreateRoutineResponse, error)
+	GetRoutinesFunc           func(req domain.GetRoutineRequest) (domain.GetRoutineResponse, error)
+	UpdateRoutineFunc         func(req domain.UpdateRoutineRequest) (domain.UpdateRoutineResponse, error)
+	DeleteRoutineFunc         func(req domain.DeleteRoutineRequest) (domain.DeleteRoutineResponse, error)
+	CreateRoutineInstanceFunc func(req domain.CreateRoutineInstanceRequest) (domain.CreateRoutineInstanceResponse, error)
+	GetRoutineInstancesFunc   func(req domain.GetRoutineInstancesRequest) (domain.GetRoutineInstancesResponse, error)
+	UpdateRoutineInstanceFunc func(req domain.UpdateRoutineInstanceRequest) (domain.UpdateRoutineInstanceResponse, error)
+	DeleteRoutineInstanceFunc func(req domain.DeleteRoutineInstanceRequest) (domain.DeleteRoutineInstanceResponse, error)
+	CreateNoteFunc            func(req domain.CreateNoteRequest) (domain.CreateNoteResponse, error)
+	GetNotesFunc              func(req domain.GetNotesRequest) (domain.GetNotesResponse, error)
+	UpdateNoteFunc            func(req domain.UpdateNoteRequest) (domain.UpdateNoteResponse, error)
+	DeleteNoteFunc            func(req domain.DeleteNoteRequest) (domain.DeleteNoteResponse, error)
+	CreateNoteItemFunc        func(req domain.CreateNoteItemRequest) (domain.CreateNoteItemResponse, error)
+	UpdateNoteItemFunc        func(req domain.UpdateNoteItemRequest) (domain.UpdateNoteItemResponse, error)
+	DeleteNoteItemFunc        func(req domain.DeleteNoteItemRequest) (domain.DeleteNoteItemResponse, error)
+	ReorderNoteItemsFunc      func(req domain.ReorderNoteItemsRequest) (domain.ReorderNoteItemsResponse, error)
 }
 
 func (m *MockService) Ping() error {
@@ -244,6 +246,20 @@ func (m *MockService) UpsertScratchpad(req domain.UpsertScratchpadRequest) (doma
 	return domain.UpsertScratchpadResponse{}, nil
 }
 
+func (m *MockService) GetUserSettings(req domain.GetUserSettingsRequest) (domain.UserSettingsResponse, error) {
+	if m.GetUserSettingsFunc != nil {
+		return m.GetUserSettingsFunc(req)
+	}
+	return domain.UserSettingsResponse{}, nil
+}
+
+func (m *MockService) UpdateUserSettings(req domain.UpdateUserSettingsRequest) (domain.UserSettingsResponse, error) {
+	if m.UpdateUserSettingsFunc != nil {
+		return m.UpdateUserSettingsFunc(req)
+	}
+	return domain.UserSettingsResponse{}, nil
+}
+
 func (m *MockService) CreateRoutine(req domain.CreateRoutineRequest) (domain.CreateRoutineResponse, error) {
 	if m.CreateRoutineFunc != nil {
 		return m.CreateRoutineFunc(req)
@@ -355,4 +371,3 @@ func (m *MockService) ReorderNoteItems(req domain.ReorderNoteItemsRequest) (doma
 	}
 	return domain.ReorderNoteItemsResponse{}, nil
 }
-
