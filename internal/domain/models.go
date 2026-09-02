@@ -82,12 +82,6 @@ type Zone struct {
 	DaysActive []uint `json:"daysActive" gorm:"serializer:json"` // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
 }
 
-// Calendar display defaults, used when a user has no settings row yet.
-const (
-	DefaultCalendarStartHour = 5
-	DefaultCalendarEndHour   = 24
-)
-
 // UserSettings holds per-user preferences as a single JSON document. One row
 // per user, created lazily on the first write; a missing row means "all
 // defaults".

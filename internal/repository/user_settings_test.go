@@ -31,67 +31,46 @@ func TestUserSettingsRepo_GetMissingRowReturnsDefaults(t *testing.T) {
 	assert.Equal(t, domain.DefaultSettings(), got)
 }
 
+// Version is the only field the document carries today, so these tests use it
+// as the observable: what matters is that the stored document is loaded,
+// handed to mutate, and written back to the same row.
 func TestUserSettingsRepo_UpdateCreatesThenUpdates(t *testing.T) {
 	repo := newUserSettingsRepo(t)
 
 	_, err := repo.Update(testUserID, func(s *domain.Settings) error {
-		s.Calendar.StartHour = 7
+		s.Version = 7
 		return nil
 	})
 	require.NoError(t, err)
 
+	var seen int
 	got, err := repo.Update(testUserID, func(s *domain.Settings) error {
-		s.Calendar.DynamicRange = false
+		seen = s.Version // the second update must see the first one's write
 		return nil
 	})
 	require.NoError(t, err)
-	assert.Equal(t, 7, got.Calendar.StartHour)
-	assert.False(t, got.Calendar.DynamicRange)
+	assert.Equal(t, 7, seen)
+	assert.Equal(t, 7, got.Version)
 
 	var count int64
 	require.NoError(t, repo.Db.Model(&domain.UserSettings{}).Where("user_id = ?", testUserID).Count(&count).Error)
 	assert.Equal(t, int64(1), count, "update should not create a second row")
 }
 
-func TestUserSettingsRepo_UpdateMergesOverStoredDocument(t *testing.T) {
-	repo := newUserSettingsRepo(t)
-
-	_, err := repo.Update(testUserID, func(s *domain.Settings) error {
-		s.Calendar.StartHour = 9
-		s.Calendar.EndHour = 17
-		return nil
-	})
-	require.NoError(t, err)
-
-	_, err = repo.Update(testUserID, func(s *domain.Settings) error {
-		s.Calendar.DynamicRange = false
-		return nil
-	})
-	require.NoError(t, err)
-
-	got, err := repo.Get(testUserID)
-	require.NoError(t, err)
-	assert.Equal(t, 9, got.Calendar.StartHour)
-	assert.Equal(t, 17, got.Calendar.EndHour)
-	assert.False(t, got.Calendar.DynamicRange)
-}
-
+// Guards the GORM gotcha that silently dropped zero values from writes.
 func TestUserSettingsRepo_UpdatePersistsZeroValues(t *testing.T) {
 	repo := newUserSettingsRepo(t)
 
 	got, err := repo.Update(testUserID, func(s *domain.Settings) error {
-		s.Calendar.StartHour = 0
-		s.Calendar.DynamicRange = false
+		s.Version = 0
 		return nil
 	})
 	require.NoError(t, err)
-	assert.Equal(t, 0, got.Calendar.StartHour)
-	assert.False(t, got.Calendar.DynamicRange)
+	assert.Equal(t, 0, got.Version)
 
 	fetched, err := repo.Get(testUserID)
 	require.NoError(t, err)
-	assert.Equal(t, 0, fetched.Calendar.StartHour)
-	assert.False(t, fetched.Calendar.DynamicRange)
+	assert.Equal(t, 0, fetched.Version)
 }
 
 func TestUserSettingsRepo_UpdatePropagatesMutateError(t *testing.T) {

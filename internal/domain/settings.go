@@ -22,14 +22,7 @@ const currentSettingsVersion = 1
 // Group new settings under a named sub-struct rather than adding them at the
 // top level, so the document stays navigable as the app grows.
 type Settings struct {
-	Version  int              `json:"version"`
-	Calendar CalendarSettings `json:"calendar"`
-}
-
-type CalendarSettings struct {
-	StartHour    int  `json:"startHour"`
-	EndHour      int  `json:"endHour"`
-	DynamicRange bool `json:"dynamicRange"`
+	Version int `json:"version"`
 }
 
 // DefaultSettings is the single source of truth for defaults. Every field must
@@ -38,22 +31,13 @@ type CalendarSettings struct {
 func DefaultSettings() Settings {
 	return Settings{
 		Version: currentSettingsVersion,
-		Calendar: CalendarSettings{
-			StartHour:    DefaultCalendarStartHour,
-			EndHour:      DefaultCalendarEndHour,
-			DynamicRange: true,
-		},
 	}
 }
 
+// Validate checks the document before it's stored. There is nothing to check
+// today - the hook stays so a new setting can validate itself without the
+// service having to change.
 func (s *Settings) Validate() error {
-	return s.Calendar.validate()
-}
-
-func (c *CalendarSettings) validate() error {
-	if c.StartHour < 0 || c.EndHour > 24 || c.StartHour >= c.EndHour {
-		return fmt.Errorf("%w: calendar hours must be between 0 and 24, with the end after the start", ErrInvalidInput)
-	}
 	return nil
 }
 

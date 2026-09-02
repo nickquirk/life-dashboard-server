@@ -19,10 +19,7 @@ func TestGetUserSettings_Success(t *testing.T) {
 	svc := &mocks.MockService{
 		GetUserSettingsFunc: func(req domain.GetUserSettingsRequest) (domain.UserSettingsResponse, error) {
 			assert.Equal(t, uint(1), req.UserID)
-			return domain.UserSettingsResponse{Settings: domain.Settings{
-				Version:  1,
-				Calendar: domain.CalendarSettings{StartHour: 7, EndHour: 21, DynamicRange: true},
-			}}, nil
+			return domain.UserSettingsResponse{Settings: domain.Settings{Version: 1}}, nil
 		},
 	}
 	h := testHandler(svc)
@@ -32,8 +29,7 @@ func TestGetUserSettings_Success(t *testing.T) {
 	h.getUserSettings(rr, r)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Contains(t, rr.Body.String(), `"calendar"`)
-	assert.Contains(t, rr.Body.String(), `"startHour":7`)
+	assert.Contains(t, rr.Body.String(), `"version":1`)
 }
 
 func TestGetUserSettings_NoUser(t *testing.T) {
@@ -64,16 +60,13 @@ func TestGetUserSettings_ServiceError(t *testing.T) {
 // --- updateUserSettings ---
 
 func TestUpdateUserSettings_Success(t *testing.T) {
-	patch := []byte(`{"calendar":{"startHour":7,"endHour":21,"dynamicRange":true}}`)
+	patch := []byte(`{}`)
 	svc := &mocks.MockService{
 		UpdateUserSettingsFunc: func(req domain.UpdateUserSettingsRequest) (domain.UserSettingsResponse, error) {
 			// The user ID must come from the auth context, never the body
 			assert.Equal(t, uint(1), req.UserID)
 			assert.Equal(t, patch, req.Patch)
-			return domain.UserSettingsResponse{Settings: domain.Settings{
-				Version:  1,
-				Calendar: domain.CalendarSettings{StartHour: 7, EndHour: 21, DynamicRange: true},
-			}}, nil
+			return domain.UserSettingsResponse{Settings: domain.Settings{Version: 1}}, nil
 		},
 	}
 	h := testHandler(svc)
@@ -83,11 +76,11 @@ func TestUpdateUserSettings_Success(t *testing.T) {
 	h.updateUserSettings(rr, r)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Contains(t, rr.Body.String(), `"endHour":21`)
+	assert.Contains(t, rr.Body.String(), `"version":1`)
 }
 
 func TestUpdateUserSettings_PatchBodyIsNotDecodedByHandler(t *testing.T) {
-	patch := []byte(`{"calendar":{"anything":true}}`)
+	patch := []byte(`{"anything":true}`)
 	svc := &mocks.MockService{
 		UpdateUserSettingsFunc: func(req domain.UpdateUserSettingsRequest) (domain.UserSettingsResponse, error) {
 			assert.Equal(t, patch, req.Patch)
