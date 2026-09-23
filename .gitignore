@@ -10,7 +10,6 @@ credentials.json
 config.*.yaml
 
 # Project summary files 
-repomix-output.xml
-repomix-output-be.xml
+repomix-output*.xml
 gorm.db
 docs/*
