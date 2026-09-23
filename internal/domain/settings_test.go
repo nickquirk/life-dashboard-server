@@ -55,9 +55,9 @@ func TestSettings_ScanRejectsCorruptDocument(t *testing.T) {
 
 // Rows written before the calendar settings were removed still carry the key.
 // Scan must ignore it rather than fail the request.
-func TestSettings_ScanIgnoresRetiredKeys(t *testing.T) {
+func TestSettings_ScanIgnoresUnknownKeys(t *testing.T) {
 	var s Settings
-	require.NoError(t, s.Scan([]byte(`{"version":1,"calendar":{"startHour":9}}`)))
+	require.NoError(t, s.Scan([]byte(`{"version":1,"unknown":23}`)))
 
 	assert.Equal(t, currentSettingsVersion, s.Version)
 }
