@@ -64,6 +64,9 @@ func GetRoutes(mx *chi.Mux, h *Handler) error {
 			auth.Post("/zones", h.createZone)
 			auth.Patch("/zones/{id}", h.updateZone)
 			auth.Delete("/zones/{id}", h.deleteZone)
+			// User Settings
+			auth.Get("/settings", h.getUserSettings)
+			auth.Patch("/settings", h.updateUserSettings)
 			// Routines
 			auth.Get("/routines", h.getRoutines)
 			auth.Post("/routines", h.createRoutine)

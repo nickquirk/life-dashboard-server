@@ -212,6 +212,12 @@ func (r GormUserRepository) DeleteUserAndData(userID uint) error {
 		}
 	}()
 
+	// Permanently delete Sessions
+	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&domain.Session{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
 	// Permanently delete Scratchpad entries
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&domain.Scratchpad{}).Error; err != nil {
 		tx.Rollback()
@@ -270,6 +276,12 @@ func (r GormUserRepository) DeleteUserAndData(userID uint) error {
 
 	// Permanently delete TaskLists
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&domain.TaskList{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Permanently delete user settings
+	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&domain.UserSettings{}).Error; err != nil {
 		tx.Rollback()
 		return err
 	}

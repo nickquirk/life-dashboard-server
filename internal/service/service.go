@@ -52,6 +52,9 @@ type Service interface {
 	DeleteRoutineInstance(req domain.DeleteRoutineInstanceRequest) (domain.DeleteRoutineInstanceResponse, error)
 	// ------ Feedback ---------
 	CreateFeedback(req domain.CreateFeedbackRequest) (domain.CreateFeedbackResponse, error)
+	// ------ User Settings ---------
+	GetUserSettings(req domain.GetUserSettingsRequest) (domain.UserSettingsResponse, error)
+	UpdateUserSettings(req domain.UpdateUserSettingsRequest) (domain.UserSettingsResponse, error)
 	// ------ Scratchpad ---------
 	GetScratchpad(req domain.GetScratchpadRequest) (domain.GetScratchpadResponse, error)
 	UpsertScratchpad(req domain.UpsertScratchpadRequest) (domain.UpsertScratchpadResponse, error)
@@ -76,12 +79,13 @@ type service struct {
 	feedbackRepo   repository.FeedbackRepository
 	scratchpadRepo repository.ScratchpadRepository
 	noteRepo       repository.NoteRepository
+	settingsRepo   repository.UserSettingsRepository
 }
 
 // NewServiceWithRepos creates a Service with injected repositories
 func NewServiceWithRepos(userRepo repository.UserRepository, taskRepo repository.TaskRepository,
-	calendarRepo repository.CalendarRepository, zoneRepo repository.ZoneRepository, routineRepo repository.RoutineRepository, feedbackRepo repository.FeedbackRepository, scratchpadRepo repository.ScratchpadRepository, noteRepo repository.NoteRepository) Service {
-	return &service{userRepo: userRepo, taskRepo: taskRepo, calendarRepo: calendarRepo, zoneRepo: zoneRepo, routineRepo: routineRepo, feedbackRepo: feedbackRepo, scratchpadRepo: scratchpadRepo, noteRepo: noteRepo}
+	calendarRepo repository.CalendarRepository, zoneRepo repository.ZoneRepository, routineRepo repository.RoutineRepository, feedbackRepo repository.FeedbackRepository, scratchpadRepo repository.ScratchpadRepository, noteRepo repository.NoteRepository, settingsRepo repository.UserSettingsRepository) Service {
+	return &service{userRepo: userRepo, taskRepo: taskRepo, calendarRepo: calendarRepo, zoneRepo: zoneRepo, routineRepo: routineRepo, feedbackRepo: feedbackRepo, scratchpadRepo: scratchpadRepo, noteRepo: noteRepo, settingsRepo: settingsRepo}
 }
 
 func (s *service) isTokenError(err error) bool {
@@ -119,5 +123,6 @@ func NewService(db *gorm.DB, encryptor crypto.TokenEncryptor) Service {
 		feedbackRepo:   &repository.GormFeedbackRepository{Db: db},
 		scratchpadRepo: &repository.GormScratchpadRepository{Db: db},
 		noteRepo:       &repository.GormNoteRepository{Db: db},
+		settingsRepo:   &repository.GormUserSettingsRepository{Db: db},
 	}
 }

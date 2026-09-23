@@ -207,7 +207,7 @@ The deployed service uses `/health` as its liveness probe and `/ready` as its st
 
 ### Migration history
 
-`InitMigration` carries two irreversible steps beyond `AutoMigrate`, both idempotent:
+`InitMigration` carries an irreversible step beyond `AutoMigrate` and is idempotent:
 
 1. Drops the deprecated `users.app_refresh_token` column, replaced by the `sessions` table. Existing users must re-authenticate after this deploy.
 2. Backfills `routines.target_total_mins` into `goal_type` / `goal_target`, then drops the old column. The backfill panics on failure so the column is never dropped after a partial migration. Google Tasks. Supports creating, updating, moving, and deleting tasks and subtasks directly through the API.
