@@ -38,6 +38,11 @@ func (h *Handler) updateUserSettings(w http.ResponseWriter, r *http.Request) {
 
 	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxSettingsBodyBytes))
 	if err != nil {
+		var tooLarge *http.MaxBytesError
+		if errors.As(err, &tooLarge) {
+			h.respondWithError(w, "Request body too large", err, http.StatusRequestEntityTooLarge, "userID", userID)
+			return
+		}
 		h.respondWithError(w, "Invalid request body", err, http.StatusBadRequest, "userID", userID)
 		return
 	}

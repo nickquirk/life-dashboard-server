@@ -5,6 +5,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"io"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
@@ -48,6 +49,12 @@ func (s *Settings) ApplyPatch(patch []byte) error {
 	dec := json.NewDecoder(bytes.NewReader(patch))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(s); err != nil {
+		return fmt.Errorf("%w: malformed settings payload", ErrInvalidInput)
+	}
+	// Decode only consumes the first JSON value, so `{}garbage` would
+	// otherwise pass. A second Token() call must hit EOF if the body held
+	// nothing else.
+	if _, err := dec.Token(); err != io.EOF {
 		return fmt.Errorf("%w: malformed settings payload", ErrInvalidInput)
 	}
 	s.Version = currentSettingsVersion // not client-settable

@@ -144,5 +144,5 @@ func TestUpdateUserSettings_BodyTooLarge(t *testing.T) {
 
 	h.updateUserSettings(rr, r)
 
-	assert.Equal(t, http.StatusBadRequest, rr.Code)
+	assert.Equal(t, http.StatusRequestEntityTooLarge, rr.Code)
 }

@@ -279,6 +279,11 @@ type UpdateUserSettingsRequest struct {
 
 // UserSettingsResponse embeds Settings so the wire format is the same document
 // that's stored: one shape to reason about, not two.
+//
+// Must stay a pure passthrough — do not add sibling fields here. Because
+// Settings is embedded, any field added alongside it would marshal at the
+// same JSON level as the settings keys and silently shadow a same-named
+// settings key, with no compile error to catch it.
 type UserSettingsResponse struct {
 	Settings
 }

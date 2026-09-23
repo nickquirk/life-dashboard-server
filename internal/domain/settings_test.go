@@ -19,6 +19,12 @@ func TestSettings_ApplyPatchRejectsMalformedJSON(t *testing.T) {
 	assert.ErrorIs(t, err, ErrInvalidInput)
 }
 
+func TestSettings_ApplyPatchRejectsTrailingData(t *testing.T) {
+	s := DefaultSettings()
+	err := s.ApplyPatch([]byte(`{"version":1}garbage`))
+	assert.ErrorIs(t, err, ErrInvalidInput)
+}
+
 func TestSettings_ApplyPatchIgnoresClientVersion(t *testing.T) {
 	s := DefaultSettings()
 	require.NoError(t, s.ApplyPatch([]byte(`{"version":99}`)))
