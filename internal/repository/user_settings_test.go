@@ -73,6 +73,25 @@ func TestUserSettingsRepo_UpdatePersistsZeroValues(t *testing.T) {
 	assert.Equal(t, 0, fetched.Version)
 }
 
+// Guards the fix for a first-write gap-lock deadlock on MySQL: Update now
+// upserts a placeholder row before taking the locking SELECT, so a user's
+// very first write must still end up as exactly one row carrying the
+// mutation, not a stray placeholder plus a second row.
+func TestUserSettingsRepo_UpdateFirstWriteCreatesExactlyOneRow(t *testing.T) {
+	repo := newUserSettingsRepo(t)
+
+	got, err := repo.Update(testUserID, func(s *domain.Settings) error {
+		s.Version = 42
+		return nil
+	})
+	require.NoError(t, err)
+	assert.Equal(t, 42, got.Version)
+
+	var count int64
+	require.NoError(t, repo.Db.Model(&domain.UserSettings{}).Where("user_id = ?", testUserID).Count(&count).Error)
+	assert.Equal(t, int64(1), count, "first write should leave exactly one row")
+}
+
 func TestUserSettingsRepo_UpdatePropagatesMutateError(t *testing.T) {
 	repo := newUserSettingsRepo(t)
 

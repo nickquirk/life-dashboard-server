@@ -110,25 +110,4 @@ func InitMigration(db *gorm.DB) {
 			}
 		}
 	}
-
-	// One-time migration: the fixed calendar_* columns became a single JSON `data`
-	// document. Safe to run repeatedly — the predicate skips migrated rows, and the
-	// whole block is gated on the old column still existing.
-	if db.Migrator().HasColumn(&domain.UserSettings{}, "calendar_start_hour") {
-		if err := db.Exec(`
-			UPDATE user_settings
-			SET data = JSON_OBJECT(
-				'version', 1,
-				'calendar', JSON_OBJECT(
-					'startHour',    calendar_start_hour,
-					'endHour',      calendar_end_hour,
-					'dynamicRange', IF(calendar_dynamic_range, CAST('true' AS JSON), CAST('false' AS JSON))
-				)
-			)
-			WHERE data IS NULL
-		`).Error; err != nil {
-			slog.Warn("failed to backfill user settings data column", "error", err)
-			panic("failed to backfill user settings data column")
-		}
-	}
 }
