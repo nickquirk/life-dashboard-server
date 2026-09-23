@@ -130,11 +130,5 @@ func InitMigration(db *gorm.DB) {
 			slog.Warn("failed to backfill user settings data column", "error", err)
 			panic("failed to backfill user settings data column")
 		}
-
-		for _, col := range []string{"calendar_start_hour", "calendar_end_hour", "calendar_dynamic_range"} {
-			if err := db.Migrator().DropColumn(&domain.UserSettings{}, col); err != nil {
-				slog.Warn("failed to drop deprecated settings column", "column", col, "error", err)
-			}
-		}
 	}
 }
