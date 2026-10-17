@@ -308,6 +308,25 @@ func TestProjectRepo_ReorderActions_RejectsOtherStageOrProject(t *testing.T) {
 	assert.True(t, errors.Is(err, domain.ErrInvalidInput))
 }
 
+func TestProjectRepo_ReorderActions_RejectsPartialOrDuplicateList(t *testing.T) {
+	repo, db := newProjectRepo(t)
+	p := seedProject(t, db, domain.Project{})
+	a := seedAction(t, db, domain.Action{ProjectID: p.ID, Position: 0})
+	b := seedAction(t, db, domain.Action{ProjectID: p.ID, Position: 1})
+	seedAction(t, db, domain.Action{ProjectID: p.ID, Position: 2})
+
+	err := repo.ReorderActions(testUserID, p.ID, domain.StageBraindump, []uint{b.ID, a.ID})
+	assert.True(t, errors.Is(err, domain.ErrInvalidInput))
+	assert.Contains(t, err.Error(), "every action")
+
+	err = repo.ReorderActions(testUserID, p.ID, domain.StageBraindump, []uint{a.ID, a.ID, b.ID})
+	assert.True(t, errors.Is(err, domain.ErrInvalidInput))
+
+	got, err := repo.GetActionsByProjectID(testUserID, p.ID)
+	require.NoError(t, err)
+	assert.Equal(t, a.ID, got[0].ID, "rejected reorder changes nothing")
+}
+
 func TestProjectRepo_ReorderActions_WrongUser(t *testing.T) {
 	repo, db := newProjectRepo(t)
 	p := seedProject(t, db, domain.Project{UserID: otherProjectUserID})

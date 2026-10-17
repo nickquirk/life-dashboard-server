@@ -179,16 +179,26 @@ func (r *GormProjectRepository) ReorderActions(userID, projectID uint, stage dom
 		if err := tx.Where("id = ? AND user_id = ?", projectID, userID).First(&project).Error; err != nil {
 			return gorm.ErrRecordNotFound
 		}
+		// Unlike note items, the whole column must be sent: a partial list
+		// would leave the unlisted actions sharing positions with listed ones.
+		var columnSize, matched int64
+		if err := tx.Model(&domain.Action{}).
+			Where("project_id = ? AND stage = ?", projectID, stage).
+			Count(&columnSize).Error; err != nil {
+			return err
+		}
 		if len(orderedIDs) > 0 {
-			var count int64
 			if err := tx.Model(&domain.Action{}).
 				Where("id IN ? AND project_id = ? AND stage = ?", orderedIDs, projectID, stage).
-				Count(&count).Error; err != nil {
+				Count(&matched).Error; err != nil {
 				return err
 			}
-			if count != int64(len(orderedIDs)) {
-				return fmt.Errorf("%w: some action IDs do not belong to this project and stage", domain.ErrInvalidInput)
-			}
+		}
+		if matched != int64(len(orderedIDs)) {
+			return fmt.Errorf("%w: some action IDs do not belong to this project and stage", domain.ErrInvalidInput)
+		}
+		if matched != columnSize {
+			return fmt.Errorf("%w: orderedIds must list every action in %s", domain.ErrInvalidInput, stage)
 		}
 		for i, id := range orderedIDs {
 			if err := tx.Model(&domain.Action{}).Where("id = ?", id).Update("position", i).Error; err != nil {

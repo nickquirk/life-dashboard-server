@@ -92,6 +92,26 @@ func GetRoutes(mx *chi.Mux, h *Handler) error {
 			auth.Put("/notes/{id}/items/reorder", h.reorderNoteItems)
 			auth.Patch("/notes/{id}/items/{itemId}", h.updateNoteItem)
 			auth.Delete("/notes/{id}/items/{itemId}", h.deleteNoteItem)
+			// Projects
+			auth.Get("/projects", h.getProjects)
+			auth.Post("/projects", h.createProject)
+			auth.Patch("/projects/{id}", h.updateProject)
+			auth.Delete("/projects/{id}", h.deleteProject)
+			// Project board
+			auth.Get("/projects/{id}/actions", h.getProjectActions)
+			auth.Post("/projects/{id}/actions", h.createAction)
+			auth.Put("/projects/{id}/actions/reorder", h.reorderActions)
+			// Actions — one route per verb so the stage rules can't be bypassed
+			auth.Get("/actions", h.getActions)
+			auth.Patch("/actions/{id}", h.updateAction)
+			auth.Post("/actions/{id}/stage", h.changeActionStage)
+			auth.Post("/actions/{id}/schedule", h.scheduleAction)
+			auth.Post("/actions/{id}/move", h.moveAction)
+			auth.Post("/actions/{id}/unschedule", h.unscheduleAction)
+			auth.Post("/actions/{id}/complete", h.completeAction)
+			auth.Post("/actions/{id}/reopen", h.reopenAction)
+			auth.Post("/actions/{id}/break-down", h.breakDownAction)
+			auth.Delete("/actions/{id}", h.deleteAction)
 		})
 	})
 	return nil
