@@ -509,3 +509,159 @@ type ReorderNoteItemsRequest struct {
 type ReorderNoteItemsResponse struct {
 	NoteID uint `json:"noteId"`
 }
+
+// ------ Projects ---------
+
+type CreateProjectRequest struct {
+	UserID uint   `json:"-"`
+	Title  string `json:"title"`
+	Color  string `json:"color"`
+}
+
+type GetProjectsRequest struct {
+	UserID   uint `json:"-"`
+	Archived bool `json:"-"`
+}
+
+type ProjectWithStats struct {
+	Project
+	ActionCount int `json:"actionCount"`
+	DoneCount   int `json:"doneCount"`
+}
+
+type GetProjectsResponse struct {
+	Projects []ProjectWithStats `json:"projects"`
+}
+
+type UpdateProjectRequest struct {
+	ID         uint    `json:"-"`
+	UserID     uint    `json:"-"`
+	Title      *string `json:"title"`
+	Color      *string `json:"color"`
+	IsArchived *bool   `json:"isArchived"`
+}
+
+type DeleteProjectRequest struct {
+	ID     uint `json:"-"`
+	UserID uint `json:"-"`
+}
+
+type DeleteProjectResponse struct {
+	ID uint `json:"id"`
+}
+
+// ------ Actions ---------
+
+// ProjectRef is the slice of a Project the calendar and Plan sidebar need to
+// draw an Action.
+type ProjectRef struct {
+	ID    uint   `json:"id"`
+	Title string `json:"title"`
+	Color string `json:"color"`
+}
+
+// ActionWithProject is an Action plus its trimmed Project, for reads that
+// span projects (calendar range, Ready sidebar).
+type ActionWithProject struct {
+	Action
+	Project ProjectRef `json:"project"`
+}
+
+type CreateActionRequest struct {
+	UserID       uint   `json:"-"`
+	ProjectID    uint   `json:"-"`
+	Title        string `json:"title"`
+	Notes        string `json:"notes"`
+	DurationMins *int   `json:"durationMins"`
+}
+
+type UpdateActionRequest struct {
+	ID           uint        `json:"-"`
+	UserID       uint        `json:"-"`
+	Title        *string     `json:"title"`
+	Notes        *string     `json:"notes"`
+	DurationMins NullableInt `json:"durationMins"`
+}
+
+type ChangeStageRequest struct {
+	ID     uint  `json:"-"`
+	UserID uint  `json:"-"`
+	Stage  Stage `json:"stage"`
+}
+
+type ReorderActionsRequest struct {
+	UserID     uint   `json:"-"`
+	ProjectID  uint   `json:"-"`
+	Stage      Stage  `json:"stage"`
+	OrderedIDs []uint `json:"orderedIds"`
+}
+
+type ReorderActionsResponse struct {
+	ProjectID uint  `json:"projectId"`
+	Stage     Stage `json:"stage"`
+}
+
+type ScheduleActionRequest struct {
+	ID     uint       `json:"-"`
+	UserID uint       `json:"-"`
+	Date   *time.Time `json:"date"`
+}
+
+type MoveActionRequest struct {
+	ID     uint       `json:"-"`
+	UserID uint       `json:"-"`
+	Date   *time.Time `json:"date"`
+}
+
+type UnscheduleActionRequest struct {
+	ID     uint `json:"-"`
+	UserID uint `json:"-"`
+}
+
+type CompleteActionRequest struct {
+	ID     uint `json:"-"`
+	UserID uint `json:"-"`
+}
+
+type ReopenActionRequest struct {
+	ID     uint `json:"-"`
+	UserID uint `json:"-"`
+}
+
+type BreakDownActionRequest struct {
+	ID     uint     `json:"-"`
+	UserID uint     `json:"-"`
+	Titles []string `json:"titles"`
+}
+
+type DeleteActionRequest struct {
+	ID     uint `json:"-"`
+	UserID uint `json:"-"`
+}
+
+type DeleteActionResponse struct {
+	ID uint `json:"id"`
+}
+
+type GetActionsRequest struct {
+	UserID    uint `json:"-"`
+	ProjectID uint `json:"-"`
+}
+
+type GetActionsResponse struct {
+	Actions []Action `json:"actions"`
+}
+
+type GetScheduledActionsRequest struct {
+	UserID uint      `json:"-"`
+	Start  time.Time `json:"-"`
+	End    time.Time `json:"-"`
+}
+
+type GetReadyActionsRequest struct {
+	UserID uint `json:"-"`
+}
+
+type GetActionsWithProjectResponse struct {
+	Actions []ActionWithProject `json:"actions"`
+}
