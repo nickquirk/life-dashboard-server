@@ -256,6 +256,18 @@ func (r GormUserRepository) DeleteUserAndData(userID uint) error {
 		return err
 	}
 
+	// Permanently delete Actions (Child) — must come before Projects
+	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&domain.Action{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Permanently delete Projects (Parent)
+	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&domain.Project{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
 	// Permanently delete Zones
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&domain.Zone{}).Error; err != nil {
 		tx.Rollback()

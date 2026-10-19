@@ -29,6 +29,8 @@ func newUserRepo(t *testing.T) (*GormUserRepository, *gorm.DB) {
 		&domain.RoutineInstance{},
 		&domain.Note{},
 		&domain.NoteItem{},
+		&domain.Project{},
+		&domain.Action{},
 	); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
@@ -83,6 +85,10 @@ func TestUserRepo_DeleteUserAndDataRemovesAllUserRows(t *testing.T) {
 	require.NoError(t, db.Create(&note).Error)
 	require.NoError(t, db.Create(&domain.NoteItem{NoteID: note.ID, Content: "item"}).Error)
 
+	project := domain.Project{UserID: user.ID, Title: "Project"}
+	require.NoError(t, db.Create(&project).Error)
+	require.NoError(t, db.Create(&domain.Action{UserID: user.ID, ProjectID: project.ID, Title: "Action"}).Error)
+
 	// A row belonging to another user that must survive.
 	otherZone := domain.Zone{UserID: otherUser.ID, Label: "Keep"}
 	require.NoError(t, db.Create(&otherZone).Error)
@@ -101,6 +107,8 @@ func TestUserRepo_DeleteUserAndDataRemovesAllUserRows(t *testing.T) {
 	assertGone(t, db, "routine_instance", &domain.RoutineInstance{}, "user_id = ?", user.ID)
 	assertGone(t, db, "note", &domain.Note{}, "user_id = ?", user.ID)
 	assertGone(t, db, "note_item", &domain.NoteItem{}, "note_id = ?", note.ID)
+	assertGone(t, db, "project", &domain.Project{}, "user_id = ?", user.ID)
+	assertGone(t, db, "action", &domain.Action{}, "user_id = ?", user.ID)
 
 	// The other user's data must be untouched.
 	var otherZoneCount int64
