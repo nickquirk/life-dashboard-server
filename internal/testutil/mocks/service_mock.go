@@ -55,6 +55,24 @@ type MockService struct {
 	UpdateNoteItemFunc        func(req domain.UpdateNoteItemRequest) (domain.UpdateNoteItemResponse, error)
 	DeleteNoteItemFunc        func(req domain.DeleteNoteItemRequest) (domain.DeleteNoteItemResponse, error)
 	ReorderNoteItemsFunc      func(req domain.ReorderNoteItemsRequest) (domain.ReorderNoteItemsResponse, error)
+	CreateProjectFunc         func(req domain.CreateProjectRequest) (domain.Project, error)
+	GetProjectsFunc           func(req domain.GetProjectsRequest) (domain.GetProjectsResponse, error)
+	UpdateProjectFunc         func(req domain.UpdateProjectRequest) (domain.Project, error)
+	DeleteProjectFunc         func(req domain.DeleteProjectRequest) (domain.DeleteProjectResponse, error)
+	CreateActionFunc          func(req domain.CreateActionRequest) (domain.Action, error)
+	GetActionsFunc            func(req domain.GetActionsRequest) (domain.GetActionsResponse, error)
+	GetScheduledActionsFunc   func(req domain.GetScheduledActionsRequest) (domain.GetActionsWithProjectResponse, error)
+	GetReadyActionsFunc       func(req domain.GetReadyActionsRequest) (domain.GetActionsWithProjectResponse, error)
+	UpdateActionFunc          func(req domain.UpdateActionRequest) (domain.Action, error)
+	ChangeActionStageFunc     func(req domain.ChangeStageRequest) (domain.Action, error)
+	ScheduleActionFunc        func(req domain.ScheduleActionRequest) (domain.Action, error)
+	MoveActionFunc            func(req domain.MoveActionRequest) (domain.Action, error)
+	UnscheduleActionFunc      func(req domain.UnscheduleActionRequest) (domain.Action, error)
+	CompleteActionFunc        func(req domain.CompleteActionRequest) (domain.Action, error)
+	ReopenActionFunc          func(req domain.ReopenActionRequest) (domain.Action, error)
+	BreakDownActionFunc       func(req domain.BreakDownActionRequest) (domain.GetActionsResponse, error)
+	ReorderActionsFunc        func(req domain.ReorderActionsRequest) (domain.ReorderActionsResponse, error)
+	DeleteActionFunc          func(req domain.DeleteActionRequest) (domain.DeleteActionResponse, error)
 }
 
 func (m *MockService) Ping() error {
@@ -370,4 +388,130 @@ func (m *MockService) ReorderNoteItems(req domain.ReorderNoteItemsRequest) (doma
 		return m.ReorderNoteItemsFunc(req)
 	}
 	return domain.ReorderNoteItemsResponse{}, nil
+}
+
+func (m *MockService) CreateProject(req domain.CreateProjectRequest) (domain.Project, error) {
+	if m.CreateProjectFunc != nil {
+		return m.CreateProjectFunc(req)
+	}
+	return domain.Project{}, nil
+}
+
+func (m *MockService) GetProjects(req domain.GetProjectsRequest) (domain.GetProjectsResponse, error) {
+	if m.GetProjectsFunc != nil {
+		return m.GetProjectsFunc(req)
+	}
+	return domain.GetProjectsResponse{}, nil
+}
+
+func (m *MockService) UpdateProject(req domain.UpdateProjectRequest) (domain.Project, error) {
+	if m.UpdateProjectFunc != nil {
+		return m.UpdateProjectFunc(req)
+	}
+	return domain.Project{}, nil
+}
+
+func (m *MockService) DeleteProject(req domain.DeleteProjectRequest) (domain.DeleteProjectResponse, error) {
+	if m.DeleteProjectFunc != nil {
+		return m.DeleteProjectFunc(req)
+	}
+	return domain.DeleteProjectResponse{}, nil
+}
+
+func (m *MockService) CreateAction(req domain.CreateActionRequest) (domain.Action, error) {
+	if m.CreateActionFunc != nil {
+		return m.CreateActionFunc(req)
+	}
+	return domain.Action{}, nil
+}
+
+func (m *MockService) GetActions(req domain.GetActionsRequest) (domain.GetActionsResponse, error) {
+	if m.GetActionsFunc != nil {
+		return m.GetActionsFunc(req)
+	}
+	return domain.GetActionsResponse{}, nil
+}
+
+func (m *MockService) GetScheduledActions(req domain.GetScheduledActionsRequest) (domain.GetActionsWithProjectResponse, error) {
+	if m.GetScheduledActionsFunc != nil {
+		return m.GetScheduledActionsFunc(req)
+	}
+	return domain.GetActionsWithProjectResponse{}, nil
+}
+
+func (m *MockService) GetReadyActions(req domain.GetReadyActionsRequest) (domain.GetActionsWithProjectResponse, error) {
+	if m.GetReadyActionsFunc != nil {
+		return m.GetReadyActionsFunc(req)
+	}
+	return domain.GetActionsWithProjectResponse{}, nil
+}
+
+func (m *MockService) UpdateAction(req domain.UpdateActionRequest) (domain.Action, error) {
+	if m.UpdateActionFunc != nil {
+		return m.UpdateActionFunc(req)
+	}
+	return domain.Action{}, nil
+}
+
+func (m *MockService) ChangeActionStage(req domain.ChangeStageRequest) (domain.Action, error) {
+	if m.ChangeActionStageFunc != nil {
+		return m.ChangeActionStageFunc(req)
+	}
+	return domain.Action{}, nil
+}
+
+func (m *MockService) ScheduleAction(req domain.ScheduleActionRequest) (domain.Action, error) {
+	if m.ScheduleActionFunc != nil {
+		return m.ScheduleActionFunc(req)
+	}
+	return domain.Action{}, nil
+}
+
+func (m *MockService) MoveAction(req domain.MoveActionRequest) (domain.Action, error) {
+	if m.MoveActionFunc != nil {
+		return m.MoveActionFunc(req)
+	}
+	return domain.Action{}, nil
+}
+
+func (m *MockService) UnscheduleAction(req domain.UnscheduleActionRequest) (domain.Action, error) {
+	if m.UnscheduleActionFunc != nil {
+		return m.UnscheduleActionFunc(req)
+	}
+	return domain.Action{}, nil
+}
+
+func (m *MockService) CompleteAction(req domain.CompleteActionRequest) (domain.Action, error) {
+	if m.CompleteActionFunc != nil {
+		return m.CompleteActionFunc(req)
+	}
+	return domain.Action{}, nil
+}
+
+func (m *MockService) ReopenAction(req domain.ReopenActionRequest) (domain.Action, error) {
+	if m.ReopenActionFunc != nil {
+		return m.ReopenActionFunc(req)
+	}
+	return domain.Action{}, nil
+}
+
+func (m *MockService) BreakDownAction(req domain.BreakDownActionRequest) (domain.GetActionsResponse, error) {
+	if m.BreakDownActionFunc != nil {
+		return m.BreakDownActionFunc(req)
+	}
+	return domain.GetActionsResponse{}, nil
+}
+
+func (m *MockService) ReorderActions(req domain.ReorderActionsRequest) (domain.ReorderActionsResponse, error) {
+	if m.ReorderActionsFunc != nil {
+		return m.ReorderActionsFunc(req)
+	}
+	return domain.ReorderActionsResponse{}, nil
+}
+
+func (m *MockService) DeleteAction(req domain.DeleteActionRequest) (domain.DeleteActionResponse, error) {
+	if m.DeleteActionFunc != nil {
+		return m.DeleteActionFunc(req)
+	}
+	return domain.DeleteActionResponse{}, nil
 }

@@ -11,7 +11,7 @@ import (
 )
 
 func newSettingsService(repo *mocks.MockUserSettingsRepository) Service {
-	return NewServiceWithRepos(nil, nil, nil, nil, nil, nil, nil, nil, repo)
+	return NewServiceWithRepos(nil, nil, nil, nil, nil, nil, nil, nil, repo, nil)
 }
 
 // --- GetUserSettings ---
