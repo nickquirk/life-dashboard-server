@@ -175,7 +175,8 @@ func (s *service) CreateAction(req domain.CreateActionRequest) (domain.Action, e
 		return domain.Action{}, fmt.Errorf("%w: cannot add actions to an archived project", domain.ErrInvalidInput)
 	}
 
-	position, err := s.projectRepo.NextPosition(req.UserID, req.ProjectID, domain.StageBraindump)
+	// New actions go to the top of Braindump, where they're easiest to see
+	position, err := s.projectRepo.FirstPosition(req.UserID, req.ProjectID, domain.StageBraindump)
 	if err != nil {
 		return domain.Action{}, err
 	}

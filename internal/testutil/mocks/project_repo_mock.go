@@ -21,6 +21,7 @@ type MockProjectRepository struct {
 	GetReadyActionsFunc       func(userID uint) ([]domain.Action, error)
 	UpdateActionFunc          func(userID, actionID uint, updates map[string]interface{}) error
 	NextPositionFunc          func(userID, projectID uint, stage domain.Stage) (int, error)
+	FirstPositionFunc         func(userID, projectID uint, stage domain.Stage) (int, error)
 	ReorderActionsFunc        func(userID, projectID uint, stage domain.Stage, orderedIDs []uint) error
 	ReplaceWithActionsFunc    func(userID, actionID uint, children []domain.Action) ([]domain.Action, error)
 	DeleteActionFunc          func(userID, actionID uint) error
@@ -106,6 +107,13 @@ func (m *MockProjectRepository) UpdateAction(userID, actionID uint, updates map[
 func (m *MockProjectRepository) NextPosition(userID, projectID uint, stage domain.Stage) (int, error) {
 	if m.NextPositionFunc != nil {
 		return m.NextPositionFunc(userID, projectID, stage)
+	}
+	return 0, nil
+}
+
+func (m *MockProjectRepository) FirstPosition(userID, projectID uint, stage domain.Stage) (int, error) {
+	if m.FirstPositionFunc != nil {
+		return m.FirstPositionFunc(userID, projectID, stage)
 	}
 	return 0, nil
 }

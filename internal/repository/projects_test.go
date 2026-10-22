@@ -281,6 +281,22 @@ func TestProjectRepo_NextPosition(t *testing.T) {
 	assert.Equal(t, 5, pos)
 }
 
+func TestProjectRepo_FirstPosition(t *testing.T) {
+	repo, db := newProjectRepo(t)
+	p := seedProject(t, db, domain.Project{})
+
+	pos, err := repo.FirstPosition(testUserID, p.ID, domain.StageBraindump)
+	require.NoError(t, err)
+	assert.Equal(t, 0, pos)
+
+	seedAction(t, db, domain.Action{ProjectID: p.ID, Stage: domain.StageBraindump, Position: 0})
+	seedAction(t, db, domain.Action{ProjectID: p.ID, Stage: domain.StageBraindump, Position: 3})
+	seedAction(t, db, domain.Action{ProjectID: p.ID, Stage: domain.StageRefine, Position: -5})
+	pos, err = repo.FirstPosition(testUserID, p.ID, domain.StageBraindump)
+	require.NoError(t, err)
+	assert.Equal(t, -1, pos)
+}
+
 func TestProjectRepo_ReorderActions_Success(t *testing.T) {
 	repo, db := newProjectRepo(t)
 	p := seedProject(t, db, domain.Project{})

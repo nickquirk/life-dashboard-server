@@ -24,6 +24,7 @@ type ProjectRepository interface {
 	GetReadyActions(userID uint) ([]domain.Action, error)
 	UpdateAction(userID, actionID uint, updates map[string]interface{}) error
 	NextPosition(userID, projectID uint, stage domain.Stage) (int, error)
+	FirstPosition(userID, projectID uint, stage domain.Stage) (int, error)
 	ReorderActions(userID, projectID uint, stage domain.Stage, orderedIDs []uint) error
 	ReplaceWithActions(userID, actionID uint, children []domain.Action) ([]domain.Action, error)
 	DeleteAction(userID, actionID uint) error
@@ -171,6 +172,17 @@ func nextPosition(db *gorm.DB, userID, projectID uint, stage domain.Stage) (int,
 		Where("user_id = ? AND project_id = ? AND stage = ?", userID, projectID, stage).
 		Scan(&next).Error
 	return next, err
+}
+
+// FirstPosition is the position that puts an action at the top of a stage's
+// column. It can go below zero.
+func (r *GormProjectRepository) FirstPosition(userID, projectID uint, stage domain.Stage) (int, error) {
+	var first int
+	err := r.Db.Model(&domain.Action{}).
+		Select("COALESCE(MIN(position), 1) - 1").
+		Where("user_id = ? AND project_id = ? AND stage = ?", userID, projectID, stage).
+		Scan(&first).Error
+	return first, err
 }
 
 func (r *GormProjectRepository) ReorderActions(userID, projectID uint, stage domain.Stage, orderedIDs []uint) error {

@@ -350,15 +350,15 @@ func TestService_UpdateAction_NoChangesReturnsCurrent(t *testing.T) {
 
 // --- CreateAction ---
 
-func TestService_CreateAction_LandsInBraindumpAtEnd(t *testing.T) {
+func TestService_CreateAction_LandsAtTopOfBraindump(t *testing.T) {
 	var captured domain.Action
 	repo := &mocks.MockProjectRepository{
 		GetProjectByIDFunc: func(userID, projectID uint) (domain.Project, error) {
 			return domain.Project{ID: projectID, UserID: userID}, nil
 		},
-		NextPositionFunc: func(userID, projectID uint, stage domain.Stage) (int, error) {
+		FirstPositionFunc: func(userID, projectID uint, stage domain.Stage) (int, error) {
 			assert.Equal(t, domain.StageBraindump, stage)
-			return nextPos, nil
+			return -2, nil
 		},
 		CreateActionFunc: func(a domain.Action) (domain.Action, error) {
 			captured = a
@@ -370,7 +370,7 @@ func TestService_CreateAction_LandsInBraindumpAtEnd(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, uint(11), got.ID)
 	assert.Equal(t, domain.StageBraindump, captured.Stage)
-	assert.Equal(t, nextPos, captured.Position)
+	assert.Equal(t, -2, captured.Position)
 	assert.Equal(t, "buy compost", captured.Title)
 	assert.Equal(t, uint(3), captured.ProjectID)
 }
