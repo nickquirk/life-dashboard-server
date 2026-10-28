@@ -70,6 +70,12 @@ func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// User clicked Cancel on Google's consent screen: not an error
+	if r.URL.Query().Get("error") == "access_denied" {
+		http.Redirect(w, r, os.Getenv("CLIENT_URL"), http.StatusSeeOther)
+		return
+	}
+
 	code := r.URL.Query().Get("code")
 	if code == "" {
 		h.redirectWithAuthError(w, r, authErrGoogleFailed, "Missing authorization code",
