@@ -61,7 +61,7 @@ func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 
 	code := r.URL.Query().Get("code")
 	if code == "" {
-		h.respondWithError(w, "Missing authorization code", fmt.Errorf("missing authorization code query parameter"), http.StatusBadRequest)
+		h.redirectWithAuthError(w, r, "missing_code", fmt.Errorf("missing authorization code query parameter"))
 		return
 	}
 	googleConfig := config.GetGoogleConfig()
@@ -109,7 +109,7 @@ func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 	// Save user to DB
 	user, err := h.Service.CreateUser(userData)
 	if err != nil {
-		h.respondWithError(w, "Failed to save user", err, http.StatusInternalServerError)
+		h.redirectWithAuthError(w, r, "server_unavailable", err)
 		return
 	}
 
