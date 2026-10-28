@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"net/url"
+	"os"
 )
 
 // respondWithError logs the internal error to GCP and returns a safe HTTP response to the frontend.
@@ -33,10 +35,10 @@ func (h *Handler) respondWithJSON(w http.ResponseWriter, status int, payload int
 // where a plain-text error body would strand the user on the API domain.
 // It logs the real error and sends the user back to the client login page
 // with a short, safe error code.
-func (h *Handler) redirectWithAuthError(w http.ResponseWriter, r *http.Request, code string, internalErr error, args ...any) {
+func (h *Handler) redirectWithAuthError(w http.ResponseWriter, r *http.Request, code, logMsg string, internalErr error, args ...any) {
 	logArgs := append([]any{"error", internalErr.Error(), "code", code}, args...)
-	slog.Error("oauth callback failed", logArgs...)
+	slog.Error(logMsg, logArgs...)
 
-	loginURL := os.Getenv("CLIENT_URL") + "/login?auth_error=" + url.QueryEscape(code)
+	loginURL := os.Getenv("CLIENT_URL") + "/?auth_error=" + url.QueryEscape(code)
 	http.Redirect(w, r, loginURL, http.StatusSeeOther)
 }
