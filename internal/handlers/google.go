@@ -78,6 +78,7 @@ func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	googleConfig := config.GetGoogleConfig()
+	// use r.Context rather than context.Background() so that Google exhange is cancelled if the browser goes away
 	ctx := r.Context()
 
 	token, err := googleConfig.Exchange(ctx, code)
