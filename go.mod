@@ -4,7 +4,7 @@ go 1.27.0
 
 require (
 	cloud.google.com/go/secretmanager v1.16.0
-	github.com/go-chi/chi/v5 v5.2.4
+	github.com/go-chi/chi/v5 v5.4.0
 	github.com/go-chi/cors v1.2.2
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/joho/godotenv v1.5.1
