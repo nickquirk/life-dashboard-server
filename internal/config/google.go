@@ -21,7 +21,7 @@ func GetGoogleConfig() oauth2.Config {
 		Scopes: []string{
 			"https://www.googleapis.com/auth/tasks",
 			"https://www.googleapis.com/auth/userinfo.email",
-			"https://www.googleapis.com/auth/calendar.readonly",
+			"https://www.googleapis.com/auth/calendar.events.readonly",
 		},
 
 		Endpoint: google.Endpoint,
