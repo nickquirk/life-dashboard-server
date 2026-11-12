@@ -61,6 +61,23 @@ func TestProjectsValidation(t *testing.T) {
 		{"break down ok", &BreakDownActionRequest{Titles: []string{"a", "b"}}, ""},
 		{"break down one title", &BreakDownActionRequest{Titles: []string{"a"}}, "at least"},
 		{"break down blank title", &BreakDownActionRequest{Titles: []string{"a", " "}}, "title is required"},
+
+		{"create group ok", &CreateGroupRequest{Titles: []string{"a", "b"}, Color: "blue"}, ""},
+		{"create group one title", &CreateGroupRequest{Titles: []string{"a"}, Color: "blue"}, "at least"},
+		{"create group blank title", &CreateGroupRequest{Titles: []string{"a", ""}, Color: "blue"}, "title is required"},
+		{"create group no color ok", &CreateGroupRequest{Titles: []string{"a", "b"}}, ""},
+		{"create group bad color", &CreateGroupRequest{Titles: []string{"a", "b"}, Color: "red"}, "color"},
+
+		{"update group empty", &UpdateGroupRequest{}, "nothing to update"},
+		{"update group title ok", &UpdateGroupRequest{Title: ptrStr("Beds")}, ""},
+		{"update group blank title", &UpdateGroupRequest{Title: ptrStr(" ")}, "title is required"},
+		{"update group bad color", &UpdateGroupRequest{Color: ptrStr("red")}, "color"},
+		{"update group good color", &UpdateGroupRequest{Color: ptrStr("pink")}, ""},
+
+		{"set group null ok", &SetActionGroupRequest{}, ""},
+		{"set group ok", &SetActionGroupRequest{GroupID: ptrUint(3)}, ""},
+		{"set group zero", &SetActionGroupRequest{GroupID: ptrUint(0)}, "groupId"},
+		{"create action zero group", &CreateActionRequest{Title: "x", GroupID: ptrUint(0)}, "groupId"},
 	}
 
 	for _, tt := range tests {
@@ -85,7 +102,21 @@ func TestProjectsValidation_TrimsTitles(t *testing.T) {
 	b := BreakDownActionRequest{Titles: []string{" a ", "b "}}
 	require.NoError(t, b.Validate())
 	assert.Equal(t, []string{"a", "b"}, b.Titles)
+
+	g := CreateGroupRequest{Titles: []string{" a ", "b "}, Color: "blue"}
+	require.NoError(t, g.Validate())
+	assert.Equal(t, []string{"a", "b"}, g.Titles)
 }
+
+func TestPickSwatch(t *testing.T) {
+	assert.Equal(t, "blue", PickSwatch(nil))
+	assert.Equal(t, "yellow", PickSwatch([]string{"blue", "green"}))
+	assert.Equal(t, "gray", PickSwatch([]string{"blue", "green", "yellow", "orange", "pink", "indigo"}))
+	// all taken: repeat the least used
+	assert.Equal(t, "green", PickSwatch([]string{"blue", "blue", "green", "yellow", "yellow", "orange", "pink", "indigo", "gray", "gray"}))
+}
+
+func ptrUint(v uint) *uint { return &v }
 
 func TestStage(t *testing.T) {
 	for _, s := range []Stage{StageBraindump, StageRefine, StageReady} {

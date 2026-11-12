@@ -214,6 +214,7 @@ type Action struct {
 	UserID    uint    `gorm:"index:idx_actions_user_date,priority:1;not null" json:"userId"`
 	ProjectID uint    `gorm:"index:idx_actions_board,priority:1;not null" json:"projectId"`
 	Project   Project `gorm:"foreignKey:ProjectID" json:"-"` // Preloaded for calendar/sidebar reads; exposed trimmed via ActionWithProject
+	GroupID   *uint   `gorm:"index" json:"groupId"`          // nil = ungrouped
 
 	Title        string     `gorm:"not null" json:"title"`
 	Notes        string     `gorm:"type:text" json:"notes"`
@@ -221,4 +222,18 @@ type Action struct {
 	Stage        Stage      `gorm:"type:varchar(20);not null;default:'braindump';index:idx_actions_board,priority:2" json:"stage"`
 	Date         *time.Time `gorm:"index:idx_actions_user_date,priority:2;type:datetime" json:"date"`      // Scheduled start; set only when scheduled, or done after being scheduled
 	Position     int        `gorm:"not null;default:0;index:idx_actions_board,priority:3" json:"position"` // Order within its stage
+}
+
+// ActionGroup collects actions on a project board. It exists only while it
+// has actions: the repository removes it when the last one leaves.
+type ActionGroup struct {
+	ID        uint           `gorm:"primarykey" json:"id"`
+	CreatedAt time.Time      `json:"createdAt"`
+	UpdatedAt time.Time      `json:"updatedAt"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+
+	UserID    uint   `gorm:"index;not null" json:"userId"`
+	ProjectID uint   `gorm:"index;not null" json:"projectId"`
+	Title     string `gorm:"not null" json:"title"`
+	Color     string `json:"color"` // a Swatch name
 }

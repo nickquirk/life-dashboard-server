@@ -462,3 +462,149 @@ func TestService_UpdateProject_NotFound(t *testing.T) {
 	_, err := newProjectService(repo).UpdateProject(domain.UpdateProjectRequest{ID: 3, UserID: 1, Title: ptrStr("x")})
 	assert.True(t, errors.Is(err, gorm.ErrRecordNotFound))
 }
+
+// --- Action groups ---
+
+func gid(v uint) *uint { return &v }
+
+func TestService_CreateGroup_NamedAfterActionWithChildrenInRefine(t *testing.T) {
+	repo, _ := actionRepo(domain.Action{Stage: domain.StageReady, Title: "build raised beds", DurationMins: dur(30)})
+	var gotGroup domain.ActionGroup
+	var gotChildren []domain.Action
+	repo.CreateGroupFromActionFunc = func(userID, actionID uint, g domain.ActionGroup, children []domain.Action) (domain.ActionGroup, []domain.Action, error) {
+		gotGroup, gotChildren = g, children
+		g.ID = 4
+		return g, children, nil
+	}
+
+	resp, err := newProjectService(repo).CreateGroup(domain.CreateGroupRequest{ID: 10, UserID: 1, Titles: []string{" a ", "b"}, Color: "pink"})
+	require.NoError(t, err)
+	assert.Equal(t, "build raised beds", gotGroup.Title)
+	assert.Equal(t, "pink", gotGroup.Color)
+	require.Len(t, gotChildren, 2)
+	assert.Equal(t, "a", gotChildren[0].Title)
+	assert.Equal(t, domain.StageRefine, gotChildren[1].Stage)
+	assert.Equal(t, uint(4), resp.Group.ID)
+	assert.Len(t, resp.Actions, 2)
+}
+
+func TestService_CreateGroup_AutoColourAvoidsBoard(t *testing.T) {
+	repo, _ := actionRepo(domain.Action{Stage: domain.StageRefine})
+	repo.GetProjectByIDFunc = func(userID, projectID uint) (domain.Project, error) {
+		return domain.Project{ID: projectID, Color: "blue"}, nil
+	}
+	repo.GetGroupsByProjectIDFunc = func(userID, projectID uint) ([]domain.ActionGroup, error) {
+		return []domain.ActionGroup{{Color: "green"}}, nil
+	}
+	var got string
+	repo.CreateGroupFromActionFunc = func(_, _ uint, g domain.ActionGroup, c []domain.Action) (domain.ActionGroup, []domain.Action, error) {
+		got = g.Color
+		return g, c, nil
+	}
+	_, err := newProjectService(repo).CreateGroup(domain.CreateGroupRequest{ID: 10, UserID: 1, Titles: []string{"a", "b"}})
+	require.NoError(t, err)
+	assert.Equal(t, "yellow", got)
+}
+
+func TestService_CreateGroup_Refused(t *testing.T) {
+	cases := map[string]domain.Action{
+		"already in a group": {Stage: domain.StageRefine, GroupID: gid(2)},
+		"scheduled":          {Stage: domain.StageScheduled, DurationMins: dur(30), Date: at(9)},
+		"done":               {Stage: domain.StageDone},
+	}
+	for name, a := range cases {
+		t.Run(name, func(t *testing.T) {
+			repo, _ := actionRepo(a)
+			called := false
+			repo.CreateGroupFromActionFunc = func(uint, uint, domain.ActionGroup, []domain.Action) (domain.ActionGroup, []domain.Action, error) {
+				called = true
+				return domain.ActionGroup{}, nil, nil
+			}
+			_, err := newProjectService(repo).CreateGroup(domain.CreateGroupRequest{ID: 10, UserID: 1, Titles: []string{"a", "b"}, Color: "blue"})
+			require.Error(t, err)
+			assert.True(t, errors.Is(err, domain.ErrInvalidInput))
+			assert.False(t, called)
+		})
+	}
+}
+
+func TestService_CreateGroup_ValidatesColor(t *testing.T) {
+	repo, _ := actionRepo(domain.Action{Stage: domain.StageRefine})
+	_, err := newProjectService(repo).CreateGroup(domain.CreateGroupRequest{ID: 10, UserID: 1, Titles: []string{"a", "b"}, Color: "red"})
+	requireInvalid(t, err, "color")
+}
+
+func TestService_SetActionGroup(t *testing.T) {
+	setup := func(a domain.Action) (*mocks.MockProjectRepository, *bool) {
+		repo, cur := actionRepo(a)
+		called := false
+		repo.SetActionGroupFunc = func(userID, actionID uint, groupID *uint) (domain.Action, error) {
+			called = true
+			cur.GroupID = groupID
+			return *cur, nil
+		}
+		return repo, &called
+	}
+
+	t.Run("into a group, from done", func(t *testing.T) {
+		repo, called := setup(domain.Action{Stage: domain.StageDone})
+		got, err := newProjectService(repo).SetActionGroup(domain.SetActionGroupRequest{ID: 10, UserID: 1, GroupID: gid(5)})
+		require.NoError(t, err)
+		assert.True(t, *called)
+		assert.Equal(t, uint(5), *got.GroupID)
+	})
+	t.Run("out of a group", func(t *testing.T) {
+		repo, called := setup(domain.Action{Stage: domain.StageRefine, GroupID: gid(5)})
+		got, err := newProjectService(repo).SetActionGroup(domain.SetActionGroupRequest{ID: 10, UserID: 1})
+		require.NoError(t, err)
+		assert.True(t, *called)
+		assert.Nil(t, got.GroupID)
+	})
+	t.Run("same group is a no-op", func(t *testing.T) {
+		repo, called := setup(domain.Action{Stage: domain.StageRefine, GroupID: gid(5)})
+		got, err := newProjectService(repo).SetActionGroup(domain.SetActionGroupRequest{ID: 10, UserID: 1, GroupID: gid(5)})
+		require.NoError(t, err)
+		assert.False(t, *called)
+		assert.Equal(t, uint(5), *got.GroupID)
+	})
+}
+
+func TestService_UpdateGroup(t *testing.T) {
+	var gotUpdates map[string]interface{}
+	repo := &mocks.MockProjectRepository{
+		UpdateGroupFunc: func(userID, groupID uint, updates map[string]interface{}) error {
+			gotUpdates = updates
+			return nil
+		},
+		GetGroupByIDFunc: func(userID, groupID uint) (domain.ActionGroup, error) {
+			return domain.ActionGroup{ID: groupID, Title: "Beds"}, nil
+		},
+	}
+	title := " Beds "
+	got, err := newProjectService(repo).UpdateGroup(domain.UpdateGroupRequest{ID: 4, UserID: 1, Title: &title})
+	require.NoError(t, err)
+	assert.Equal(t, map[string]interface{}{"title": "Beds"}, gotUpdates)
+	assert.Equal(t, uint(4), got.ID)
+
+	_, err = newProjectService(repo).UpdateGroup(domain.UpdateGroupRequest{ID: 4, UserID: 1})
+	requireInvalid(t, err, "nothing to update")
+}
+
+func TestService_GetGroups_UnknownProject(t *testing.T) {
+	repo := &mocks.MockProjectRepository{
+		GetProjectByIDFunc: func(uint, uint) (domain.Project, error) { return domain.Project{}, gorm.ErrRecordNotFound },
+	}
+	_, err := newProjectService(repo).GetGroups(domain.GetGroupsRequest{UserID: 1, ProjectID: 3})
+	assert.True(t, errors.Is(err, gorm.ErrRecordNotFound))
+}
+
+func TestService_CreateAction_PassesGroup(t *testing.T) {
+	var got domain.Action
+	repo := &mocks.MockProjectRepository{
+		CreateActionFunc: func(a domain.Action) (domain.Action, error) { got = a; return a, nil },
+	}
+	_, err := newProjectService(repo).CreateAction(domain.CreateActionRequest{UserID: 1, ProjectID: 3, Title: "x", GroupID: gid(5)})
+	require.NoError(t, err)
+	require.NotNil(t, got.GroupID)
+	assert.Equal(t, uint(5), *got.GroupID)
+}

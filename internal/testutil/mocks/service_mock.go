@@ -73,6 +73,11 @@ type MockService struct {
 	BreakDownActionFunc       func(req domain.BreakDownActionRequest) (domain.GetActionsResponse, error)
 	ReorderActionsFunc        func(req domain.ReorderActionsRequest) (domain.ReorderActionsResponse, error)
 	DeleteActionFunc          func(req domain.DeleteActionRequest) (domain.DeleteActionResponse, error)
+	GetGroupsFunc             func(req domain.GetGroupsRequest) (domain.GetGroupsResponse, error)
+	CreateGroupFunc           func(req domain.CreateGroupRequest) (domain.CreateGroupResponse, error)
+	SetActionGroupFunc        func(req domain.SetActionGroupRequest) (domain.Action, error)
+	UpdateGroupFunc           func(req domain.UpdateGroupRequest) (domain.ActionGroup, error)
+	UngroupFunc               func(req domain.UngroupRequest) (domain.UngroupResponse, error)
 }
 
 func (m *MockService) Ping() error {
@@ -514,4 +519,39 @@ func (m *MockService) DeleteAction(req domain.DeleteActionRequest) (domain.Delet
 		return m.DeleteActionFunc(req)
 	}
 	return domain.DeleteActionResponse{}, nil
+}
+
+func (m *MockService) GetGroups(req domain.GetGroupsRequest) (domain.GetGroupsResponse, error) {
+	if m.GetGroupsFunc != nil {
+		return m.GetGroupsFunc(req)
+	}
+	return domain.GetGroupsResponse{}, nil
+}
+
+func (m *MockService) CreateGroup(req domain.CreateGroupRequest) (domain.CreateGroupResponse, error) {
+	if m.CreateGroupFunc != nil {
+		return m.CreateGroupFunc(req)
+	}
+	return domain.CreateGroupResponse{}, nil
+}
+
+func (m *MockService) SetActionGroup(req domain.SetActionGroupRequest) (domain.Action, error) {
+	if m.SetActionGroupFunc != nil {
+		return m.SetActionGroupFunc(req)
+	}
+	return domain.Action{}, nil
+}
+
+func (m *MockService) UpdateGroup(req domain.UpdateGroupRequest) (domain.ActionGroup, error) {
+	if m.UpdateGroupFunc != nil {
+		return m.UpdateGroupFunc(req)
+	}
+	return domain.ActionGroup{}, nil
+}
+
+func (m *MockService) Ungroup(req domain.UngroupRequest) (domain.UngroupResponse, error) {
+	if m.UngroupFunc != nil {
+		return m.UngroupFunc(req)
+	}
+	return domain.UngroupResponse{}, nil
 }

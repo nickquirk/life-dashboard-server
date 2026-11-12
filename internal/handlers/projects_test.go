@@ -184,6 +184,61 @@ var idRoutes = []idRoute{
 		},
 		wantJSON: `"id":5`,
 	},
+	{
+		name: "getProjectGroups", method: http.MethodGet,
+		handler: func(h *Handler) http.HandlerFunc { return h.getProjectGroups },
+		stub: func(m *mocks.MockService, err error, id, user *uint) {
+			m.GetGroupsFunc = func(req domain.GetGroupsRequest) (domain.GetGroupsResponse, error) {
+				*id, *user = req.ProjectID, req.UserID
+				return domain.GetGroupsResponse{Groups: []domain.ActionGroup{{ID: 2, Title: "Beds"}}}, err
+			}
+		},
+		wantJSON: `"groups":[{"id":2`,
+	},
+	{
+		name: "createGroup", method: http.MethodPost, body: `{"titles":["a","b"],"color":"pink"}`,
+		handler: func(h *Handler) http.HandlerFunc { return h.createGroup },
+		stub: func(m *mocks.MockService, err error, id, user *uint) {
+			m.CreateGroupFunc = func(req domain.CreateGroupRequest) (domain.CreateGroupResponse, error) {
+				*id, *user = req.ID, req.UserID
+				return domain.CreateGroupResponse{Group: domain.ActionGroup{Color: req.Color}, Actions: []domain.Action{{Title: req.Titles[1]}}}, err
+			}
+		},
+		wantJSON: `"color":"pink"`,
+	},
+	{
+		name: "setActionGroup", method: http.MethodPost, body: `{"groupId":null}`,
+		handler: func(h *Handler) http.HandlerFunc { return h.setActionGroup },
+		stub: func(m *mocks.MockService, err error, id, user *uint) {
+			m.SetActionGroupFunc = func(req domain.SetActionGroupRequest) (domain.Action, error) {
+				*id, *user = req.ID, req.UserID
+				return domain.Action{ID: req.ID, GroupID: req.GroupID}, err
+			}
+		},
+		wantJSON: `"groupId":null`,
+	},
+	{
+		name: "updateGroup", method: http.MethodPatch, body: `{"title":"Beds"}`,
+		handler: func(h *Handler) http.HandlerFunc { return h.updateGroup },
+		stub: func(m *mocks.MockService, err error, id, user *uint) {
+			m.UpdateGroupFunc = func(req domain.UpdateGroupRequest) (domain.ActionGroup, error) {
+				*id, *user = req.ID, req.UserID
+				return domain.ActionGroup{ID: req.ID, Title: *req.Title}, err
+			}
+		},
+		wantJSON: `"title":"Beds"`,
+	},
+	{
+		name: "ungroup", method: http.MethodPost,
+		handler: func(h *Handler) http.HandlerFunc { return h.ungroup },
+		stub: func(m *mocks.MockService, err error, id, user *uint) {
+			m.UngroupFunc = func(req domain.UngroupRequest) (domain.UngroupResponse, error) {
+				*id, *user = req.ID, req.UserID
+				return domain.UngroupResponse{ID: req.ID}, err
+			}
+		},
+		wantJSON: `"id":5`,
+	},
 }
 
 func (rt idRoute) serve(svc *mocks.MockService, id string, body string, withAuth bool) *httptest.ResponseRecorder {
@@ -401,4 +456,32 @@ func TestGetActions_NoUser(t *testing.T) {
 	rr := httptest.NewRecorder()
 	testHandler(&mocks.MockService{}).getActions(rr, httptest.NewRequest(http.MethodGet, "/api/actions?stage=ready", nil))
 	assert.Equal(t, http.StatusUnauthorized, rr.Code)
+}
+
+func TestSetActionGroup_DecodesGroupID(t *testing.T) {
+	var got *uint
+	svc := &mocks.MockService{SetActionGroupFunc: func(req domain.SetActionGroupRequest) (domain.Action, error) {
+		got = req.GroupID
+		return domain.Action{ID: req.ID, GroupID: req.GroupID}, nil
+	}}
+	rt := idRoute{method: http.MethodPost, handler: func(h *Handler) http.HandlerFunc { return h.setActionGroup }}
+	rr := rt.serve(svc, "5", `{"groupId":7}`, true)
+	assert.Equal(t, http.StatusOK, rr.Code)
+	if assert.NotNil(t, got) {
+		assert.Equal(t, uint(7), *got)
+	}
+}
+
+func TestCreateAction_PassesGroupID(t *testing.T) {
+	var got *uint
+	svc := &mocks.MockService{CreateActionFunc: func(req domain.CreateActionRequest) (domain.Action, error) {
+		got = req.GroupID
+		return domain.Action{GroupID: req.GroupID}, nil
+	}}
+	rt := idRoute{method: http.MethodPost, handler: func(h *Handler) http.HandlerFunc { return h.createAction }}
+	rr := rt.serve(svc, "3", `{"title":"x","groupId":7}`, true)
+	assert.Equal(t, http.StatusOK, rr.Code)
+	if assert.NotNil(t, got) {
+		assert.Equal(t, uint(7), *got)
+	}
 }

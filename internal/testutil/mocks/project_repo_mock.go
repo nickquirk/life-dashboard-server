@@ -25,6 +25,12 @@ type MockProjectRepository struct {
 	ReorderActionsFunc        func(userID, projectID uint, stage domain.Stage, orderedIDs []uint) error
 	ReplaceWithActionsFunc    func(userID, actionID uint, children []domain.Action) ([]domain.Action, error)
 	DeleteActionFunc          func(userID, actionID uint) error
+	GetGroupsByProjectIDFunc  func(userID, projectID uint) ([]domain.ActionGroup, error)
+	GetGroupByIDFunc          func(userID, groupID uint) (domain.ActionGroup, error)
+	UpdateGroupFunc           func(userID, groupID uint, updates map[string]interface{}) error
+	CreateGroupFromActionFunc func(userID, actionID uint, group domain.ActionGroup, children []domain.Action) (domain.ActionGroup, []domain.Action, error)
+	SetActionGroupFunc        func(userID, actionID uint, groupID *uint) (domain.Action, error)
+	UngroupFunc               func(userID, groupID uint) error
 }
 
 func (m *MockProjectRepository) CreateProject(p domain.Project) (domain.Project, error) {
@@ -135,6 +141,48 @@ func (m *MockProjectRepository) ReplaceWithActions(userID, actionID uint, childr
 func (m *MockProjectRepository) DeleteAction(userID, actionID uint) error {
 	if m.DeleteActionFunc != nil {
 		return m.DeleteActionFunc(userID, actionID)
+	}
+	return nil
+}
+
+func (m *MockProjectRepository) GetGroupsByProjectID(userID, projectID uint) ([]domain.ActionGroup, error) {
+	if m.GetGroupsByProjectIDFunc != nil {
+		return m.GetGroupsByProjectIDFunc(userID, projectID)
+	}
+	return nil, nil
+}
+
+func (m *MockProjectRepository) GetGroupByID(userID, groupID uint) (domain.ActionGroup, error) {
+	if m.GetGroupByIDFunc != nil {
+		return m.GetGroupByIDFunc(userID, groupID)
+	}
+	return domain.ActionGroup{}, nil
+}
+
+func (m *MockProjectRepository) UpdateGroup(userID, groupID uint, updates map[string]interface{}) error {
+	if m.UpdateGroupFunc != nil {
+		return m.UpdateGroupFunc(userID, groupID, updates)
+	}
+	return nil
+}
+
+func (m *MockProjectRepository) CreateGroupFromAction(userID, actionID uint, group domain.ActionGroup, children []domain.Action) (domain.ActionGroup, []domain.Action, error) {
+	if m.CreateGroupFromActionFunc != nil {
+		return m.CreateGroupFromActionFunc(userID, actionID, group, children)
+	}
+	return domain.ActionGroup{}, nil, nil
+}
+
+func (m *MockProjectRepository) SetActionGroup(userID, actionID uint, groupID *uint) (domain.Action, error) {
+	if m.SetActionGroupFunc != nil {
+		return m.SetActionGroupFunc(userID, actionID, groupID)
+	}
+	return domain.Action{}, nil
+}
+
+func (m *MockProjectRepository) Ungroup(userID, groupID uint) error {
+	if m.UngroupFunc != nil {
+		return m.UngroupFunc(userID, groupID)
 	}
 	return nil
 }

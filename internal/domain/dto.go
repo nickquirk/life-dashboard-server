@@ -573,6 +573,7 @@ type CreateActionRequest struct {
 	Title        string `json:"title"`
 	Notes        string `json:"notes"`
 	DurationMins *int   `json:"durationMins"`
+	GroupID      *uint  `json:"groupId"`
 }
 
 type UpdateActionRequest struct {
@@ -664,4 +665,50 @@ type GetReadyActionsRequest struct {
 
 type GetActionsWithProjectResponse struct {
 	Actions []ActionWithProject `json:"actions"`
+}
+
+// ------ Action groups ---------
+
+type GetGroupsRequest struct {
+	UserID    uint `json:"-"`
+	ProjectID uint `json:"-"`
+}
+
+type GetGroupsResponse struct {
+	Groups []ActionGroup `json:"groups"`
+}
+
+// CreateGroupRequest breaks an action down into a new group named after it.
+type CreateGroupRequest struct {
+	ID     uint     `json:"-"` // the action
+	UserID uint     `json:"-"`
+	Titles []string `json:"titles"`
+	Color  string   `json:"color"` // optional: "" picks one the board isn't using
+}
+
+type CreateGroupResponse struct {
+	Group   ActionGroup `json:"group"`
+	Actions []Action    `json:"actions"`
+}
+
+type SetActionGroupRequest struct {
+	ID      uint  `json:"-"`
+	UserID  uint  `json:"-"`
+	GroupID *uint `json:"groupId"` // nil takes the action out of its group
+}
+
+type UpdateGroupRequest struct {
+	ID     uint    `json:"-"`
+	UserID uint    `json:"-"`
+	Title  *string `json:"title"`
+	Color  *string `json:"color"`
+}
+
+type UngroupRequest struct {
+	ID     uint `json:"-"`
+	UserID uint `json:"-"`
+}
+
+type UngroupResponse struct {
+	ID uint `json:"id"`
 }

@@ -21,7 +21,7 @@ func newProjectRepo(t *testing.T) (*GormProjectRepository, *gorm.DB) {
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	if err := db.AutoMigrate(&domain.Project{}, &domain.Action{}); err != nil {
+	if err := db.AutoMigrate(&domain.Project{}, &domain.Action{}, &domain.ActionGroup{}); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
 	return &GormProjectRepository{Db: db}, db
@@ -408,4 +408,242 @@ func TestProjectRepo_DeleteAction_WrongUser(t *testing.T) {
 	a := seedAction(t, db, domain.Action{UserID: otherProjectUserID, ProjectID: p.ID})
 	err := repo.DeleteAction(testUserID, a.ID)
 	assert.True(t, errors.Is(err, gorm.ErrRecordNotFound))
+}
+
+// --- Groups ---
+
+func seedGroup(t *testing.T, db *gorm.DB, g domain.ActionGroup) domain.ActionGroup {
+	t.Helper()
+	if g.UserID == 0 {
+		g.UserID = testUserID
+	}
+	if g.Title == "" {
+		g.Title = "Raised beds"
+	}
+	if g.Color == "" {
+		g.Color = "blue"
+	}
+	require.NoError(t, db.Create(&g).Error)
+	return g
+}
+
+func groupExists(t *testing.T, db *gorm.DB, id uint) bool {
+	t.Helper()
+	var n int64
+	require.NoError(t, db.Unscoped().Model(&domain.ActionGroup{}).Where("id = ?", id).Count(&n).Error)
+	return n > 0
+}
+
+func TestProjectRepo_CreateGroupFromAction_Success(t *testing.T) {
+	repo, db := newProjectRepo(t)
+	p := seedProject(t, db, domain.Project{})
+	original := seedAction(t, db, domain.Action{ProjectID: p.ID, Title: "build raised beds"})
+
+	group, created, err := repo.CreateGroupFromAction(testUserID, original.ID,
+		domain.ActionGroup{Title: "build raised beds", Color: "pink"},
+		[]domain.Action{{Title: "measure", Stage: domain.StageRefine}, {Title: "buy timber", Stage: domain.StageRefine}})
+	require.NoError(t, err)
+	assert.NotZero(t, group.ID)
+	assert.Equal(t, p.ID, group.ProjectID)
+	assert.Equal(t, testUserID, group.UserID)
+	require.Len(t, created, 2)
+	for i, c := range created {
+		require.NotNil(t, c.GroupID)
+		assert.Equal(t, group.ID, *c.GroupID)
+		assert.Equal(t, domain.StageRefine, c.Stage)
+		assert.Equal(t, i, c.Position)
+	}
+	_, err = repo.GetActionByID(testUserID, original.ID)
+	assert.True(t, errors.Is(err, gorm.ErrRecordNotFound))
+}
+
+func TestProjectRepo_CreateGroupFromAction_AtomicOnFailure(t *testing.T) {
+	repo, db := newProjectRepo(t)
+	p := seedProject(t, db, domain.Project{})
+	original := seedAction(t, db, domain.Action{ProjectID: p.ID})
+
+	require.NoError(t, db.Exec("CREATE TRIGGER fail_boom BEFORE INSERT ON actions WHEN NEW.title = 'boom' BEGIN SELECT RAISE(ABORT, 'boom'); END").Error)
+	_, _, err := repo.CreateGroupFromAction(testUserID, original.ID, domain.ActionGroup{Title: "g", Color: "blue"},
+		[]domain.Action{{Title: "ok", Stage: domain.StageRefine}, {Title: "boom", Stage: domain.StageRefine}})
+	require.Error(t, err)
+
+	_, err = repo.GetActionByID(testUserID, original.ID)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(1), actionCount(t, db))
+	groups, _ := repo.GetGroupsByProjectID(testUserID, p.ID)
+	assert.Empty(t, groups)
+}
+
+func TestProjectRepo_CreateGroupFromAction_WrongUser(t *testing.T) {
+	repo, db := newProjectRepo(t)
+	p := seedProject(t, db, domain.Project{UserID: otherProjectUserID})
+	a := seedAction(t, db, domain.Action{UserID: otherProjectUserID, ProjectID: p.ID})
+	_, _, err := repo.CreateGroupFromAction(testUserID, a.ID, domain.ActionGroup{Title: "g"}, []domain.Action{{Title: "x", Stage: domain.StageRefine}})
+	assert.True(t, errors.Is(err, gorm.ErrRecordNotFound))
+}
+
+func TestProjectRepo_ReplaceWithActions_KeepsGroup(t *testing.T) {
+	repo, db := newProjectRepo(t)
+	p := seedProject(t, db, domain.Project{})
+	g := seedGroup(t, db, domain.ActionGroup{ProjectID: p.ID})
+	original := seedAction(t, db, domain.Action{ProjectID: p.ID, GroupID: &g.ID})
+
+	created, err := repo.ReplaceWithActions(testUserID, original.ID,
+		[]domain.Action{{Title: "a", Stage: domain.StageRefine}, {Title: "b", Stage: domain.StageRefine}})
+	require.NoError(t, err)
+	for _, c := range created {
+		require.NotNil(t, c.GroupID)
+		assert.Equal(t, g.ID, *c.GroupID)
+	}
+	assert.True(t, groupExists(t, db, g.ID))
+}
+
+func TestProjectRepo_SetActionGroup_IntoBetweenOut(t *testing.T) {
+	repo, db := newProjectRepo(t)
+	p := seedProject(t, db, domain.Project{})
+	g1 := seedGroup(t, db, domain.ActionGroup{ProjectID: p.ID})
+	g2 := seedGroup(t, db, domain.ActionGroup{ProjectID: p.ID})
+	keep := seedAction(t, db, domain.Action{ProjectID: p.ID, GroupID: &g2.ID})
+	a := seedAction(t, db, domain.Action{ProjectID: p.ID, Stage: domain.StageReady, Position: 4})
+
+	// into g1
+	got, err := repo.SetActionGroup(testUserID, a.ID, &g1.ID)
+	require.NoError(t, err)
+	assert.Equal(t, g1.ID, *got.GroupID)
+
+	// g1 → g2: g1 is now empty and goes
+	got, err = repo.SetActionGroup(testUserID, a.ID, &g2.ID)
+	require.NoError(t, err)
+	assert.Equal(t, g2.ID, *got.GroupID)
+	assert.False(t, groupExists(t, db, g1.ID))
+
+	// out of g2: keep is still there, so g2 stays
+	got, err = repo.SetActionGroup(testUserID, a.ID, nil)
+	require.NoError(t, err)
+	assert.Nil(t, got.GroupID)
+	assert.Equal(t, domain.StageReady, got.Stage)
+	assert.Equal(t, 4, got.Position)
+	assert.True(t, groupExists(t, db, g2.ID))
+
+	// last one out removes g2
+	_, err = repo.SetActionGroup(testUserID, keep.ID, nil)
+	require.NoError(t, err)
+	assert.False(t, groupExists(t, db, g2.ID))
+
+	stored, err := repo.GetActionByID(testUserID, a.ID)
+	require.NoError(t, err)
+	assert.Nil(t, stored.GroupID)
+}
+
+func TestProjectRepo_SetActionGroup_RejectsForeignGroup(t *testing.T) {
+	repo, db := newProjectRepo(t)
+	p := seedProject(t, db, domain.Project{})
+	other := seedProject(t, db, domain.Project{Title: "Other"})
+	foreign := seedGroup(t, db, domain.ActionGroup{ProjectID: other.ID})
+	otherUsers := seedGroup(t, db, domain.ActionGroup{UserID: otherProjectUserID, ProjectID: p.ID})
+	a := seedAction(t, db, domain.Action{ProjectID: p.ID})
+
+	for _, bad := range []uint{foreign.ID, otherUsers.ID, 999} {
+		_, err := repo.SetActionGroup(testUserID, a.ID, &bad)
+		assert.True(t, errors.Is(err, gorm.ErrRecordNotFound), "group %d", bad)
+	}
+	got, err := repo.GetActionByID(testUserID, a.ID)
+	require.NoError(t, err)
+	assert.Nil(t, got.GroupID)
+}
+
+func TestProjectRepo_SetActionGroup_WrongUser(t *testing.T) {
+	repo, db := newProjectRepo(t)
+	p := seedProject(t, db, domain.Project{UserID: otherProjectUserID})
+	a := seedAction(t, db, domain.Action{UserID: otherProjectUserID, ProjectID: p.ID})
+	_, err := repo.SetActionGroup(testUserID, a.ID, nil)
+	assert.True(t, errors.Is(err, gorm.ErrRecordNotFound))
+}
+
+func TestProjectRepo_DeleteAction_RemovesEmptyGroupOnly(t *testing.T) {
+	repo, db := newProjectRepo(t)
+	p := seedProject(t, db, domain.Project{})
+	g := seedGroup(t, db, domain.ActionGroup{ProjectID: p.ID})
+	a := seedAction(t, db, domain.Action{ProjectID: p.ID, GroupID: &g.ID})
+	b := seedAction(t, db, domain.Action{ProjectID: p.ID, GroupID: &g.ID})
+
+	require.NoError(t, repo.DeleteAction(testUserID, a.ID))
+	assert.True(t, groupExists(t, db, g.ID))
+	require.NoError(t, repo.DeleteAction(testUserID, b.ID))
+	assert.False(t, groupExists(t, db, g.ID))
+}
+
+func TestProjectRepo_Ungroup(t *testing.T) {
+	repo, db := newProjectRepo(t)
+	p := seedProject(t, db, domain.Project{})
+	g := seedGroup(t, db, domain.ActionGroup{ProjectID: p.ID})
+	a := seedAction(t, db, domain.Action{ProjectID: p.ID, GroupID: &g.ID, Stage: domain.StageRefine, Position: 3})
+
+	require.NoError(t, repo.Ungroup(testUserID, g.ID))
+	assert.False(t, groupExists(t, db, g.ID))
+	got, err := repo.GetActionByID(testUserID, a.ID)
+	require.NoError(t, err)
+	assert.Nil(t, got.GroupID)
+	assert.Equal(t, domain.StageRefine, got.Stage)
+	assert.Equal(t, 3, got.Position)
+}
+
+func TestProjectRepo_Ungroup_WrongUserChangesNothing(t *testing.T) {
+	repo, db := newProjectRepo(t)
+	p := seedProject(t, db, domain.Project{UserID: otherProjectUserID})
+	g := seedGroup(t, db, domain.ActionGroup{UserID: otherProjectUserID, ProjectID: p.ID})
+	a := seedAction(t, db, domain.Action{UserID: otherProjectUserID, ProjectID: p.ID, GroupID: &g.ID})
+
+	err := repo.Ungroup(testUserID, g.ID)
+	assert.True(t, errors.Is(err, gorm.ErrRecordNotFound))
+	assert.True(t, groupExists(t, db, g.ID))
+	got, err := repo.GetActionByID(otherProjectUserID, a.ID)
+	require.NoError(t, err)
+	assert.NotNil(t, got.GroupID)
+}
+
+func TestProjectRepo_DeleteProject_RemovesGroups(t *testing.T) {
+	repo, db := newProjectRepo(t)
+	p := seedProject(t, db, domain.Project{})
+	g := seedGroup(t, db, domain.ActionGroup{ProjectID: p.ID})
+	seedAction(t, db, domain.Action{ProjectID: p.ID, GroupID: &g.ID})
+
+	require.NoError(t, repo.DeleteProject(testUserID, p.ID))
+	assert.False(t, groupExists(t, db, g.ID))
+}
+
+func TestProjectRepo_CreateAction_GroupScope(t *testing.T) {
+	repo, db := newProjectRepo(t)
+	p := seedProject(t, db, domain.Project{})
+	other := seedProject(t, db, domain.Project{Title: "Other"})
+	g := seedGroup(t, db, domain.ActionGroup{ProjectID: p.ID})
+	foreign := seedGroup(t, db, domain.ActionGroup{ProjectID: other.ID})
+	otherUsers := seedGroup(t, db, domain.ActionGroup{UserID: otherProjectUserID, ProjectID: p.ID})
+
+	a, err := repo.CreateAction(domain.Action{UserID: testUserID, ProjectID: p.ID, Title: "x", Stage: domain.StageBraindump, GroupID: &g.ID})
+	require.NoError(t, err)
+	assert.Equal(t, g.ID, *a.GroupID)
+
+	for _, bad := range []uint{foreign.ID, otherUsers.ID, 999} {
+		_, err := repo.CreateAction(domain.Action{UserID: testUserID, ProjectID: p.ID, Title: "x", Stage: domain.StageBraindump, GroupID: &bad})
+		assert.True(t, errors.Is(err, gorm.ErrRecordNotFound), "group %d", bad)
+	}
+}
+
+func TestProjectRepo_GetGroups_OrderAndScope(t *testing.T) {
+	repo, db := newProjectRepo(t)
+	p := seedProject(t, db, domain.Project{})
+	first := seedGroup(t, db, domain.ActionGroup{ProjectID: p.ID, Title: "first"})
+	second := seedGroup(t, db, domain.ActionGroup{ProjectID: p.ID, Title: "second"})
+	seedGroup(t, db, domain.ActionGroup{UserID: otherProjectUserID, ProjectID: p.ID})
+
+	groups, err := repo.GetGroupsByProjectID(testUserID, p.ID)
+	require.NoError(t, err)
+	require.Len(t, groups, 2)
+	assert.Equal(t, first.ID, groups[0].ID)
+	assert.Equal(t, second.ID, groups[1].ID)
+
+	_, err = repo.GetGroupByID(testUserID, groups[0].ID)
+	assert.NoError(t, err)
+	assert.True(t, errors.Is(repo.UpdateGroup(otherProjectUserID, first.ID, map[string]interface{}{"title": "x"}), gorm.ErrRecordNotFound))
 }

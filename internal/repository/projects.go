@@ -6,6 +6,7 @@ import (
 
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // ProjectRepository owns both projects and their actions, the way
@@ -28,6 +29,13 @@ type ProjectRepository interface {
 	ReorderActions(userID, projectID uint, stage domain.Stage, orderedIDs []uint) error
 	ReplaceWithActions(userID, actionID uint, children []domain.Action) ([]domain.Action, error)
 	DeleteAction(userID, actionID uint) error
+
+	GetGroupsByProjectID(userID, projectID uint) ([]domain.ActionGroup, error)
+	GetGroupByID(userID, groupID uint) (domain.ActionGroup, error)
+	UpdateGroup(userID, groupID uint, updates map[string]interface{}) error
+	CreateGroupFromAction(userID, actionID uint, group domain.ActionGroup, children []domain.Action) (domain.ActionGroup, []domain.Action, error)
+	SetActionGroup(userID, actionID uint, groupID *uint) (domain.Action, error)
+	Ungroup(userID, groupID uint) error
 }
 
 type GormProjectRepository struct {
@@ -77,13 +85,18 @@ func (r *GormProjectRepository) UpdateProject(userID, projectID uint, updates ma
 	return result.Error
 }
 
-// DeleteProject deletes the project and every action in it, including
-// scheduled ones, in one transaction.
+// DeleteProject deletes the project and every action and group in it,
+// including scheduled actions, in one transaction.
 func (r *GormProjectRepository) DeleteProject(userID, projectID uint) error {
 	return r.Db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Unscoped().
 			Where("project_id = ? AND user_id = ?", projectID, userID).
 			Delete(&domain.Action{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Unscoped().
+			Where("project_id = ? AND user_id = ?", projectID, userID).
+			Delete(&domain.ActionGroup{}).Error; err != nil {
 			return err
 		}
 		result := tx.Unscoped().Where("id = ? AND user_id = ?", projectID, userID).Delete(&domain.Project{})
@@ -103,7 +116,14 @@ func (r *GormProjectRepository) CreateAction(action domain.Action) (domain.Actio
 	if _, err := r.GetProjectByID(action.UserID, action.ProjectID); err != nil {
 		return domain.Action{}, gorm.ErrRecordNotFound
 	}
-	err := r.Db.Omit("Project").Create(&action).Error
+	err := r.Db.Transaction(func(tx *gorm.DB) error {
+		if action.GroupID != nil {
+			if _, err := groupInProject(tx, action.UserID, *action.GroupID, action.ProjectID); err != nil {
+				return err
+			}
+		}
+		return tx.Omit("Project").Create(&action).Error
+	})
 	return action, err
 }
 
@@ -222,37 +242,19 @@ func (r *GormProjectRepository) ReorderActions(userID, projectID uint, stage dom
 }
 
 // ReplaceWithActions breaks an action down: the original is deleted and the
-// children are appended, in order, to the end of their stage's column. All or
-// nothing.
+// children are appended, in order, to the end of their stage's column. They
+// stay in the original's group, if it had one. All or nothing.
 func (r *GormProjectRepository) ReplaceWithActions(userID, actionID uint, children []domain.Action) ([]domain.Action, error) {
-	created := make([]domain.Action, 0, len(children))
+	var created []domain.Action
 	err := r.Db.Transaction(func(tx *gorm.DB) error {
-		var original domain.Action
-		if err := tx.Where("id = ? AND user_id = ?", actionID, userID).First(&original).Error; err != nil {
-			return gorm.ErrRecordNotFound
-		}
-		if err := tx.Unscoped().Delete(&original).Error; err != nil {
+		original, err := firstAction(tx, userID, actionID)
+		if err != nil {
 			return err
 		}
-		positions := map[domain.Stage]int{}
-		for _, child := range children {
-			child.UserID = userID
-			child.ProjectID = original.ProjectID
-			pos, ok := positions[child.Stage]
-			if !ok {
-				var err error
-				if pos, err = nextPosition(tx, userID, original.ProjectID, child.Stage); err != nil {
-					return err
-				}
-			}
-			child.Position = pos
-			positions[child.Stage] = pos + 1
-			if err := tx.Omit("Project").Create(&child).Error; err != nil {
-				return err
-			}
-			created = append(created, child)
+		if created, err = replaceAction(tx, original, children, original.GroupID); err != nil {
+			return err
 		}
-		return nil
+		return removeGroupIfEmpty(tx, userID, original.GroupID)
 	})
 	if err != nil {
 		return nil, err
@@ -260,10 +262,180 @@ func (r *GormProjectRepository) ReplaceWithActions(userID, actionID uint, childr
 	return created, nil
 }
 
+func firstAction(tx *gorm.DB, userID, actionID uint) (domain.Action, error) {
+	var a domain.Action
+	if err := tx.Where("id = ? AND user_id = ?", actionID, userID).First(&a).Error; err != nil {
+		return domain.Action{}, gorm.ErrRecordNotFound
+	}
+	return a, nil
+}
+
+// replaceAction deletes original and creates children in its project and in
+// groupID, appended to the end of their stage's column.
+func replaceAction(tx *gorm.DB, original domain.Action, children []domain.Action, groupID *uint) ([]domain.Action, error) {
+	if err := tx.Unscoped().Delete(&original).Error; err != nil {
+		return nil, err
+	}
+	created := make([]domain.Action, 0, len(children))
+	positions := map[domain.Stage]int{}
+	for _, child := range children {
+		child.UserID = original.UserID
+		child.ProjectID = original.ProjectID
+		child.GroupID = groupID
+		pos, ok := positions[child.Stage]
+		if !ok {
+			var err error
+			if pos, err = nextPosition(tx, original.UserID, original.ProjectID, child.Stage); err != nil {
+				return nil, err
+			}
+		}
+		child.Position = pos
+		positions[child.Stage] = pos + 1
+		if err := tx.Omit("Project").Create(&child).Error; err != nil {
+			return nil, err
+		}
+		created = append(created, child)
+	}
+	return created, nil
+}
+
 func (r *GormProjectRepository) DeleteAction(userID, actionID uint) error {
-	result := r.Db.Unscoped().Where("id = ? AND user_id = ?", actionID, userID).Delete(&domain.Action{})
+	return r.Db.Transaction(func(tx *gorm.DB) error {
+		action, err := firstAction(tx, userID, actionID)
+		if err != nil {
+			return err
+		}
+		if err := tx.Unscoped().Delete(&action).Error; err != nil {
+			return err
+		}
+		return removeGroupIfEmpty(tx, userID, action.GroupID)
+	})
+}
+
+// --- GROUPS ---
+
+func (r *GormProjectRepository) GetGroupsByProjectID(userID, projectID uint) ([]domain.ActionGroup, error) {
+	groups := make([]domain.ActionGroup, 0)
+	err := r.Db.
+		Where("project_id = ? AND user_id = ?", projectID, userID).
+		Order("created_at ASC").Order("id ASC").
+		Find(&groups).Error
+	return groups, err
+}
+
+func (r *GormProjectRepository) GetGroupByID(userID, groupID uint) (domain.ActionGroup, error) {
+	var group domain.ActionGroup
+	if err := r.Db.Where("id = ? AND user_id = ?", groupID, userID).First(&group).Error; err != nil {
+		return domain.ActionGroup{}, gorm.ErrRecordNotFound
+	}
+	return group, nil
+}
+
+func (r *GormProjectRepository) UpdateGroup(userID, groupID uint, updates map[string]interface{}) error {
+	result := r.Db.Model(&domain.ActionGroup{}).Where("id = ? AND user_id = ?", groupID, userID).Updates(updates)
 	if result.RowsAffected == 0 {
 		return gorm.ErrRecordNotFound
 	}
 	return result.Error
+}
+
+// CreateGroupFromAction is a break down that also creates a group, in the
+// original's project, for the children. All or nothing.
+func (r *GormProjectRepository) CreateGroupFromAction(userID, actionID uint, group domain.ActionGroup, children []domain.Action) (domain.ActionGroup, []domain.Action, error) {
+	var created []domain.Action
+	err := r.Db.Transaction(func(tx *gorm.DB) error {
+		original, err := firstAction(tx, userID, actionID)
+		if err != nil {
+			return err
+		}
+		group.UserID = userID
+		group.ProjectID = original.ProjectID
+		if err := tx.Create(&group).Error; err != nil {
+			return err
+		}
+		created, err = replaceAction(tx, original, children, &group.ID)
+		return err
+	})
+	if err != nil {
+		return domain.ActionGroup{}, nil, err
+	}
+	return group, created, nil
+}
+
+// SetActionGroup moves an action into groupID (nil = out of its group), and
+// removes the group it left if that emptied it. groupID must be in the
+// action's project, else not found.
+func (r *GormProjectRepository) SetActionGroup(userID, actionID uint, groupID *uint) (domain.Action, error) {
+	var action domain.Action
+	err := r.Db.Transaction(func(tx *gorm.DB) error {
+		var err error
+		if action, err = firstAction(tx, userID, actionID); err != nil {
+			return err
+		}
+		if groupID != nil {
+			if _, err := groupInProject(tx, userID, *groupID, action.ProjectID); err != nil {
+				return err
+			}
+		}
+		old := action.GroupID
+		if err := tx.Model(&action).Omit("Project").Update("group_id", groupID).Error; err != nil {
+			return err
+		}
+		action.GroupID = groupID
+		if old != nil && (groupID == nil || *old != *groupID) {
+			return removeGroupIfEmpty(tx, userID, old)
+		}
+		return nil
+	})
+	return action, err
+}
+
+// Ungroup removes a group and leaves its actions where they are, ungrouped.
+func (r *GormProjectRepository) Ungroup(userID, groupID uint) error {
+	return r.Db.Transaction(func(tx *gorm.DB) error {
+		// Delete first: it locks the group row, so a concurrent move into
+		// the group waits for us and then finds it gone.
+		result := tx.Unscoped().Where("id = ? AND user_id = ?", groupID, userID).Delete(&domain.ActionGroup{})
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return gorm.ErrRecordNotFound
+		}
+		return tx.Model(&domain.Action{}).
+			Where("group_id = ? AND user_id = ?", groupID, userID).
+			Update("group_id", nil).Error
+	})
+}
+
+// groupInProject locks the group row (FOR UPDATE) so it can't be removed
+// before the caller's transaction commits an action into it.
+func groupInProject(tx *gorm.DB, userID, groupID, projectID uint) (domain.ActionGroup, error) {
+	var group domain.ActionGroup
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ? AND user_id = ? AND project_id = ?", groupID, userID, projectID).First(&group).Error; err != nil {
+		return domain.ActionGroup{}, gorm.ErrRecordNotFound
+	}
+	return group, nil
+}
+
+// removeGroupIfEmpty hard-deletes the group once no action is left in it, so
+// an empty group is never visible. Call it inside the write's transaction.
+func removeGroupIfEmpty(tx *gorm.DB, userID uint, groupID *uint) error {
+	if groupID == nil {
+		return nil
+	}
+	// Lock the group before counting, so an action moving in concurrently
+	// either lands first (and is counted) or finds the group gone.
+	var g domain.ActionGroup
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", *groupID).Find(&g).Error; err != nil {
+		return err
+	}
+	var n int64
+	if err := tx.Model(&domain.Action{}).Where("group_id = ?", *groupID).Count(&n).Error; err != nil {
+		return err
+	}
+	if n > 0 {
+		return nil
+	}
+	return tx.Unscoped().Where("id = ? AND user_id = ?", *groupID, userID).Delete(&domain.ActionGroup{}).Error
 }

@@ -187,6 +187,7 @@ func (s *service) CreateAction(req domain.CreateActionRequest) (domain.Action, e
 		Title:        req.Title,
 		Notes:        req.Notes,
 		DurationMins: req.DurationMins,
+		GroupID:      req.GroupID, // the repository checks it's in this project
 		Stage:        domain.StageBraindump,
 		Position:     position,
 	})
@@ -338,12 +339,7 @@ func (s *service) BreakDownAction(req domain.BreakDownActionRequest) (domain.Get
 		return domain.GetActionsResponse{}, err
 	}
 
-	children := make([]domain.Action, len(req.Titles))
-	for i, title := range req.Titles {
-		children[i] = domain.Action{Title: title, Stage: domain.StageRefine}
-	}
-
-	created, err := s.projectRepo.ReplaceWithActions(req.UserID, req.ID, children)
+	created, err := s.projectRepo.ReplaceWithActions(req.UserID, req.ID, breakDownChildren(req.Titles))
 	if err != nil {
 		return domain.GetActionsResponse{}, err
 	}
@@ -365,6 +361,126 @@ func (s *service) DeleteAction(req domain.DeleteActionRequest) (domain.DeleteAct
 		return domain.DeleteActionResponse{}, err
 	}
 	return domain.DeleteActionResponse{ID: req.ID}, nil
+}
+
+// breakDownChildren are the new actions a break down creates, in refine.
+func breakDownChildren(titles []string) []domain.Action {
+	children := make([]domain.Action, len(titles))
+	for i, title := range titles {
+		children[i] = domain.Action{Title: title, Stage: domain.StageRefine}
+	}
+	return children
+}
+
+// --- Action groups ---
+//
+// A group lives on one project board, one level deep, and exists only while
+// it has actions (the repository removes it when the last one leaves).
+
+func (s *service) GetGroups(req domain.GetGroupsRequest) (domain.GetGroupsResponse, error) {
+	if _, err := s.projectRepo.GetProjectByID(req.UserID, req.ProjectID); err != nil {
+		return domain.GetGroupsResponse{}, err
+	}
+	groups, err := s.projectRepo.GetGroupsByProjectID(req.UserID, req.ProjectID)
+	if err != nil {
+		return domain.GetGroupsResponse{}, err
+	}
+	return domain.GetGroupsResponse{Groups: groups}, nil
+}
+
+// CreateGroup breaks an action down into a new group named after it.
+func (s *service) CreateGroup(req domain.CreateGroupRequest) (domain.CreateGroupResponse, error) {
+	if err := req.Validate(); err != nil {
+		return domain.CreateGroupResponse{}, err
+	}
+
+	current, err := s.projectRepo.GetActionByID(req.UserID, req.ID)
+	if err != nil {
+		return domain.CreateGroupResponse{}, err
+	}
+	if err := checkVerb(current, verbBreakDown); err != nil {
+		return domain.CreateGroupResponse{}, err
+	}
+	if current.GroupID != nil {
+		return domain.CreateGroupResponse{}, fmt.Errorf("%w: this action is already in a group; use Break down", domain.ErrInvalidInput)
+	}
+
+	if req.Color == "" {
+		if req.Color, err = s.pickGroupColor(req.UserID, current.ProjectID); err != nil {
+			return domain.CreateGroupResponse{}, err
+		}
+	}
+
+	group, created, err := s.projectRepo.CreateGroupFromAction(req.UserID, req.ID,
+		domain.ActionGroup{Title: current.Title, Color: req.Color}, breakDownChildren(req.Titles))
+	if err != nil {
+		return domain.CreateGroupResponse{}, err
+	}
+	return domain.CreateGroupResponse{Group: group, Actions: created}, nil
+}
+
+// pickGroupColor avoids the project's swatch and its other groups' where possible.
+func (s *service) pickGroupColor(userID, projectID uint) (string, error) {
+	project, err := s.projectRepo.GetProjectByID(userID, projectID)
+	if err != nil {
+		return "", err
+	}
+	groups, err := s.projectRepo.GetGroupsByProjectID(userID, projectID)
+	if err != nil {
+		return "", err
+	}
+	used := []string{project.Color}
+	for _, g := range groups {
+		used = append(used, g.Color)
+	}
+	return domain.PickSwatch(used), nil
+}
+
+// SetActionGroup moves an action into a group on its own board, or out of its
+// group when GroupID is nil. Allowed in every stage.
+func (s *service) SetActionGroup(req domain.SetActionGroupRequest) (domain.Action, error) {
+	if err := req.Validate(); err != nil {
+		return domain.Action{}, err
+	}
+
+	current, err := s.projectRepo.GetActionByID(req.UserID, req.ID)
+	if err != nil {
+		return domain.Action{}, err
+	}
+	if sameGroup(current.GroupID, req.GroupID) {
+		return current, nil
+	}
+	// The repository checks the group is on this action's board, in its transaction.
+	return s.projectRepo.SetActionGroup(req.UserID, req.ID, req.GroupID)
+}
+
+func sameGroup(a, b *uint) bool {
+	return (a == nil && b == nil) || (a != nil && b != nil && *a == *b)
+}
+
+func (s *service) UpdateGroup(req domain.UpdateGroupRequest) (domain.ActionGroup, error) {
+	if err := req.Validate(); err != nil {
+		return domain.ActionGroup{}, err
+	}
+
+	updates := make(map[string]interface{})
+	if req.Title != nil {
+		updates["title"] = *req.Title
+	}
+	if req.Color != nil {
+		updates["color"] = *req.Color
+	}
+	if err := s.projectRepo.UpdateGroup(req.UserID, req.ID, updates); err != nil {
+		return domain.ActionGroup{}, err
+	}
+	return s.projectRepo.GetGroupByID(req.UserID, req.ID)
+}
+
+func (s *service) Ungroup(req domain.UngroupRequest) (domain.UngroupResponse, error) {
+	if err := s.projectRepo.Ungroup(req.UserID, req.ID); err != nil {
+		return domain.UngroupResponse{}, err
+	}
+	return domain.UngroupResponse{ID: req.ID}, nil
 }
 
 // moveToColumn puts an action at the end of a board column, along with any

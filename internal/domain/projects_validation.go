@@ -8,6 +8,7 @@ import (
 const (
 	maxProjectTitleLen = 200
 	maxActionTitleLen  = 200
+	maxGroupTitleLen   = 200
 	maxActionNotesLen  = 10_000
 	minDurationMins    = 1
 	maxDurationMins    = 1440
@@ -74,6 +75,9 @@ func (r *CreateActionRequest) Validate() error {
 	if err := validateActionNotes(r.Notes); err != nil {
 		return err
 	}
+	if err := validateGroupID(r.GroupID); err != nil {
+		return err
+	}
 	if r.DurationMins != nil {
 		return validateDuration(*r.DurationMins)
 	}
@@ -133,6 +137,44 @@ func (r *BreakDownActionRequest) Validate() error {
 		if err := validateTitle(&r.Titles[i], maxActionTitleLen); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func validateGroupID(id *uint) error {
+	if id != nil && *id == 0 {
+		return fmt.Errorf("%w: groupId must be a positive ID or null", ErrInvalidInput)
+	}
+	return nil
+}
+
+func (r *CreateGroupRequest) Validate() error {
+	// Same titles rule as break down; Validate trims r.Titles in place.
+	b := BreakDownActionRequest{Titles: r.Titles}
+	if err := b.Validate(); err != nil {
+		return err
+	}
+	if r.Color == "" {
+		return nil // the service picks one
+	}
+	return validateSwatch(r.Color)
+}
+
+func (r *SetActionGroupRequest) Validate() error {
+	return validateGroupID(r.GroupID)
+}
+
+func (r *UpdateGroupRequest) Validate() error {
+	if r.Title == nil && r.Color == nil {
+		return fmt.Errorf("%w: nothing to update: send title or color", ErrInvalidInput)
+	}
+	if r.Title != nil {
+		if err := validateTitle(r.Title, maxGroupTitleLen); err != nil {
+			return err
+		}
+	}
+	if r.Color != nil {
+		return validateSwatch(*r.Color)
 	}
 	return nil
 }

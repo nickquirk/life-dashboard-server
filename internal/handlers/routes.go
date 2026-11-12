@@ -101,6 +101,7 @@ func GetRoutes(mx *chi.Mux, h *Handler) error {
 			auth.Get("/projects/{id}/actions", h.getProjectActions)
 			auth.Post("/projects/{id}/actions", h.createAction)
 			auth.Put("/projects/{id}/actions/reorder", h.reorderActions)
+			auth.Get("/projects/{id}/groups", h.getProjectGroups)
 			// Actions — one route per verb so the stage rules can't be bypassed
 			auth.Get("/actions", h.getActions)
 			auth.Patch("/actions/{id}", h.updateAction)
@@ -111,7 +112,12 @@ func GetRoutes(mx *chi.Mux, h *Handler) error {
 			auth.Post("/actions/{id}/complete", h.completeAction)
 			auth.Post("/actions/{id}/reopen", h.reopenAction)
 			auth.Post("/actions/{id}/break-down", h.breakDownAction)
+			auth.Post("/actions/{id}/create-group", h.createGroup)
+			auth.Post("/actions/{id}/group", h.setActionGroup)
 			auth.Delete("/actions/{id}", h.deleteAction)
+
+			auth.Patch("/groups/{id}", h.updateGroup)
+			auth.Post("/groups/{id}/ungroup", h.ungroup)
 		})
 	})
 	return nil
