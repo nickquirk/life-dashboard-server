@@ -141,6 +141,15 @@ func (r *BreakDownActionRequest) Validate() error {
 	return nil
 }
 
+// validateGroupSwatch is validateSwatch minus gray: a completed group is
+// drawn in neutral grey, so a gray group would look finished.
+func validateGroupSwatch(color string) error {
+	if color == "gray" {
+		return fmt.Errorf("%w: a group can't be gray", ErrInvalidInput)
+	}
+	return validateSwatch(color)
+}
+
 func validateGroupID(id *uint) error {
 	if id != nil && *id == 0 {
 		return fmt.Errorf("%w: groupId must be a positive ID or null", ErrInvalidInput)
@@ -157,7 +166,7 @@ func (r *CreateGroupRequest) Validate() error {
 	if r.Color == "" {
 		return nil // the service picks one
 	}
-	return validateSwatch(r.Color)
+	return validateGroupSwatch(r.Color)
 }
 
 func (r *SetActionGroupRequest) Validate() error {
@@ -174,7 +183,7 @@ func (r *UpdateGroupRequest) Validate() error {
 		}
 	}
 	if r.Color != nil {
-		return validateSwatch(*r.Color)
+		return validateGroupSwatch(*r.Color)
 	}
 	return nil
 }

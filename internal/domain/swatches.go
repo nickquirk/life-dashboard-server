@@ -12,12 +12,13 @@ var Swatches = map[string]struct{}{
 	"indigo": {},
 }
 
-// swatchPickOrder is the order PickSwatch tries swatches in; gray is last
-// because it reads as "no colour".
-var swatchPickOrder = []string{"blue", "green", "yellow", "orange", "pink", "indigo", "gray"}
+// swatchPickOrder is the order PickSwatch tries swatches in. Gray is left out:
+// it reads as "no colour", and it's how a completed group is drawn.
+var swatchPickOrder = []string{"blue", "green", "yellow", "orange", "pink", "indigo"}
 
 // PickSwatch returns the least-used swatch in used, so a new thing avoids
-// colours already taken where possible. Ties go by swatchPickOrder.
+// colours already taken where possible. Ties go by swatchPickOrder. Never
+// gray.
 func PickSwatch(used []string) string {
 	counts := map[string]int{}
 	for _, c := range used {

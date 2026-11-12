@@ -36,6 +36,8 @@ type ProjectRepository interface {
 	CreateGroupFromAction(userID, actionID uint, group domain.ActionGroup, children []domain.Action) (domain.ActionGroup, []domain.Action, error)
 	SetActionGroup(userID, actionID uint, groupID *uint) (domain.Action, error)
 	Ungroup(userID, groupID uint) error
+	ActiveGroupColors(userID, projectID, exceptGroupID uint) ([]string, error)
+	GroupIsComplete(userID, groupID uint) (bool, error)
 }
 
 type GormProjectRepository struct {
@@ -406,6 +408,42 @@ func (r *GormProjectRepository) Ungroup(userID, groupID uint) error {
 			Where("group_id = ? AND user_id = ?", groupID, userID).
 			Update("group_id", nil).Error
 	})
+}
+
+// ActiveGroupColors is the colour of each group on the board that still has
+// an unfinished action, leaving out exceptGroupID (0 leaves none out).
+// Completed groups have given their colour back, so they don't count.
+func (r *GormProjectRepository) ActiveGroupColors(userID, projectID, exceptGroupID uint) ([]string, error) {
+	colors := make([]string, 0)
+	err := r.Db.
+		Table("action_groups AS g").
+		Joins("JOIN actions AS a ON a.group_id = g.id AND a.deleted_at IS NULL").
+		Where("g.user_id = ? AND g.project_id = ? AND g.id <> ? AND g.deleted_at IS NULL", userID, projectID, exceptGroupID).
+		Group("g.id, g.color").
+		Having("SUM(CASE WHEN a.stage <> ? THEN 1 ELSE 0 END) > 0", domain.StageDone).
+		Order("g.id ASC").
+		Pluck("g.color", &colors).Error
+	if err != nil {
+		return nil, err
+	}
+	return colors, nil
+}
+
+// GroupIsComplete reports whether the group has actions and all of them are
+// done. Completion is never stored; this works it out.
+func (r *GormProjectRepository) GroupIsComplete(userID, groupID uint) (bool, error) {
+	var counts struct {
+		Total      int64
+		Unfinished int64
+	}
+	err := r.Db.Model(&domain.Action{}).
+		Select("COUNT(*) AS total, COALESCE(SUM(CASE WHEN stage <> ? THEN 1 ELSE 0 END), 0) AS unfinished", domain.StageDone).
+		Where("group_id = ? AND user_id = ?", groupID, userID).
+		Scan(&counts).Error
+	if err != nil {
+		return false, err
+	}
+	return counts.Total > 0 && counts.Unfinished == 0, nil
 }
 
 // groupInProject locks the group row (FOR UPDATE) so it can't be removed

@@ -31,6 +31,8 @@ type MockProjectRepository struct {
 	CreateGroupFromActionFunc func(userID, actionID uint, group domain.ActionGroup, children []domain.Action) (domain.ActionGroup, []domain.Action, error)
 	SetActionGroupFunc        func(userID, actionID uint, groupID *uint) (domain.Action, error)
 	UngroupFunc               func(userID, groupID uint) error
+	ActiveGroupColorsFunc     func(userID, projectID, exceptGroupID uint) ([]string, error)
+	GroupIsCompleteFunc       func(userID, groupID uint) (bool, error)
 }
 
 func (m *MockProjectRepository) CreateProject(p domain.Project) (domain.Project, error) {
@@ -185,4 +187,18 @@ func (m *MockProjectRepository) Ungroup(userID, groupID uint) error {
 		return m.UngroupFunc(userID, groupID)
 	}
 	return nil
+}
+
+func (m *MockProjectRepository) ActiveGroupColors(userID, projectID, exceptGroupID uint) ([]string, error) {
+	if m.ActiveGroupColorsFunc != nil {
+		return m.ActiveGroupColorsFunc(userID, projectID, exceptGroupID)
+	}
+	return nil, nil
+}
+
+func (m *MockProjectRepository) GroupIsComplete(userID, groupID uint) (bool, error) {
+	if m.GroupIsCompleteFunc != nil {
+		return m.GroupIsCompleteFunc(userID, groupID)
+	}
+	return false, nil
 }

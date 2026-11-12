@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -493,8 +494,10 @@ func TestService_CreateGroup_AutoColourAvoidsBoard(t *testing.T) {
 	repo.GetProjectByIDFunc = func(userID, projectID uint) (domain.Project, error) {
 		return domain.Project{ID: projectID, Color: "blue"}, nil
 	}
-	repo.GetGroupsByProjectIDFunc = func(userID, projectID uint) ([]domain.ActionGroup, error) {
-		return []domain.ActionGroup{{Color: "green"}}, nil
+	// Only active groups hold a colour; the repository leaves completed ones out
+	repo.ActiveGroupColorsFunc = func(userID, projectID, exceptGroupID uint) ([]string, error) {
+		assert.Equal(t, uint(0), exceptGroupID, "a new group has nothing to leave out")
+		return []string{"green"}, nil
 	}
 	var got string
 	repo.CreateGroupFromActionFunc = func(_, _ uint, g domain.ActionGroup, c []domain.Action) (domain.ActionGroup, []domain.Action, error) {
@@ -607,4 +610,103 @@ func TestService_CreateAction_PassesGroup(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, got.GroupID)
 	assert.Equal(t, uint(5), *got.GroupID)
+}
+
+// groupRepo adds a completed-then-active group 2 to an actionRepo: it reports
+// complete until the action under test has been written, then active. Its
+// project is green and another active group holds blue, so a fresh colour is
+// yellow. recoloured is where UpdateGroup's colour lands ("" if not called).
+func groupRepo(repo *mocks.MockProjectRepository, completeBefore bool) *string {
+	written := false
+	recoloured := ""
+	repo.GroupIsCompleteFunc = func(userID, groupID uint) (bool, error) {
+		if groupID != 2 {
+			return false, nil
+		}
+		return completeBefore && !written, nil
+	}
+	repo.GetGroupByIDFunc = func(userID, groupID uint) (domain.ActionGroup, error) {
+		return domain.ActionGroup{ID: groupID, ProjectID: 3, Color: "blue"}, nil
+	}
+	repo.GetProjectByIDFunc = func(userID, projectID uint) (domain.Project, error) {
+		return domain.Project{ID: projectID, Color: "green"}, nil
+	}
+	repo.ActiveGroupColorsFunc = func(userID, projectID, exceptGroupID uint) ([]string, error) {
+		if exceptGroupID != 2 {
+			return nil, fmt.Errorf("should leave out the group being recoloured, got %d", exceptGroupID)
+		}
+		return []string{"blue"}, nil
+	}
+	repo.UpdateGroupFunc = func(userID, groupID uint, updates map[string]interface{}) error {
+		recoloured = updates["color"].(string)
+		return nil
+	}
+	// Mark "written" once the action itself changes
+	update := repo.UpdateActionFunc
+	repo.UpdateActionFunc = func(userID, actionID uint, updates map[string]interface{}) error {
+		written = true
+		if update != nil {
+			return update(userID, actionID, updates)
+		}
+		return nil
+	}
+	repo.SetActionGroupFunc = func(userID, actionID uint, groupID *uint) (domain.Action, error) {
+		written = true
+		return domain.Action{ID: actionID, GroupID: groupID, Stage: domain.StageRefine}, nil
+	}
+	repo.CreateActionFunc = func(a domain.Action) (domain.Action, error) {
+		written = true
+		return a, nil
+	}
+	return &recoloured
+}
+
+func TestService_ReopenAction_RecoloursAReactivatedGroup(t *testing.T) {
+	repo, _ := actionRepo(domain.Action{Stage: domain.StageDone, DurationMins: dur(30), GroupID: gid(2)})
+	recoloured := groupRepo(repo, true)
+
+	got, err := newProjectService(repo).ReopenAction(domain.ReopenActionRequest{ID: 10, UserID: 1})
+	require.NoError(t, err)
+	assert.Equal(t, domain.StageReady, got.Stage)
+	// Blue is held by another active group, so it doesn't get blue back
+	assert.Equal(t, "yellow", *recoloured)
+}
+
+func TestService_ReopenAction_LeavesAnActiveGroupsColour(t *testing.T) {
+	repo, _ := actionRepo(domain.Action{Stage: domain.StageDone, DurationMins: dur(30), GroupID: gid(2)})
+	recoloured := groupRepo(repo, false)
+
+	_, err := newProjectService(repo).ReopenAction(domain.ReopenActionRequest{ID: 10, UserID: 1})
+	require.NoError(t, err)
+	assert.Empty(t, *recoloured)
+}
+
+func TestService_SetActionGroup_IntoACompletedGroupRecoloursIt(t *testing.T) {
+	repo, _ := actionRepo(domain.Action{Stage: domain.StageRefine})
+	recoloured := groupRepo(repo, true)
+
+	_, err := newProjectService(repo).SetActionGroup(domain.SetActionGroupRequest{ID: 10, UserID: 1, GroupID: gid(2)})
+	require.NoError(t, err)
+	assert.Equal(t, "yellow", *recoloured)
+}
+
+func TestService_CreateAction_IntoACompletedGroupRecoloursIt(t *testing.T) {
+	repo := &mocks.MockProjectRepository{}
+	recoloured := groupRepo(repo, true)
+
+	_, err := newProjectService(repo).CreateAction(domain.CreateActionRequest{UserID: 1, ProjectID: 3, Title: "Buy hinges", GroupID: gid(2)})
+	require.NoError(t, err)
+	assert.Equal(t, "yellow", *recoloured)
+}
+
+func TestService_RecolourFailureDoesNotFailTheWrite(t *testing.T) {
+	repo, _ := actionRepo(domain.Action{Stage: domain.StageDone, DurationMins: dur(30), GroupID: gid(2)})
+	groupRepo(repo, true)
+	repo.GetGroupByIDFunc = func(userID, groupID uint) (domain.ActionGroup, error) {
+		return domain.ActionGroup{}, fmt.Errorf("db down")
+	}
+
+	got, err := newProjectService(repo).ReopenAction(domain.ReopenActionRequest{ID: 10, UserID: 1})
+	require.NoError(t, err)
+	assert.Equal(t, domain.StageReady, got.Stage)
 }

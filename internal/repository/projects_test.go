@@ -647,3 +647,56 @@ func TestProjectRepo_GetGroups_OrderAndScope(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, errors.Is(repo.UpdateGroup(otherProjectUserID, first.ID, map[string]interface{}{"title": "x"}), gorm.ErrRecordNotFound))
 }
+
+func TestProjectRepo_ActiveGroupColors_LeavesOutCompletedAndExcepted(t *testing.T) {
+	repo, db := newProjectRepo(t)
+	p := seedProject(t, db, domain.Project{})
+	active := seedGroup(t, db, domain.ActionGroup{ProjectID: p.ID, Color: "blue"})
+	seedAction(t, db, domain.Action{ProjectID: p.ID, GroupID: &active.ID, Stage: domain.StageDone})
+	seedAction(t, db, domain.Action{ProjectID: p.ID, GroupID: &active.ID, Stage: domain.StageRefine})
+	completed := seedGroup(t, db, domain.ActionGroup{ProjectID: p.ID, Color: "pink"})
+	seedAction(t, db, domain.Action{ProjectID: p.ID, GroupID: &completed.ID, Stage: domain.StageDone})
+	other := seedGroup(t, db, domain.ActionGroup{ProjectID: p.ID, Color: "orange"})
+	seedAction(t, db, domain.Action{ProjectID: p.ID, GroupID: &other.ID, Stage: domain.StageReady})
+	// Another project's active group doesn't count
+	q := seedProject(t, db, domain.Project{})
+	elsewhere := seedGroup(t, db, domain.ActionGroup{ProjectID: q.ID, Color: "indigo"})
+	seedAction(t, db, domain.Action{ProjectID: q.ID, GroupID: &elsewhere.ID})
+
+	colors, err := repo.ActiveGroupColors(testUserID, p.ID, 0)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"blue", "orange"}, colors)
+
+	colors, err = repo.ActiveGroupColors(testUserID, p.ID, other.ID)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"blue"}, colors)
+
+	colors, err = repo.ActiveGroupColors(otherProjectUserID, p.ID, 0)
+	require.NoError(t, err)
+	assert.Empty(t, colors)
+}
+
+func TestProjectRepo_GroupIsComplete(t *testing.T) {
+	repo, db := newProjectRepo(t)
+	p := seedProject(t, db, domain.Project{})
+	g := seedGroup(t, db, domain.ActionGroup{ProjectID: p.ID})
+
+	complete, err := repo.GroupIsComplete(testUserID, g.ID)
+	require.NoError(t, err)
+	assert.False(t, complete, "a group with no actions isn't complete")
+
+	seedAction(t, db, domain.Action{ProjectID: p.ID, GroupID: &g.ID, Stage: domain.StageDone})
+	open := seedAction(t, db, domain.Action{ProjectID: p.ID, GroupID: &g.ID, Stage: domain.StageReady})
+	complete, err = repo.GroupIsComplete(testUserID, g.ID)
+	require.NoError(t, err)
+	assert.False(t, complete)
+
+	require.NoError(t, db.Model(&open).Update("stage", domain.StageDone).Error)
+	complete, err = repo.GroupIsComplete(testUserID, g.ID)
+	require.NoError(t, err)
+	assert.True(t, complete)
+
+	complete, err = repo.GroupIsComplete(otherProjectUserID, g.ID)
+	require.NoError(t, err)
+	assert.False(t, complete, "another user sees nothing")
+}

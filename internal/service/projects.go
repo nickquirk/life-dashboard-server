@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
 )
@@ -181,7 +182,13 @@ func (s *service) CreateAction(req domain.CreateActionRequest) (domain.Action, e
 		return domain.Action{}, err
 	}
 
-	return s.projectRepo.CreateAction(domain.Action{
+	// Captured into a completed group, the new action makes it active again
+	wasComplete, err := s.groupComplete(req.UserID, req.GroupID)
+	if err != nil {
+		return domain.Action{}, err
+	}
+
+	created, err := s.projectRepo.CreateAction(domain.Action{
 		UserID:       req.UserID,
 		ProjectID:    req.ProjectID,
 		Title:        req.Title,
@@ -191,6 +198,11 @@ func (s *service) CreateAction(req domain.CreateActionRequest) (domain.Action, e
 		Stage:        domain.StageBraindump,
 		Position:     position,
 	})
+	if err != nil {
+		return domain.Action{}, err
+	}
+	s.recolourIfReactivated(req.UserID, req.GroupID, wasComplete)
+	return created, nil
 }
 
 func (s *service) UpdateAction(req domain.UpdateActionRequest) (domain.Action, error) {
@@ -319,11 +331,24 @@ func (s *service) ReopenAction(req domain.ReopenActionRequest) (domain.Action, e
 		return domain.Action{}, err
 	}
 
+	// Reopening an action in a completed group makes the group active again
+	wasComplete, err := s.groupComplete(req.UserID, current.GroupID)
+	if err != nil {
+		return domain.Action{}, err
+	}
+
+	var reopened domain.Action
 	to := reopenStage(current)
 	if to == domain.StageScheduled {
-		return s.applyActionUpdates(req.UserID, req.ID, map[string]interface{}{"stage": to})
+		reopened, err = s.applyActionUpdates(req.UserID, req.ID, map[string]interface{}{"stage": to})
+	} else {
+		reopened, err = s.moveToColumn(current, to, nil)
 	}
-	return s.moveToColumn(current, to, nil)
+	if err != nil {
+		return domain.Action{}, err
+	}
+	s.recolourIfReactivated(req.UserID, current.GroupID, wasComplete)
+	return reopened, nil
 }
 
 func (s *service) BreakDownAction(req domain.BreakDownActionRequest) (domain.GetActionsResponse, error) {
@@ -406,7 +431,7 @@ func (s *service) CreateGroup(req domain.CreateGroupRequest) (domain.CreateGroup
 	}
 
 	if req.Color == "" {
-		if req.Color, err = s.pickGroupColor(req.UserID, current.ProjectID); err != nil {
+		if req.Color, err = s.pickGroupColor(req.UserID, current.ProjectID, 0); err != nil {
 			return domain.CreateGroupResponse{}, err
 		}
 	}
@@ -419,21 +444,58 @@ func (s *service) CreateGroup(req domain.CreateGroupRequest) (domain.CreateGroup
 	return domain.CreateGroupResponse{Group: group, Actions: created}, nil
 }
 
-// pickGroupColor avoids the project's swatch and its other groups' where possible.
-func (s *service) pickGroupColor(userID, projectID uint) (string, error) {
+// pickGroupColor avoids the project's swatch and its other active groups'
+// where possible, leaving out exceptGroupID (0 for a new group). Completed
+// groups have given their colour back, so they don't count.
+func (s *service) pickGroupColor(userID, projectID, exceptGroupID uint) (string, error) {
 	project, err := s.projectRepo.GetProjectByID(userID, projectID)
 	if err != nil {
 		return "", err
 	}
-	groups, err := s.projectRepo.GetGroupsByProjectID(userID, projectID)
+	active, err := s.projectRepo.ActiveGroupColors(userID, projectID, exceptGroupID)
 	if err != nil {
 		return "", err
 	}
-	used := []string{project.Color}
-	for _, g := range groups {
-		used = append(used, g.Color)
+	return domain.PickSwatch(append([]string{project.Color}, active...)), nil
+}
+
+// groupComplete reports whether groupID is a completed group. No group is
+// never complete.
+func (s *service) groupComplete(userID uint, groupID *uint) (bool, error) {
+	if groupID == nil {
+		return false, nil
 	}
-	return domain.PickSwatch(used), nil
+	return s.projectRepo.GroupIsComplete(userID, *groupID)
+}
+
+// recolourIfReactivated gives a group that was completed before a write and
+// is active after it a fresh colour: only active groups hold one, so its old
+// colour may have gone to another group since. Called after the write has
+// succeeded, so a failure here only leaves the old colour, and is logged
+// rather than failing the request.
+func (s *service) recolourIfReactivated(userID uint, groupID *uint, wasComplete bool) {
+	if groupID == nil || !wasComplete {
+		return
+	}
+	if err := s.recolourGroup(userID, *groupID); err != nil {
+		slog.Error("failed to recolour reactivated group", "error", err, "userID", userID, "groupID", *groupID)
+	}
+}
+
+func (s *service) recolourGroup(userID, groupID uint) error {
+	complete, err := s.projectRepo.GroupIsComplete(userID, groupID)
+	if err != nil || complete {
+		return err
+	}
+	group, err := s.projectRepo.GetGroupByID(userID, groupID)
+	if err != nil {
+		return err
+	}
+	color, err := s.pickGroupColor(userID, group.ProjectID, group.ID)
+	if err != nil {
+		return err
+	}
+	return s.projectRepo.UpdateGroup(userID, group.ID, map[string]interface{}{"color": color})
 }
 
 // SetActionGroup moves an action into a group on its own board, or out of its
@@ -450,8 +512,20 @@ func (s *service) SetActionGroup(req domain.SetActionGroupRequest) (domain.Actio
 	if sameGroup(current.GroupID, req.GroupID) {
 		return current, nil
 	}
+
+	// Moving an unfinished action into a completed group makes it active again
+	wasComplete, err := s.groupComplete(req.UserID, req.GroupID)
+	if err != nil {
+		return domain.Action{}, err
+	}
+
 	// The repository checks the group is on this action's board, in its transaction.
-	return s.projectRepo.SetActionGroup(req.UserID, req.ID, req.GroupID)
+	moved, err := s.projectRepo.SetActionGroup(req.UserID, req.ID, req.GroupID)
+	if err != nil {
+		return domain.Action{}, err
+	}
+	s.recolourIfReactivated(req.UserID, req.GroupID, wasComplete)
+	return moved, nil
 }
 
 func sameGroup(a, b *uint) bool {

@@ -73,6 +73,8 @@ func TestProjectsValidation(t *testing.T) {
 		{"update group blank title", &UpdateGroupRequest{Title: ptrStr(" ")}, "title is required"},
 		{"update group bad color", &UpdateGroupRequest{Color: ptrStr("red")}, "color"},
 		{"update group good color", &UpdateGroupRequest{Color: ptrStr("pink")}, ""},
+		{"update group gray", &UpdateGroupRequest{Color: ptrStr("gray")}, "gray"},
+		{"create group gray", &CreateGroupRequest{Titles: []string{"a", "b"}, Color: "gray"}, "gray"},
 
 		{"set group null ok", &SetActionGroupRequest{}, ""},
 		{"set group ok", &SetActionGroupRequest{GroupID: ptrUint(3)}, ""},
@@ -111,7 +113,9 @@ func TestProjectsValidation_TrimsTitles(t *testing.T) {
 func TestPickSwatch(t *testing.T) {
 	assert.Equal(t, "blue", PickSwatch(nil))
 	assert.Equal(t, "yellow", PickSwatch([]string{"blue", "green"}))
-	assert.Equal(t, "gray", PickSwatch([]string{"blue", "green", "yellow", "orange", "pink", "indigo"}))
+	// every colour used once: back to the first, never gray
+	assert.Equal(t, "blue", PickSwatch([]string{"blue", "green", "yellow", "orange", "pink", "indigo"}))
+	assert.Equal(t, "green", PickSwatch([]string{"gray", "blue", "gray"}))
 	// all taken: repeat the least used
 	assert.Equal(t, "green", PickSwatch([]string{"blue", "blue", "green", "yellow", "yellow", "orange", "pink", "indigo", "gray", "gray"}))
 }
