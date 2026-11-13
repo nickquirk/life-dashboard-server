@@ -670,6 +670,26 @@ func TestService_UpdateGroup_PinningKeepsAHeldColour(t *testing.T) {
 	assert.Equal(t, map[string]interface{}{"is_pinned": false}, *updates)
 }
 
+func TestService_UpdateGroup_PinningACompletedGroupKeepsAFreeColour(t *testing.T) {
+	repo, updates := pinRepo(domain.ActionGroup{ID: 4, ProjectID: 3, Color: "pink"}, true)
+	_, err := newProjectService(repo).UpdateGroup(domain.UpdateGroupRequest{ID: 4, UserID: 1, IsPinned: ptrBool(true)})
+	require.NoError(t, err)
+	assert.Equal(t, map[string]interface{}{"is_pinned": true}, *updates)
+}
+
+func TestService_ReopenAction_KeepsAFreeColour(t *testing.T) {
+	repo, _ := actionRepo(domain.Action{Stage: domain.StageDone, DurationMins: dur(30), GroupID: gid(2)})
+	recoloured := groupRepo(repo, true)
+	// Pink isn't the project's (green) or another active group's (blue)
+	repo.GetGroupByIDFunc = func(userID, groupID uint) (domain.ActionGroup, error) {
+		return domain.ActionGroup{ID: groupID, ProjectID: 3, Color: "pink"}, nil
+	}
+
+	_, err := newProjectService(repo).ReopenAction(domain.ReopenActionRequest{ID: 10, UserID: 1})
+	require.NoError(t, err)
+	assert.Empty(t, *recoloured)
+}
+
 func TestService_ReopenAction_LeavesAPinnedGroupsColour(t *testing.T) {
 	repo, _ := actionRepo(domain.Action{Stage: domain.StageDone, DurationMins: dur(30), GroupID: gid(2)})
 	recoloured := groupRepo(repo, true)

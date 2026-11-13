@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"log/slog"
+	"slices"
 
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
 )
@@ -430,7 +431,7 @@ func (s *service) NewGroup(req domain.NewGroupRequest) (domain.ActionGroup, erro
 		return domain.ActionGroup{}, err
 	}
 	// Also checks the project is the user's
-	color, err := s.pickGroupColor(req.UserID, req.ProjectID, 0)
+	color, err := s.pickGroupColor(req.UserID, req.ProjectID, 0, "")
 	if err != nil {
 		return domain.ActionGroup{}, err
 	}
@@ -457,7 +458,7 @@ func (s *service) CreateGroup(req domain.CreateGroupRequest) (domain.CreateGroup
 	}
 
 	if req.Color == "" {
-		if req.Color, err = s.pickGroupColor(req.UserID, current.ProjectID, 0); err != nil {
+		if req.Color, err = s.pickGroupColor(req.UserID, current.ProjectID, 0, ""); err != nil {
 			return domain.CreateGroupResponse{}, err
 		}
 	}
@@ -472,8 +473,9 @@ func (s *service) CreateGroup(req domain.CreateGroupRequest) (domain.CreateGroup
 
 // pickGroupColor avoids the project's swatch and its other active groups'
 // where possible, leaving out exceptGroupID (0 for a new group). Completed
-// groups have given their colour back, so they don't count.
-func (s *service) pickGroupColor(userID, projectID, exceptGroupID uint) (string, error) {
+// groups have given their colour back, so they don't count. keep is the
+// group's current colour ("" for a new group): it's kept while still free.
+func (s *service) pickGroupColor(userID, projectID, exceptGroupID uint, keep string) (string, error) {
 	project, err := s.projectRepo.GetProjectByID(userID, projectID)
 	if err != nil {
 		return "", err
@@ -482,7 +484,11 @@ func (s *service) pickGroupColor(userID, projectID, exceptGroupID uint) (string,
 	if err != nil {
 		return "", err
 	}
-	return domain.PickSwatch(append([]string{project.Color}, active...)), nil
+	used := append([]string{project.Color}, active...)
+	if keep != "" && !slices.Contains(used, keep) {
+		return keep, nil
+	}
+	return domain.PickSwatch(used), nil
 }
 
 // groupComplete reports whether groupID is a completed group. No group is
@@ -518,8 +524,8 @@ func (s *service) recolourGroup(userID, groupID uint) error {
 	if err != nil || group.IsPinned {
 		return err
 	}
-	color, err := s.pickGroupColor(userID, group.ProjectID, group.ID)
-	if err != nil {
+	color, err := s.pickGroupColor(userID, group.ProjectID, group.ID, group.Color)
+	if err != nil || color == group.Color {
 		return err
 	}
 	return s.projectRepo.UpdateGroup(userID, group.ID, map[string]interface{}{"color": color})
@@ -572,7 +578,11 @@ func (s *service) colorForPinning(userID, groupID uint) (string, error) {
 	if err != nil || !complete {
 		return "", err
 	}
-	return s.pickGroupColor(userID, group.ProjectID, group.ID)
+	color, err := s.pickGroupColor(userID, group.ProjectID, group.ID, group.Color)
+	if err != nil || color == group.Color {
+		return "", err
+	}
+	return color, nil
 }
 
 func sameGroup(a, b *uint) bool {
