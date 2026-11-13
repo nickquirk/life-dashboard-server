@@ -514,7 +514,8 @@ func (s *service) recolourGroup(userID, groupID uint) error {
 		return err
 	}
 	group, err := s.projectRepo.GetGroupByID(userID, groupID)
-	if err != nil {
+	// A pinned group never gave its colour back
+	if err != nil || group.IsPinned {
 		return err
 	}
 	color, err := s.pickGroupColor(userID, group.ProjectID, group.ID)
@@ -560,6 +561,20 @@ func (s *service) SetActionGroup(req domain.SetActionGroupRequest) (domain.Actio
 	return moved, nil
 }
 
+// colorForPinning is a fresh colour for an unpinned completed group about to
+// be pinned, or "" when the group keeps the one it holds.
+func (s *service) colorForPinning(userID, groupID uint) (string, error) {
+	group, err := s.projectRepo.GetGroupByID(userID, groupID)
+	if err != nil || group.IsPinned {
+		return "", err
+	}
+	complete, err := s.projectRepo.GroupIsComplete(userID, groupID)
+	if err != nil || !complete {
+		return "", err
+	}
+	return s.pickGroupColor(userID, group.ProjectID, group.ID)
+}
+
 func sameGroup(a, b *uint) bool {
 	return (a == nil && b == nil) || (a != nil && b != nil && *a == *b)
 }
@@ -575,6 +590,20 @@ func (s *service) UpdateGroup(req domain.UpdateGroupRequest) (domain.ActionGroup
 	}
 	if req.Color != nil {
 		updates["color"] = *req.Color
+	}
+	if req.IsPinned != nil {
+		updates["is_pinned"] = *req.IsPinned
+		if *req.IsPinned && req.Color == nil {
+			// A completed group has given its colour back, and a newer group
+			// may have it now, so pinning one picks a fresh colour
+			color, err := s.colorForPinning(req.UserID, req.ID)
+			if err != nil {
+				return domain.ActionGroup{}, err
+			}
+			if color != "" {
+				updates["color"] = color
+			}
+		}
 	}
 	if err := s.projectRepo.UpdateGroup(req.UserID, req.ID, updates); err != nil {
 		return domain.ActionGroup{}, err

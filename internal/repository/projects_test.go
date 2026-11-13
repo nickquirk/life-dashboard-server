@@ -672,6 +672,9 @@ func TestProjectRepo_ActiveGroupColors_LeavesOutCompletedAndExcepted(t *testing.
 	seedAction(t, db, domain.Action{ProjectID: p.ID, GroupID: &other.ID, Stage: domain.StageReady})
 	// An empty group is active, so it holds its colour
 	seedGroup(t, db, domain.ActionGroup{ProjectID: p.ID, Color: "green"})
+	// So does a pinned group, completed or not
+	pinned := seedGroup(t, db, domain.ActionGroup{ProjectID: p.ID, Color: "yellow", IsPinned: true})
+	seedAction(t, db, domain.Action{ProjectID: p.ID, GroupID: &pinned.ID, Stage: domain.StageDone})
 	// Another project's active group doesn't count
 	q := seedProject(t, db, domain.Project{})
 	elsewhere := seedGroup(t, db, domain.ActionGroup{ProjectID: q.ID, Color: "indigo"})
@@ -679,11 +682,11 @@ func TestProjectRepo_ActiveGroupColors_LeavesOutCompletedAndExcepted(t *testing.
 
 	colors, err := repo.ActiveGroupColors(testUserID, p.ID, 0)
 	require.NoError(t, err)
-	assert.Equal(t, []string{"blue", "orange", "green"}, colors)
+	assert.Equal(t, []string{"blue", "orange", "green", "yellow"}, colors)
 
 	colors, err = repo.ActiveGroupColors(testUserID, p.ID, other.ID)
 	require.NoError(t, err)
-	assert.Equal(t, []string{"blue", "green"}, colors)
+	assert.Equal(t, []string{"blue", "green", "yellow"}, colors)
 
 	colors, err = repo.ActiveGroupColors(otherProjectUserID, p.ID, 0)
 	require.NoError(t, err)

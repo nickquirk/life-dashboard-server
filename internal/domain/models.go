@@ -224,8 +224,9 @@ type Action struct {
 	Position     int        `gorm:"not null;default:0;index:idx_actions_board,priority:3" json:"position"` // Order within its stage
 }
 
-// ActionGroup collects actions on a project board. It exists only while it
-// has actions: the repository removes it when the last one leaves.
+// ActionGroup collects actions on a project board. It lasts until it's
+// ungrouped, even with no actions. A pinned group keeps its tile and colour
+// on the board even when completed.
 type ActionGroup struct {
 	ID        uint           `gorm:"primarykey" json:"id"`
 	CreatedAt time.Time      `json:"createdAt"`
@@ -236,4 +237,5 @@ type ActionGroup struct {
 	ProjectID uint   `gorm:"index;not null" json:"projectId"`
 	Title     string `gorm:"not null" json:"title"`
 	Color     string `json:"color"` // a Swatch name
+	IsPinned  bool   `gorm:"not null;default:false" json:"isPinned"`
 }

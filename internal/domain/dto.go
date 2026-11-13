@@ -705,10 +705,11 @@ type SetActionGroupRequest struct {
 }
 
 type UpdateGroupRequest struct {
-	ID     uint    `json:"-"`
-	UserID uint    `json:"-"`
-	Title  *string `json:"title"`
-	Color  *string `json:"color"`
+	ID       uint    `json:"-"`
+	UserID   uint    `json:"-"`
+	Title    *string `json:"title"`
+	Color    *string `json:"color"`
+	IsPinned *bool   `json:"isPinned"`
 }
 
 type UngroupRequest struct {

@@ -407,17 +407,18 @@ func (r *GormProjectRepository) Ungroup(userID, groupID uint) error {
 	})
 }
 
-// ActiveGroupColors is the colour of each active group on the board (empty,
-// or with an unfinished action), leaving out exceptGroupID (0 leaves none
-// out). Completed groups have given their colour back, so they don't count.
+// ActiveGroupColors is the colour of each group on the board that holds one:
+// active (empty, or with an unfinished action) or pinned. It leaves out
+// exceptGroupID (0 leaves none out). Unpinned completed groups have given
+// their colour back, so they don't count.
 func (r *GormProjectRepository) ActiveGroupColors(userID, projectID, exceptGroupID uint) ([]string, error) {
 	colors := make([]string, 0)
 	err := r.Db.
 		Table("action_groups AS g").
 		Joins("LEFT JOIN actions AS a ON a.group_id = g.id AND a.deleted_at IS NULL").
 		Where("g.user_id = ? AND g.project_id = ? AND g.id <> ? AND g.deleted_at IS NULL", userID, projectID, exceptGroupID).
-		Group("g.id, g.color").
-		Having("COUNT(a.id) = 0 OR SUM(CASE WHEN a.stage <> ? THEN 1 ELSE 0 END) > 0", domain.StageDone).
+		Group("g.id, g.color, g.is_pinned").
+		Having("g.is_pinned = ? OR COUNT(a.id) = 0 OR SUM(CASE WHEN a.stage <> ? THEN 1 ELSE 0 END) > 0", true, domain.StageDone).
 		Order("g.id ASC").
 		Pluck("g.color", &colors).Error
 	if err != nil {

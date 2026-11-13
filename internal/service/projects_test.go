@@ -618,6 +618,70 @@ func TestService_UpdateGroup(t *testing.T) {
 	requireInvalid(t, err, "nothing to update")
 }
 
+func pinRepo(group domain.ActionGroup, complete bool) (*mocks.MockProjectRepository, *map[string]interface{}) {
+	updates := map[string]interface{}{}
+	repo := &mocks.MockProjectRepository{
+		GetGroupByIDFunc: func(userID, groupID uint) (domain.ActionGroup, error) {
+			return group, nil
+		},
+		GroupIsCompleteFunc: func(userID, groupID uint) (bool, error) { return complete, nil },
+		GetProjectByIDFunc: func(userID, projectID uint) (domain.Project, error) {
+			return domain.Project{ID: projectID, Color: "green"}, nil
+		},
+		ActiveGroupColorsFunc: func(userID, projectID, exceptGroupID uint) ([]string, error) {
+			return []string{"blue"}, nil
+		},
+		UpdateGroupFunc: func(userID, groupID uint, u map[string]interface{}) error {
+			updates = u
+			return nil
+		},
+	}
+	return repo, &updates
+}
+
+func TestService_UpdateGroup_PinningACompletedGroupPicksAFreshColour(t *testing.T) {
+	repo, updates := pinRepo(domain.ActionGroup{ID: 4, ProjectID: 3, Color: "blue"}, true)
+	_, err := newProjectService(repo).UpdateGroup(domain.UpdateGroupRequest{ID: 4, UserID: 1, IsPinned: ptrBool(true)})
+	require.NoError(t, err)
+	// Blue went to another group while this one was completed
+	assert.Equal(t, map[string]interface{}{"is_pinned": true, "color": "yellow"}, *updates)
+}
+
+func TestService_UpdateGroup_PinningKeepsAHeldColour(t *testing.T) {
+	cases := map[string]struct {
+		group    domain.ActionGroup
+		complete bool
+	}{
+		"active":         {domain.ActionGroup{ID: 4, ProjectID: 3, Color: "blue"}, false},
+		"already pinned": {domain.ActionGroup{ID: 4, ProjectID: 3, Color: "blue", IsPinned: true}, true},
+	}
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			repo, updates := pinRepo(c.group, c.complete)
+			_, err := newProjectService(repo).UpdateGroup(domain.UpdateGroupRequest{ID: 4, UserID: 1, IsPinned: ptrBool(true)})
+			require.NoError(t, err)
+			assert.Equal(t, map[string]interface{}{"is_pinned": true}, *updates)
+		})
+	}
+
+	repo, updates := pinRepo(domain.ActionGroup{ID: 4, ProjectID: 3, Color: "blue", IsPinned: true}, true)
+	_, err := newProjectService(repo).UpdateGroup(domain.UpdateGroupRequest{ID: 4, UserID: 1, IsPinned: ptrBool(false)})
+	require.NoError(t, err)
+	assert.Equal(t, map[string]interface{}{"is_pinned": false}, *updates)
+}
+
+func TestService_ReopenAction_LeavesAPinnedGroupsColour(t *testing.T) {
+	repo, _ := actionRepo(domain.Action{Stage: domain.StageDone, DurationMins: dur(30), GroupID: gid(2)})
+	recoloured := groupRepo(repo, true)
+	repo.GetGroupByIDFunc = func(userID, groupID uint) (domain.ActionGroup, error) {
+		return domain.ActionGroup{ID: groupID, ProjectID: 3, Color: "blue", IsPinned: true}, nil
+	}
+
+	_, err := newProjectService(repo).ReopenAction(domain.ReopenActionRequest{ID: 10, UserID: 1})
+	require.NoError(t, err)
+	assert.Empty(t, *recoloured)
+}
+
 func TestService_GetGroups_UnknownProject(t *testing.T) {
 	repo := &mocks.MockProjectRepository{
 		GetProjectByIDFunc: func(uint, uint) (domain.Project, error) { return domain.Project{}, gorm.ErrRecordNotFound },

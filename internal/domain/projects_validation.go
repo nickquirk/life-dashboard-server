@@ -178,8 +178,8 @@ func (r *NewGroupRequest) Validate() error {
 }
 
 func (r *UpdateGroupRequest) Validate() error {
-	if r.Title == nil && r.Color == nil {
-		return fmt.Errorf("%w: nothing to update: send title or color", ErrInvalidInput)
+	if r.Title == nil && r.Color == nil && r.IsPinned == nil {
+		return fmt.Errorf("%w: nothing to update: send title, color or isPinned", ErrInvalidInput)
 	}
 	if r.Title != nil {
 		if err := validateTitle(r.Title, maxGroupTitleLen); err != nil {
