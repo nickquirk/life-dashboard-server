@@ -678,6 +678,13 @@ type GetGroupsResponse struct {
 	Groups []ActionGroup `json:"groups"`
 }
 
+// NewGroupRequest makes an empty group on a project's board (New group).
+type NewGroupRequest struct {
+	UserID    uint   `json:"-"`
+	ProjectID uint   `json:"-"`
+	Title     string `json:"title"`
+}
+
 // CreateGroupRequest breaks an action down into a new group named after it.
 type CreateGroupRequest struct {
 	ID     uint     `json:"-"` // the action

@@ -511,11 +511,11 @@ func TestProjectRepo_SetActionGroup_IntoBetweenOut(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, g1.ID, *got.GroupID)
 
-	// g1 → g2: g1 is now empty and goes
+	// g1 → g2: g1 is now empty, and stays
 	got, err = repo.SetActionGroup(testUserID, a.ID, &g2.ID)
 	require.NoError(t, err)
 	assert.Equal(t, g2.ID, *got.GroupID)
-	assert.False(t, groupExists(t, db, g1.ID))
+	assert.True(t, groupExists(t, db, g1.ID))
 
 	// out of g2: keep is still there, so g2 stays
 	got, err = repo.SetActionGroup(testUserID, a.ID, nil)
@@ -525,10 +525,10 @@ func TestProjectRepo_SetActionGroup_IntoBetweenOut(t *testing.T) {
 	assert.Equal(t, 4, got.Position)
 	assert.True(t, groupExists(t, db, g2.ID))
 
-	// last one out removes g2
+	// last one out leaves g2 empty, not removed
 	_, err = repo.SetActionGroup(testUserID, keep.ID, nil)
 	require.NoError(t, err)
-	assert.False(t, groupExists(t, db, g2.ID))
+	assert.True(t, groupExists(t, db, g2.ID))
 
 	stored, err := repo.GetActionByID(testUserID, a.ID)
 	require.NoError(t, err)
@@ -560,17 +560,29 @@ func TestProjectRepo_SetActionGroup_WrongUser(t *testing.T) {
 	assert.True(t, errors.Is(err, gorm.ErrRecordNotFound))
 }
 
-func TestProjectRepo_DeleteAction_RemovesEmptyGroupOnly(t *testing.T) {
+func TestProjectRepo_DeleteAction_KeepsTheEmptyGroup(t *testing.T) {
 	repo, db := newProjectRepo(t)
 	p := seedProject(t, db, domain.Project{})
 	g := seedGroup(t, db, domain.ActionGroup{ProjectID: p.ID})
 	a := seedAction(t, db, domain.Action{ProjectID: p.ID, GroupID: &g.ID})
-	b := seedAction(t, db, domain.Action{ProjectID: p.ID, GroupID: &g.ID})
 
 	require.NoError(t, repo.DeleteAction(testUserID, a.ID))
 	assert.True(t, groupExists(t, db, g.ID))
-	require.NoError(t, repo.DeleteAction(testUserID, b.ID))
-	assert.False(t, groupExists(t, db, g.ID))
+	assert.True(t, errors.Is(repo.DeleteAction(testUserID, a.ID), gorm.ErrRecordNotFound))
+}
+
+func TestProjectRepo_CreateEmptyGroup(t *testing.T) {
+	repo, db := newProjectRepo(t)
+	p := seedProject(t, db, domain.Project{})
+
+	g, err := repo.CreateEmptyGroup(domain.ActionGroup{UserID: testUserID, ProjectID: p.ID, Title: "Launch", Color: "blue"})
+	require.NoError(t, err)
+	assert.NotZero(t, g.ID)
+
+	groups, err := repo.GetGroupsByProjectID(testUserID, p.ID)
+	require.NoError(t, err)
+	require.Len(t, groups, 1)
+	assert.Equal(t, "Launch", groups[0].Title)
 }
 
 func TestProjectRepo_Ungroup(t *testing.T) {
@@ -658,6 +670,8 @@ func TestProjectRepo_ActiveGroupColors_LeavesOutCompletedAndExcepted(t *testing.
 	seedAction(t, db, domain.Action{ProjectID: p.ID, GroupID: &completed.ID, Stage: domain.StageDone})
 	other := seedGroup(t, db, domain.ActionGroup{ProjectID: p.ID, Color: "orange"})
 	seedAction(t, db, domain.Action{ProjectID: p.ID, GroupID: &other.ID, Stage: domain.StageReady})
+	// An empty group is active, so it holds its colour
+	seedGroup(t, db, domain.ActionGroup{ProjectID: p.ID, Color: "green"})
 	// Another project's active group doesn't count
 	q := seedProject(t, db, domain.Project{})
 	elsewhere := seedGroup(t, db, domain.ActionGroup{ProjectID: q.ID, Color: "indigo"})
@@ -665,11 +679,11 @@ func TestProjectRepo_ActiveGroupColors_LeavesOutCompletedAndExcepted(t *testing.
 
 	colors, err := repo.ActiveGroupColors(testUserID, p.ID, 0)
 	require.NoError(t, err)
-	assert.Equal(t, []string{"blue", "orange"}, colors)
+	assert.Equal(t, []string{"blue", "orange", "green"}, colors)
 
 	colors, err = repo.ActiveGroupColors(testUserID, p.ID, other.ID)
 	require.NoError(t, err)
-	assert.Equal(t, []string{"blue"}, colors)
+	assert.Equal(t, []string{"blue", "green"}, colors)
 
 	colors, err = repo.ActiveGroupColors(otherProjectUserID, p.ID, 0)
 	require.NoError(t, err)

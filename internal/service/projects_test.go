@@ -509,6 +509,31 @@ func TestService_CreateGroup_AutoColourAvoidsBoard(t *testing.T) {
 	assert.Equal(t, "yellow", got)
 }
 
+func TestService_NewGroup_EmptyAndAutoColoured(t *testing.T) {
+	repo := &mocks.MockProjectRepository{
+		GetProjectByIDFunc: func(userID, projectID uint) (domain.Project, error) {
+			return domain.Project{ID: projectID, Color: "blue"}, nil
+		},
+		ActiveGroupColorsFunc: func(userID, projectID, exceptGroupID uint) ([]string, error) {
+			return []string{"green"}, nil
+		},
+	}
+	got, err := newProjectService(repo).NewGroup(domain.NewGroupRequest{UserID: 1, ProjectID: 3, Title: "  Launch  "})
+	require.NoError(t, err)
+	assert.Equal(t, domain.ActionGroup{UserID: 1, ProjectID: 3, Title: "Launch", Color: "yellow"}, got)
+}
+
+func TestService_NewGroup_Refused(t *testing.T) {
+	repo := &mocks.MockProjectRepository{
+		GetProjectByIDFunc: func(uint, uint) (domain.Project, error) { return domain.Project{}, gorm.ErrRecordNotFound },
+	}
+	_, err := newProjectService(repo).NewGroup(domain.NewGroupRequest{UserID: 1, ProjectID: 3, Title: "Launch"})
+	assert.True(t, errors.Is(err, gorm.ErrRecordNotFound))
+
+	_, err = newProjectService(repo).NewGroup(domain.NewGroupRequest{UserID: 1, ProjectID: 3, Title: "  "})
+	requireInvalid(t, err, "title")
+}
+
 func TestService_CreateGroup_Refused(t *testing.T) {
 	cases := map[string]domain.Action{
 		"already in a group": {Stage: domain.StageRefine, GroupID: gid(2)},
@@ -658,6 +683,10 @@ func groupRepo(repo *mocks.MockProjectRepository, completeBefore bool) *string {
 		written = true
 		return a, nil
 	}
+	repo.DeleteActionFunc = func(userID, actionID uint) error {
+		written = true
+		return nil
+	}
 	return &recoloured
 }
 
@@ -686,6 +715,24 @@ func TestService_SetActionGroup_IntoACompletedGroupRecoloursIt(t *testing.T) {
 	recoloured := groupRepo(repo, true)
 
 	_, err := newProjectService(repo).SetActionGroup(domain.SetActionGroupRequest{ID: 10, UserID: 1, GroupID: gid(2)})
+	require.NoError(t, err)
+	assert.Equal(t, "yellow", *recoloured)
+}
+
+func TestService_SetActionGroup_EmptyingACompletedGroupRecoloursIt(t *testing.T) {
+	repo, _ := actionRepo(domain.Action{Stage: domain.StageDone, GroupID: gid(2)})
+	recoloured := groupRepo(repo, true)
+
+	_, err := newProjectService(repo).SetActionGroup(domain.SetActionGroupRequest{ID: 10, UserID: 1, GroupID: nil})
+	require.NoError(t, err)
+	assert.Equal(t, "yellow", *recoloured)
+}
+
+func TestService_DeleteAction_EmptyingACompletedGroupRecoloursIt(t *testing.T) {
+	repo, _ := actionRepo(domain.Action{Stage: domain.StageDone, GroupID: gid(2)})
+	recoloured := groupRepo(repo, true)
+
+	_, err := newProjectService(repo).DeleteAction(domain.DeleteActionRequest{ID: 10, UserID: 1})
 	require.NoError(t, err)
 	assert.Equal(t, "yellow", *recoloured)
 }

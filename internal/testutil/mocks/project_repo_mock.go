@@ -28,6 +28,7 @@ type MockProjectRepository struct {
 	GetGroupsByProjectIDFunc  func(userID, projectID uint) ([]domain.ActionGroup, error)
 	GetGroupByIDFunc          func(userID, groupID uint) (domain.ActionGroup, error)
 	UpdateGroupFunc           func(userID, groupID uint, updates map[string]interface{}) error
+	CreateEmptyGroupFunc      func(group domain.ActionGroup) (domain.ActionGroup, error)
 	CreateGroupFromActionFunc func(userID, actionID uint, group domain.ActionGroup, children []domain.Action) (domain.ActionGroup, []domain.Action, error)
 	SetActionGroupFunc        func(userID, actionID uint, groupID *uint) (domain.Action, error)
 	UngroupFunc               func(userID, groupID uint) error
@@ -180,6 +181,13 @@ func (m *MockProjectRepository) SetActionGroup(userID, actionID uint, groupID *u
 		return m.SetActionGroupFunc(userID, actionID, groupID)
 	}
 	return domain.Action{}, nil
+}
+
+func (m *MockProjectRepository) CreateEmptyGroup(group domain.ActionGroup) (domain.ActionGroup, error) {
+	if m.CreateEmptyGroupFunc != nil {
+		return m.CreateEmptyGroupFunc(group)
+	}
+	return group, nil
 }
 
 func (m *MockProjectRepository) Ungroup(userID, groupID uint) error {

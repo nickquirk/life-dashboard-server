@@ -472,6 +472,19 @@ func TestSetActionGroup_DecodesGroupID(t *testing.T) {
 	}
 }
 
+func TestNewGroup_PassesProjectAndTitle(t *testing.T) {
+	var got domain.NewGroupRequest
+	svc := &mocks.MockService{NewGroupFunc: func(req domain.NewGroupRequest) (domain.ActionGroup, error) {
+		got = req
+		return domain.ActionGroup{ID: 9, ProjectID: req.ProjectID, Title: req.Title}, nil
+	}}
+	rt := idRoute{method: http.MethodPost, handler: func(h *Handler) http.HandlerFunc { return h.newGroup }}
+	rr := rt.serve(svc, "3", `{"title":"Launch"}`, true)
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, uint(3), got.ProjectID)
+	assert.Equal(t, "Launch", got.Title)
+}
+
 func TestCreateAction_PassesGroupID(t *testing.T) {
 	var got *uint
 	svc := &mocks.MockService{CreateActionFunc: func(req domain.CreateActionRequest) (domain.Action, error) {

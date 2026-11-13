@@ -33,6 +33,7 @@ type ProjectRepository interface {
 	GetGroupsByProjectID(userID, projectID uint) ([]domain.ActionGroup, error)
 	GetGroupByID(userID, groupID uint) (domain.ActionGroup, error)
 	UpdateGroup(userID, groupID uint, updates map[string]interface{}) error
+	CreateEmptyGroup(group domain.ActionGroup) (domain.ActionGroup, error)
 	CreateGroupFromAction(userID, actionID uint, group domain.ActionGroup, children []domain.Action) (domain.ActionGroup, []domain.Action, error)
 	SetActionGroup(userID, actionID uint, groupID *uint) (domain.Action, error)
 	Ungroup(userID, groupID uint) error
@@ -253,10 +254,8 @@ func (r *GormProjectRepository) ReplaceWithActions(userID, actionID uint, childr
 		if err != nil {
 			return err
 		}
-		if created, err = replaceAction(tx, original, children, original.GroupID); err != nil {
-			return err
-		}
-		return removeGroupIfEmpty(tx, userID, original.GroupID)
+		created, err = replaceAction(tx, original, children, original.GroupID)
+		return err
 	})
 	if err != nil {
 		return nil, err
@@ -302,16 +301,11 @@ func replaceAction(tx *gorm.DB, original domain.Action, children []domain.Action
 }
 
 func (r *GormProjectRepository) DeleteAction(userID, actionID uint) error {
-	return r.Db.Transaction(func(tx *gorm.DB) error {
-		action, err := firstAction(tx, userID, actionID)
-		if err != nil {
-			return err
-		}
-		if err := tx.Unscoped().Delete(&action).Error; err != nil {
-			return err
-		}
-		return removeGroupIfEmpty(tx, userID, action.GroupID)
-	})
+	action, err := firstAction(r.Db, userID, actionID)
+	if err != nil {
+		return err
+	}
+	return r.Db.Unscoped().Delete(&action).Error
 }
 
 // --- GROUPS ---
@@ -341,6 +335,13 @@ func (r *GormProjectRepository) UpdateGroup(userID, groupID uint, updates map[st
 	return result.Error
 }
 
+// CreateEmptyGroup makes a group with no actions (New group). The caller has
+// checked the project is the user's.
+func (r *GormProjectRepository) CreateEmptyGroup(group domain.ActionGroup) (domain.ActionGroup, error) {
+	err := r.Db.Create(&group).Error
+	return group, err
+}
+
 // CreateGroupFromAction is a break down that also creates a group, in the
 // original's project, for the children. All or nothing.
 func (r *GormProjectRepository) CreateGroupFromAction(userID, actionID uint, group domain.ActionGroup, children []domain.Action) (domain.ActionGroup, []domain.Action, error) {
@@ -364,9 +365,9 @@ func (r *GormProjectRepository) CreateGroupFromAction(userID, actionID uint, gro
 	return group, created, nil
 }
 
-// SetActionGroup moves an action into groupID (nil = out of its group), and
-// removes the group it left if that emptied it. groupID must be in the
-// action's project, else not found.
+// SetActionGroup moves an action into groupID (nil = out of its group). The
+// group it left stays, even if empty. groupID must be in the action's
+// project, else not found.
 func (r *GormProjectRepository) SetActionGroup(userID, actionID uint, groupID *uint) (domain.Action, error) {
 	var action domain.Action
 	err := r.Db.Transaction(func(tx *gorm.DB) error {
@@ -379,14 +380,10 @@ func (r *GormProjectRepository) SetActionGroup(userID, actionID uint, groupID *u
 				return err
 			}
 		}
-		old := action.GroupID
 		if err := tx.Model(&action).Omit("Project").Update("group_id", groupID).Error; err != nil {
 			return err
 		}
 		action.GroupID = groupID
-		if old != nil && (groupID == nil || *old != *groupID) {
-			return removeGroupIfEmpty(tx, userID, old)
-		}
 		return nil
 	})
 	return action, err
@@ -410,17 +407,17 @@ func (r *GormProjectRepository) Ungroup(userID, groupID uint) error {
 	})
 }
 
-// ActiveGroupColors is the colour of each group on the board that still has
-// an unfinished action, leaving out exceptGroupID (0 leaves none out).
-// Completed groups have given their colour back, so they don't count.
+// ActiveGroupColors is the colour of each active group on the board (empty,
+// or with an unfinished action), leaving out exceptGroupID (0 leaves none
+// out). Completed groups have given their colour back, so they don't count.
 func (r *GormProjectRepository) ActiveGroupColors(userID, projectID, exceptGroupID uint) ([]string, error) {
 	colors := make([]string, 0)
 	err := r.Db.
 		Table("action_groups AS g").
-		Joins("JOIN actions AS a ON a.group_id = g.id AND a.deleted_at IS NULL").
+		Joins("LEFT JOIN actions AS a ON a.group_id = g.id AND a.deleted_at IS NULL").
 		Where("g.user_id = ? AND g.project_id = ? AND g.id <> ? AND g.deleted_at IS NULL", userID, projectID, exceptGroupID).
 		Group("g.id, g.color").
-		Having("SUM(CASE WHEN a.stage <> ? THEN 1 ELSE 0 END) > 0", domain.StageDone).
+		Having("COUNT(a.id) = 0 OR SUM(CASE WHEN a.stage <> ? THEN 1 ELSE 0 END) > 0", domain.StageDone).
 		Order("g.id ASC").
 		Pluck("g.color", &colors).Error
 	if err != nil {
@@ -454,26 +451,4 @@ func groupInProject(tx *gorm.DB, userID, groupID, projectID uint) (domain.Action
 		return domain.ActionGroup{}, gorm.ErrRecordNotFound
 	}
 	return group, nil
-}
-
-// removeGroupIfEmpty hard-deletes the group once no action is left in it, so
-// an empty group is never visible. Call it inside the write's transaction.
-func removeGroupIfEmpty(tx *gorm.DB, userID uint, groupID *uint) error {
-	if groupID == nil {
-		return nil
-	}
-	// Lock the group before counting, so an action moving in concurrently
-	// either lands first (and is counted) or finds the group gone.
-	var g domain.ActionGroup
-	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", *groupID).Find(&g).Error; err != nil {
-		return err
-	}
-	var n int64
-	if err := tx.Model(&domain.Action{}).Where("group_id = ?", *groupID).Count(&n).Error; err != nil {
-		return err
-	}
-	if n > 0 {
-		return nil
-	}
-	return tx.Unscoped().Where("id = ? AND user_id = ?", *groupID, userID).Delete(&domain.ActionGroup{}).Error
 }

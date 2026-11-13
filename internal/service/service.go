@@ -89,6 +89,7 @@ type Service interface {
 	DeleteAction(req domain.DeleteActionRequest) (domain.DeleteActionResponse, error)
 	// ------ Action groups ---------
 	GetGroups(req domain.GetGroupsRequest) (domain.GetGroupsResponse, error)
+	NewGroup(req domain.NewGroupRequest) (domain.ActionGroup, error)
 	CreateGroup(req domain.CreateGroupRequest) (domain.CreateGroupResponse, error)
 	SetActionGroup(req domain.SetActionGroupRequest) (domain.Action, error)
 	UpdateGroup(req domain.UpdateGroupRequest) (domain.ActionGroup, error)

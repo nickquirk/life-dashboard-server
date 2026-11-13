@@ -382,9 +382,19 @@ func (s *service) ReorderActions(req domain.ReorderActionsRequest) (domain.Reord
 }
 
 func (s *service) DeleteAction(req domain.DeleteActionRequest) (domain.DeleteActionResponse, error) {
+	current, err := s.projectRepo.GetActionByID(req.UserID, req.ID)
+	if err != nil {
+		return domain.DeleteActionResponse{}, err
+	}
+	// Deleting the last action of a completed group leaves it empty, and so active
+	wasComplete, err := s.groupComplete(req.UserID, current.GroupID)
+	if err != nil {
+		return domain.DeleteActionResponse{}, err
+	}
 	if err := s.projectRepo.DeleteAction(req.UserID, req.ID); err != nil {
 		return domain.DeleteActionResponse{}, err
 	}
+	s.recolourIfReactivated(req.UserID, current.GroupID, wasComplete)
 	return domain.DeleteActionResponse{ID: req.ID}, nil
 }
 
@@ -399,8 +409,8 @@ func breakDownChildren(titles []string) []domain.Action {
 
 // --- Action groups ---
 //
-// A group lives on one project board, one level deep, and exists only while
-// it has actions (the repository removes it when the last one leaves).
+// A group lives on one project board, one level deep, and lasts until it's
+// ungrouped, even with no actions. An empty group is active.
 
 func (s *service) GetGroups(req domain.GetGroupsRequest) (domain.GetGroupsResponse, error) {
 	if _, err := s.projectRepo.GetProjectByID(req.UserID, req.ProjectID); err != nil {
@@ -411,6 +421,22 @@ func (s *service) GetGroups(req domain.GetGroupsRequest) (domain.GetGroupsRespon
 		return domain.GetGroupsResponse{}, err
 	}
 	return domain.GetGroupsResponse{Groups: groups}, nil
+}
+
+// NewGroup makes an empty group on the board, coloured like a new one from
+// Create group.
+func (s *service) NewGroup(req domain.NewGroupRequest) (domain.ActionGroup, error) {
+	if err := req.Validate(); err != nil {
+		return domain.ActionGroup{}, err
+	}
+	// Also checks the project is the user's
+	color, err := s.pickGroupColor(req.UserID, req.ProjectID, 0)
+	if err != nil {
+		return domain.ActionGroup{}, err
+	}
+	return s.projectRepo.CreateEmptyGroup(domain.ActionGroup{
+		UserID: req.UserID, ProjectID: req.ProjectID, Title: req.Title, Color: color,
+	})
 }
 
 // CreateGroup breaks an action down into a new group named after it.
@@ -513,8 +539,13 @@ func (s *service) SetActionGroup(req domain.SetActionGroupRequest) (domain.Actio
 		return current, nil
 	}
 
-	// Moving an unfinished action into a completed group makes it active again
+	// Moving an unfinished action into a completed group makes it active
+	// again, and so does moving the last action out of one (it's now empty)
 	wasComplete, err := s.groupComplete(req.UserID, req.GroupID)
+	if err != nil {
+		return domain.Action{}, err
+	}
+	leftWasComplete, err := s.groupComplete(req.UserID, current.GroupID)
 	if err != nil {
 		return domain.Action{}, err
 	}
@@ -525,6 +556,7 @@ func (s *service) SetActionGroup(req domain.SetActionGroupRequest) (domain.Actio
 		return domain.Action{}, err
 	}
 	s.recolourIfReactivated(req.UserID, req.GroupID, wasComplete)
+	s.recolourIfReactivated(req.UserID, current.GroupID, leftWasComplete)
 	return moved, nil
 }
 

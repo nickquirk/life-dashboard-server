@@ -27,6 +27,33 @@ func (h *Handler) getProjectGroups(w http.ResponseWriter, r *http.Request) {
 	h.respondWithJSON(w, http.StatusOK, resp, "userID", userID, "projectID", projectID)
 }
 
+func (h *Handler) newGroup(w http.ResponseWriter, r *http.Request) {
+	userID, ok := h.GetUserID(r)
+	if !ok {
+		h.respondWithError(w, "User not found", fmt.Errorf("user ID not in context"), http.StatusUnauthorized)
+		return
+	}
+	projectID, ok := h.parseIDParam(w, r, "id", "project", userID)
+	if !ok {
+		return
+	}
+
+	var req domain.NewGroupRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.respondWithError(w, "Invalid request body", err, http.StatusBadRequest, "userID", userID)
+		return
+	}
+	req.ProjectID = projectID
+	req.UserID = userID
+
+	resp, err := h.Service.NewGroup(req)
+	if err != nil {
+		h.respondWithServiceError(w, err, "Project not found", "Failed to create group", "userID", userID, "projectID", projectID)
+		return
+	}
+	h.respondWithJSON(w, http.StatusOK, resp, "userID", userID, "projectID", projectID)
+}
+
 func (h *Handler) createGroup(w http.ResponseWriter, r *http.Request) {
 	userID, ok := h.GetUserID(r)
 	if !ok {

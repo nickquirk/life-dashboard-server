@@ -173,6 +173,10 @@ func (r *SetActionGroupRequest) Validate() error {
 	return validateGroupID(r.GroupID)
 }
 
+func (r *NewGroupRequest) Validate() error {
+	return validateTitle(&r.Title, maxGroupTitleLen)
+}
+
 func (r *UpdateGroupRequest) Validate() error {
 	if r.Title == nil && r.Color == nil {
 		return fmt.Errorf("%w: nothing to update: send title or color", ErrInvalidInput)

@@ -77,6 +77,7 @@ type MockService struct {
 	CreateGroupFunc           func(req domain.CreateGroupRequest) (domain.CreateGroupResponse, error)
 	SetActionGroupFunc        func(req domain.SetActionGroupRequest) (domain.Action, error)
 	UpdateGroupFunc           func(req domain.UpdateGroupRequest) (domain.ActionGroup, error)
+	NewGroupFunc              func(req domain.NewGroupRequest) (domain.ActionGroup, error)
 	UngroupFunc               func(req domain.UngroupRequest) (domain.UngroupResponse, error)
 }
 
@@ -545,6 +546,13 @@ func (m *MockService) SetActionGroup(req domain.SetActionGroupRequest) (domain.A
 func (m *MockService) UpdateGroup(req domain.UpdateGroupRequest) (domain.ActionGroup, error) {
 	if m.UpdateGroupFunc != nil {
 		return m.UpdateGroupFunc(req)
+	}
+	return domain.ActionGroup{}, nil
+}
+
+func (m *MockService) NewGroup(req domain.NewGroupRequest) (domain.ActionGroup, error) {
+	if m.NewGroupFunc != nil {
+		return m.NewGroupFunc(req)
 	}
 	return domain.ActionGroup{}, nil
 }
