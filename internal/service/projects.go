@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"slices"
+	"time"
 
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
 )
@@ -319,7 +320,8 @@ func (s *service) CompleteAction(req domain.CompleteActionRequest) (domain.Actio
 	// The date is left alone: a scheduled action stays on its calendar day,
 	// drawn completed; an undated one stays undated.
 	return s.applyActionUpdates(req.UserID, req.ID, map[string]interface{}{
-		"stage": domain.StageDone,
+		"stage":        domain.StageDone,
+		"completed_at": time.Now().UTC(),
 	})
 }
 
@@ -341,9 +343,9 @@ func (s *service) ReopenAction(req domain.ReopenActionRequest) (domain.Action, e
 	var reopened domain.Action
 	to := reopenStage(current)
 	if to == domain.StageScheduled {
-		reopened, err = s.applyActionUpdates(req.UserID, req.ID, map[string]interface{}{"stage": to})
+		reopened, err = s.applyActionUpdates(req.UserID, req.ID, map[string]interface{}{"stage": to, "completed_at": nil})
 	} else {
-		reopened, err = s.moveToColumn(current, to, nil)
+		reopened, err = s.moveToColumn(current, to, map[string]interface{}{"completed_at": nil})
 	}
 	if err != nil {
 		return domain.Action{}, err

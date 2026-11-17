@@ -47,6 +47,13 @@ func actionRepo(a domain.Action) (*mocks.MockProjectRepository, *domain.Action) 
 					cur.Notes = v.(string)
 				case "duration_mins":
 					cur.DurationMins = v.(*int)
+				case "completed_at":
+					if v == nil {
+						cur.CompletedAt = nil
+					} else {
+						d := v.(time.Time)
+						cur.CompletedAt = &d
+					}
 				case "date":
 					if v == nil {
 						cur.Date = nil
@@ -219,6 +226,23 @@ func TestService_Complete_FromScheduled_KeepsDate(t *testing.T) {
 	assert.True(t, got.Date.Equal(*at(9)))
 }
 
+func TestService_Complete_SetsCompletedAt(t *testing.T) {
+	repo, _ := actionRepo(domain.Action{Stage: domain.StageReady, DurationMins: dur(30)})
+	before := time.Now().UTC()
+	got, err := newProjectService(repo).CompleteAction(domain.CompleteActionRequest{ID: 10, UserID: 1})
+	require.NoError(t, err)
+	require.NotNil(t, got.CompletedAt)
+	assert.False(t, got.CompletedAt.Before(before))
+}
+
+// Completing twice is rejected, so the first completion time is never reset.
+func TestService_Complete_AlreadyDoneKeepsCompletedAt(t *testing.T) {
+	repo, cur := actionRepo(domain.Action{Stage: domain.StageDone, CompletedAt: at(8)})
+	_, err := newProjectService(repo).CompleteAction(domain.CompleteActionRequest{ID: 10, UserID: 1})
+	require.Error(t, err)
+	assert.True(t, cur.CompletedAt.Equal(*at(8)))
+}
+
 func TestService_Complete_AlreadyDoneRejected(t *testing.T) {
 	repo, _ := actionRepo(domain.Action{Stage: domain.StageDone})
 	_, err := newProjectService(repo).CompleteAction(domain.CompleteActionRequest{ID: 10, UserID: 1})
@@ -234,9 +258,9 @@ func TestService_Reopen_Outcomes(t *testing.T) {
 		want     domain.Stage
 		wantDate bool
 	}{
-		{"with date -> scheduled", domain.Action{Stage: domain.StageDone, DurationMins: dur(30), Date: at(9)}, domain.StageScheduled, true},
-		{"duration only -> ready", domain.Action{Stage: domain.StageDone, DurationMins: dur(30)}, domain.StageReady, false},
-		{"neither -> refine", domain.Action{Stage: domain.StageDone}, domain.StageRefine, false},
+		{"with date -> scheduled", domain.Action{Stage: domain.StageDone, DurationMins: dur(30), Date: at(9), CompletedAt: at(10)}, domain.StageScheduled, true},
+		{"duration only -> ready", domain.Action{Stage: domain.StageDone, DurationMins: dur(30), CompletedAt: at(10)}, domain.StageReady, false},
+		{"neither -> refine", domain.Action{Stage: domain.StageDone, CompletedAt: at(10)}, domain.StageRefine, false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -245,6 +269,7 @@ func TestService_Reopen_Outcomes(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, c.want, got.Stage)
 			assert.Equal(t, c.wantDate, got.Date != nil)
+			assert.Nil(t, got.CompletedAt)
 		})
 	}
 }

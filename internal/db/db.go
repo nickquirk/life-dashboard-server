@@ -82,6 +82,10 @@ func InitMigration(db *gorm.DB) {
 	db.AutoMigrate(&domain.Note{}, &domain.NoteItem{})
 	db.AutoMigrate(&domain.Project{}, &domain.Action{}, &domain.ActionGroup{})
 
+	if err := BackfillActionCompletedAt(db); err != nil {
+		slog.Warn("failed to backfill actions.completed_at", "error", err)
+	}
+
 	// The single-session app_refresh_token column on users was replaced by the
 	// sessions table. AutoMigrate doesn't drop columns, so do it explicitly.
 	// Existing users will need to re-authenticate after this deploy.
@@ -111,4 +115,16 @@ func InitMigration(db *gorm.DB) {
 			}
 		}
 	}
+}
+
+// BackfillActionCompletedAt fills completed_at for actions done before the
+// column existed. Approximate (date is the scheduled start, updated_at moves
+// on any edit), but good enough for the Done column's "last 7 days". Safe to
+// rerun because the predicate skips filled rows.
+func BackfillActionCompletedAt(db *gorm.DB) error {
+	return db.Exec(`
+		UPDATE actions
+		SET completed_at = COALESCE(date, updated_at)
+		WHERE stage = 'done' AND completed_at IS NULL
+	`).Error
 }

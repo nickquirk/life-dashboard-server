@@ -222,6 +222,7 @@ type Action struct {
 	Stage        Stage      `gorm:"type:varchar(20);not null;default:'braindump';index:idx_actions_board,priority:2" json:"stage"`
 	Date         *time.Time `gorm:"index:idx_actions_user_date,priority:2;type:datetime" json:"date"`      // Scheduled start; set only when scheduled, or done after being scheduled
 	Position     int        `gorm:"not null;default:0;index:idx_actions_board,priority:3" json:"position"` // Order within its stage
+	CompletedAt  *time.Time `gorm:"type:datetime" json:"completedAt"`                                      // When last completed; set exactly when stage is done
 }
 
 // ActionGroup collects actions on a project board. It lasts until it's
