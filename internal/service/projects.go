@@ -630,6 +630,123 @@ func (s *service) Ungroup(req domain.UngroupRequest) (domain.UngroupResponse, er
 	return domain.UngroupResponse{ID: req.ID}, nil
 }
 
+// --- Work sessions ---
+//
+// Ticking a Work session says the time was spent. It never touches actions,
+// progress or colours. Its scope is fixed once created.
+
+func (s *service) GetWorkSessions(req domain.GetWorkSessionsRequest) (domain.GetWorkSessionsResponse, error) {
+	sessions, err := s.projectRepo.GetWorkSessionsInRange(req.UserID, req.Start, req.End)
+	if err != nil {
+		return domain.GetWorkSessionsResponse{}, err
+	}
+	out := make([]domain.WorkSessionWithScope, len(sessions))
+	for i, ws := range sessions {
+		out[i] = withScope(ws)
+	}
+	return domain.GetWorkSessionsResponse{WorkSessions: out}, nil
+}
+
+// CreateWorkSession books time for a project or one of its groups. Nothing is
+// checked about what's Ready: an empty scope is allowed.
+func (s *service) CreateWorkSession(req domain.CreateWorkSessionRequest) (domain.WorkSessionWithScope, error) {
+	if err := req.Validate(); err != nil {
+		return domain.WorkSessionWithScope{}, err
+	}
+	project, err := s.projectRepo.GetProjectByID(req.UserID, req.ProjectID)
+	if err != nil {
+		return domain.WorkSessionWithScope{}, err
+	}
+	if project.IsArchived {
+		return domain.WorkSessionWithScope{}, fmt.Errorf("%w: can't add a Work session to an archived project", domain.ErrInvalidInput)
+	}
+	created, err := s.projectRepo.CreateWorkSession(domain.WorkSession{
+		UserID:       req.UserID,
+		ProjectID:    req.ProjectID,
+		GroupID:      req.GroupID, // the repository checks it's in this project
+		Date:         req.Date.UTC(),
+		DurationMins: req.DurationMins,
+	})
+	if err != nil {
+		return domain.WorkSessionWithScope{}, err
+	}
+	return s.workSessionWithScope(req.UserID, created.ID)
+}
+
+// UpdateWorkSession moves and/or resizes a Work session, ticked or not.
+func (s *service) UpdateWorkSession(req domain.UpdateWorkSessionRequest) (domain.WorkSessionWithScope, error) {
+	if err := req.Validate(); err != nil {
+		return domain.WorkSessionWithScope{}, err
+	}
+	updates := make(map[string]interface{})
+	if req.Date != nil {
+		updates["date"] = req.Date.UTC()
+	}
+	if req.DurationMins != nil {
+		updates["duration_mins"] = *req.DurationMins
+	}
+	return s.applyWorkSessionUpdates(req.UserID, req.ID, updates)
+}
+
+// CompleteWorkSession ticks a Work session. Ticking one already ticked keeps
+// its original completedAt.
+func (s *service) CompleteWorkSession(req domain.CompleteWorkSessionRequest) (domain.WorkSessionWithScope, error) {
+	current, err := s.projectRepo.GetWorkSessionByID(req.UserID, req.ID)
+	if err != nil {
+		return domain.WorkSessionWithScope{}, err
+	}
+	if current.CompletedAt != nil {
+		return withScope(current), nil
+	}
+	return s.applyWorkSessionUpdates(req.UserID, req.ID, map[string]interface{}{"completed_at": time.Now().UTC()})
+}
+
+func (s *service) ReopenWorkSession(req domain.ReopenWorkSessionRequest) (domain.WorkSessionWithScope, error) {
+	current, err := s.projectRepo.GetWorkSessionByID(req.UserID, req.ID)
+	if err != nil {
+		return domain.WorkSessionWithScope{}, err
+	}
+	if current.CompletedAt == nil {
+		return withScope(current), nil
+	}
+	return s.applyWorkSessionUpdates(req.UserID, req.ID, map[string]interface{}{"completed_at": nil})
+}
+
+func (s *service) DeleteWorkSession(req domain.DeleteWorkSessionRequest) (domain.DeleteWorkSessionResponse, error) {
+	if err := s.projectRepo.DeleteWorkSession(req.UserID, req.ID); err != nil {
+		return domain.DeleteWorkSessionResponse{}, err
+	}
+	return domain.DeleteWorkSessionResponse{ID: req.ID}, nil
+}
+
+func (s *service) applyWorkSessionUpdates(userID, id uint, updates map[string]interface{}) (domain.WorkSessionWithScope, error) {
+	if err := s.projectRepo.UpdateWorkSession(userID, id, updates); err != nil {
+		return domain.WorkSessionWithScope{}, err
+	}
+	return s.workSessionWithScope(userID, id)
+}
+
+func (s *service) workSessionWithScope(userID, id uint) (domain.WorkSessionWithScope, error) {
+	ws, err := s.projectRepo.GetWorkSessionByID(userID, id)
+	if err != nil {
+		return domain.WorkSessionWithScope{}, err
+	}
+	return withScope(ws), nil
+}
+
+// withScope trims a Work session's preloaded Project and Group to what the
+// calendar draws it with.
+func withScope(ws domain.WorkSession) domain.WorkSessionWithScope {
+	out := domain.WorkSessionWithScope{
+		WorkSession: ws,
+		Project:     domain.ProjectRef{ID: ws.Project.ID, Title: ws.Project.Title, Color: ws.Project.Color},
+	}
+	if ws.Group != nil {
+		out.Group = &domain.GroupRef{ID: ws.Group.ID, Title: ws.Group.Title}
+	}
+	return out
+}
+
 // moveToColumn puts an action at the end of a board column, along with any
 // extra column updates.
 func (s *service) moveToColumn(a domain.Action, to domain.Stage, extra map[string]interface{}) (domain.Action, error) {

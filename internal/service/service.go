@@ -94,6 +94,13 @@ type Service interface {
 	SetActionGroup(req domain.SetActionGroupRequest) (domain.Action, error)
 	UpdateGroup(req domain.UpdateGroupRequest) (domain.ActionGroup, error)
 	Ungroup(req domain.UngroupRequest) (domain.UngroupResponse, error)
+	// ------ Work sessions ---------
+	GetWorkSessions(req domain.GetWorkSessionsRequest) (domain.GetWorkSessionsResponse, error)
+	CreateWorkSession(req domain.CreateWorkSessionRequest) (domain.WorkSessionWithScope, error)
+	UpdateWorkSession(req domain.UpdateWorkSessionRequest) (domain.WorkSessionWithScope, error)
+	CompleteWorkSession(req domain.CompleteWorkSessionRequest) (domain.WorkSessionWithScope, error)
+	ReopenWorkSession(req domain.ReopenWorkSessionRequest) (domain.WorkSessionWithScope, error)
+	DeleteWorkSession(req domain.DeleteWorkSessionRequest) (domain.DeleteWorkSessionResponse, error)
 }
 
 type service struct {

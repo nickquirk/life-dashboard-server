@@ -79,6 +79,12 @@ type MockService struct {
 	UpdateGroupFunc           func(req domain.UpdateGroupRequest) (domain.ActionGroup, error)
 	NewGroupFunc              func(req domain.NewGroupRequest) (domain.ActionGroup, error)
 	UngroupFunc               func(req domain.UngroupRequest) (domain.UngroupResponse, error)
+	GetWorkSessionsFunc       func(req domain.GetWorkSessionsRequest) (domain.GetWorkSessionsResponse, error)
+	CreateWorkSessionFunc     func(req domain.CreateWorkSessionRequest) (domain.WorkSessionWithScope, error)
+	UpdateWorkSessionFunc     func(req domain.UpdateWorkSessionRequest) (domain.WorkSessionWithScope, error)
+	CompleteWorkSessionFunc   func(req domain.CompleteWorkSessionRequest) (domain.WorkSessionWithScope, error)
+	ReopenWorkSessionFunc     func(req domain.ReopenWorkSessionRequest) (domain.WorkSessionWithScope, error)
+	DeleteWorkSessionFunc     func(req domain.DeleteWorkSessionRequest) (domain.DeleteWorkSessionResponse, error)
 }
 
 func (m *MockService) Ping() error {
@@ -562,4 +568,46 @@ func (m *MockService) Ungroup(req domain.UngroupRequest) (domain.UngroupResponse
 		return m.UngroupFunc(req)
 	}
 	return domain.UngroupResponse{}, nil
+}
+
+func (m *MockService) GetWorkSessions(req domain.GetWorkSessionsRequest) (domain.GetWorkSessionsResponse, error) {
+	if m.GetWorkSessionsFunc != nil {
+		return m.GetWorkSessionsFunc(req)
+	}
+	return domain.GetWorkSessionsResponse{}, nil
+}
+
+func (m *MockService) CreateWorkSession(req domain.CreateWorkSessionRequest) (domain.WorkSessionWithScope, error) {
+	if m.CreateWorkSessionFunc != nil {
+		return m.CreateWorkSessionFunc(req)
+	}
+	return domain.WorkSessionWithScope{}, nil
+}
+
+func (m *MockService) UpdateWorkSession(req domain.UpdateWorkSessionRequest) (domain.WorkSessionWithScope, error) {
+	if m.UpdateWorkSessionFunc != nil {
+		return m.UpdateWorkSessionFunc(req)
+	}
+	return domain.WorkSessionWithScope{}, nil
+}
+
+func (m *MockService) CompleteWorkSession(req domain.CompleteWorkSessionRequest) (domain.WorkSessionWithScope, error) {
+	if m.CompleteWorkSessionFunc != nil {
+		return m.CompleteWorkSessionFunc(req)
+	}
+	return domain.WorkSessionWithScope{}, nil
+}
+
+func (m *MockService) ReopenWorkSession(req domain.ReopenWorkSessionRequest) (domain.WorkSessionWithScope, error) {
+	if m.ReopenWorkSessionFunc != nil {
+		return m.ReopenWorkSessionFunc(req)
+	}
+	return domain.WorkSessionWithScope{}, nil
+}
+
+func (m *MockService) DeleteWorkSession(req domain.DeleteWorkSessionRequest) (domain.DeleteWorkSessionResponse, error) {
+	if m.DeleteWorkSessionFunc != nil {
+		return m.DeleteWorkSessionFunc(req)
+	}
+	return domain.DeleteWorkSessionResponse{}, nil
 }
