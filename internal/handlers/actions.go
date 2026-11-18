@@ -35,19 +35,8 @@ func (h *Handler) getActions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	startStr, endStr := q.Get("start"), q.Get("end")
-	if startStr == "" || endStr == "" {
-		h.respondWithError(w, "Missing start or end query parameters", fmt.Errorf("missing start or end query parameter"), http.StatusBadRequest, "userID", userID)
-		return
-	}
-	start, err := time.Parse(time.RFC3339, startStr)
-	if err != nil {
-		h.respondWithError(w, "Invalid start format, expected RFC3339", err, http.StatusBadRequest, "userID", userID)
-		return
-	}
-	end, err := time.Parse(time.RFC3339, endStr)
-	if err != nil {
-		h.respondWithError(w, "Invalid end format, expected RFC3339", err, http.StatusBadRequest, "userID", userID)
+	start, end, ok := h.parseRange(w, r, userID)
+	if !ok {
 		return
 	}
 
@@ -57,6 +46,28 @@ func (h *Handler) getActions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.respondWithJSON(w, http.StatusOK, resp, "userID", userID)
+}
+
+// parseRange reads the calendar range ?start=…&end=… (RFC3339). On failure it
+// has already responded 400.
+func (h *Handler) parseRange(w http.ResponseWriter, r *http.Request, userID uint) (time.Time, time.Time, bool) {
+	q := r.URL.Query()
+	startStr, endStr := q.Get("start"), q.Get("end")
+	if startStr == "" || endStr == "" {
+		h.respondWithError(w, "Missing start or end query parameters", fmt.Errorf("missing start or end query parameter"), http.StatusBadRequest, "userID", userID)
+		return time.Time{}, time.Time{}, false
+	}
+	start, err := time.Parse(time.RFC3339, startStr)
+	if err != nil {
+		h.respondWithError(w, "Invalid start format, expected RFC3339", err, http.StatusBadRequest, "userID", userID)
+		return time.Time{}, time.Time{}, false
+	}
+	end, err := time.Parse(time.RFC3339, endStr)
+	if err != nil {
+		h.respondWithError(w, "Invalid end format, expected RFC3339", err, http.StatusBadRequest, "userID", userID)
+		return time.Time{}, time.Time{}, false
+	}
+	return start, end, true
 }
 
 func (h *Handler) updateAction(w http.ResponseWriter, r *http.Request) {

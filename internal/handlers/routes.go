@@ -119,6 +119,13 @@ func GetRoutes(mx *chi.Mux, h *Handler) error {
 
 			auth.Patch("/groups/{id}", h.updateGroup)
 			auth.Post("/groups/{id}/ungroup", h.ungroup)
+			// Work sessions
+			auth.Get("/work-sessions", h.getWorkSessions)
+			auth.Post("/projects/{id}/work-sessions", h.createWorkSession)
+			auth.Patch("/work-sessions/{id}", h.updateWorkSession)
+			auth.Post("/work-sessions/{id}/complete", h.completeWorkSession)
+			auth.Post("/work-sessions/{id}/reopen", h.reopenWorkSession)
+			auth.Delete("/work-sessions/{id}", h.deleteWorkSession)
 		})
 	})
 	return nil

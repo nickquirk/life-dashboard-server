@@ -259,7 +259,7 @@ func (rt idRoute) serve(svc *mocks.MockService, id string, body string, withAuth
 }
 
 func TestProjectAndActionRoutes(t *testing.T) {
-	for _, rt := range idRoutes {
+	for _, rt := range append(idRoutes, workSessionRoutes...) {
 		t.Run(rt.name+"/success", func(t *testing.T) {
 			svc := &mocks.MockService{}
 			var gotID, gotUser uint
