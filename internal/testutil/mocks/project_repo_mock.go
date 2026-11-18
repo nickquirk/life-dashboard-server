@@ -34,6 +34,12 @@ type MockProjectRepository struct {
 	UngroupFunc               func(userID, groupID uint) error
 	ActiveGroupColorsFunc     func(userID, projectID, exceptGroupID uint) ([]string, error)
 	GroupIsCompleteFunc       func(userID, groupID uint) (bool, error)
+
+	CreateWorkSessionFunc      func(ws domain.WorkSession) (domain.WorkSession, error)
+	GetWorkSessionByIDFunc     func(userID, id uint) (domain.WorkSession, error)
+	GetWorkSessionsInRangeFunc func(userID uint, start, end time.Time) ([]domain.WorkSession, error)
+	UpdateWorkSessionFunc      func(userID, id uint, updates map[string]interface{}) error
+	DeleteWorkSessionFunc      func(userID, id uint) error
 }
 
 func (m *MockProjectRepository) CreateProject(p domain.Project) (domain.Project, error) {
@@ -209,4 +215,39 @@ func (m *MockProjectRepository) GroupIsComplete(userID, groupID uint) (bool, err
 		return m.GroupIsCompleteFunc(userID, groupID)
 	}
 	return false, nil
+}
+
+func (m *MockProjectRepository) CreateWorkSession(ws domain.WorkSession) (domain.WorkSession, error) {
+	if m.CreateWorkSessionFunc != nil {
+		return m.CreateWorkSessionFunc(ws)
+	}
+	return ws, nil
+}
+
+func (m *MockProjectRepository) GetWorkSessionByID(userID, id uint) (domain.WorkSession, error) {
+	if m.GetWorkSessionByIDFunc != nil {
+		return m.GetWorkSessionByIDFunc(userID, id)
+	}
+	return domain.WorkSession{}, nil
+}
+
+func (m *MockProjectRepository) GetWorkSessionsInRange(userID uint, start, end time.Time) ([]domain.WorkSession, error) {
+	if m.GetWorkSessionsInRangeFunc != nil {
+		return m.GetWorkSessionsInRangeFunc(userID, start, end)
+	}
+	return []domain.WorkSession{}, nil
+}
+
+func (m *MockProjectRepository) UpdateWorkSession(userID, id uint, updates map[string]interface{}) error {
+	if m.UpdateWorkSessionFunc != nil {
+		return m.UpdateWorkSessionFunc(userID, id, updates)
+	}
+	return nil
+}
+
+func (m *MockProjectRepository) DeleteWorkSession(userID, id uint) error {
+	if m.DeleteWorkSessionFunc != nil {
+		return m.DeleteWorkSessionFunc(userID, id)
+	}
+	return nil
 }

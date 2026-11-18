@@ -21,7 +21,7 @@ func newProjectRepo(t *testing.T) (*GormProjectRepository, *gorm.DB) {
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	if err := db.AutoMigrate(&domain.Project{}, &domain.Action{}, &domain.ActionGroup{}); err != nil {
+	if err := db.AutoMigrate(&domain.Project{}, &domain.Action{}, &domain.ActionGroup{}, &domain.WorkSession{}); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
 	return &GormProjectRepository{Db: db}, db

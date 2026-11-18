@@ -39,6 +39,12 @@ type ProjectRepository interface {
 	Ungroup(userID, groupID uint) error
 	ActiveGroupColors(userID, projectID, exceptGroupID uint) ([]string, error)
 	GroupIsComplete(userID, groupID uint) (bool, error)
+
+	CreateWorkSession(ws domain.WorkSession) (domain.WorkSession, error)
+	GetWorkSessionByID(userID, id uint) (domain.WorkSession, error)
+	GetWorkSessionsInRange(userID uint, start, end time.Time) ([]domain.WorkSession, error)
+	UpdateWorkSession(userID, id uint, updates map[string]interface{}) error
+	DeleteWorkSession(userID, id uint) error
 }
 
 type GormProjectRepository struct {
@@ -92,10 +98,15 @@ func (r *GormProjectRepository) UpdateProject(userID, projectID uint, updates ma
 	return result.Error
 }
 
-// DeleteProject deletes the project and every action and group in it,
-// including scheduled actions, in one transaction.
+// DeleteProject deletes the project and every action, Work session and group
+// in it, including scheduled actions, in one transaction.
 func (r *GormProjectRepository) DeleteProject(userID, projectID uint) error {
 	return r.Db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Unscoped().
+			Where("project_id = ? AND user_id = ?", projectID, userID).
+			Delete(&domain.WorkSession{}).Error; err != nil {
+			return err
+		}
 		if err := tx.Unscoped().
 			Where("project_id = ? AND user_id = ?", projectID, userID).
 			Delete(&domain.Action{}).Error; err != nil {
@@ -394,6 +405,7 @@ func (r *GormProjectRepository) SetActionGroup(userID, actionID uint, groupID *u
 }
 
 // Ungroup removes a group and leaves its actions where they are, ungrouped.
+// Its Work sessions, past and future, become Work sessions for the project.
 func (r *GormProjectRepository) Ungroup(userID, groupID uint) error {
 	return r.Db.Transaction(func(tx *gorm.DB) error {
 		// Delete first: it locks the group row, so a concurrent move into
@@ -405,7 +417,12 @@ func (r *GormProjectRepository) Ungroup(userID, groupID uint) error {
 		if result.RowsAffected == 0 {
 			return gorm.ErrRecordNotFound
 		}
-		return tx.Model(&domain.Action{}).
+		if err := tx.Model(&domain.Action{}).
+			Where("group_id = ? AND user_id = ?", groupID, userID).
+			Update("group_id", nil).Error; err != nil {
+			return err
+		}
+		return tx.Model(&domain.WorkSession{}).
 			Where("group_id = ? AND user_id = ?", groupID, userID).
 			Update("group_id", nil).Error
 	})
@@ -456,4 +473,64 @@ func groupInProject(tx *gorm.DB, userID, groupID, projectID uint) (domain.Action
 		return domain.ActionGroup{}, gorm.ErrRecordNotFound
 	}
 	return group, nil
+}
+
+// --- WORK SESSIONS ---
+
+// CreateWorkSession creates a Work session. The caller has checked the project
+// is the user's. A group must be in that project, else not found; it's locked
+// so a concurrent Ungroup either finishes first or clears this one too.
+func (r *GormProjectRepository) CreateWorkSession(ws domain.WorkSession) (domain.WorkSession, error) {
+	err := r.Db.Transaction(func(tx *gorm.DB) error {
+		if ws.GroupID != nil {
+			if _, err := groupInProject(tx, ws.UserID, *ws.GroupID, ws.ProjectID); err != nil {
+				return err
+			}
+		}
+		return tx.Omit("Project", "Group").Create(&ws).Error
+	})
+	return ws, err
+}
+
+// GetWorkSessionByID returns the Work session with its Project and Group.
+func (r *GormProjectRepository) GetWorkSessionByID(userID, id uint) (domain.WorkSession, error) {
+	var ws domain.WorkSession
+	if err := r.Db.Preload("Project").Preload("Group").
+		Where("id = ? AND user_id = ?", id, userID).First(&ws).Error; err != nil {
+		return domain.WorkSession{}, gorm.ErrRecordNotFound
+	}
+	return ws, nil
+}
+
+// GetWorkSessionsInRange returns Work sessions whose start falls in
+// [start, end], including archived projects', so past days don't empty.
+func (r *GormProjectRepository) GetWorkSessionsInRange(userID uint, start, end time.Time) ([]domain.WorkSession, error) {
+	sessions := make([]domain.WorkSession, 0)
+	err := r.Db.Preload("Project").Preload("Group").
+		Where("user_id = ? AND date >= ? AND date <= ?", userID, start, end).
+		Order("date ASC").Order("id ASC").
+		Find(&sessions).Error
+	return sessions, err
+}
+
+func (r *GormProjectRepository) UpdateWorkSession(userID, id uint, updates map[string]interface{}) error {
+	result := r.Db.Model(&domain.WorkSession{}).Where("id = ? AND user_id = ?", id, userID).Updates(updates)
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return result.Error
+}
+
+// DeleteWorkSession hard-deletes a Work session.
+// Slice 3: once actions link to the Work session they were done in, clear
+// that link in the same transaction.
+func (r *GormProjectRepository) DeleteWorkSession(userID, id uint) error {
+	result := r.Db.Unscoped().Where("id = ? AND user_id = ?", id, userID).Delete(&domain.WorkSession{})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }

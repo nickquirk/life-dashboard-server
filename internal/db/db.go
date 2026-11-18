@@ -80,7 +80,7 @@ func InitMigration(db *gorm.DB) {
 	db.AutoMigrate(domain.Routine{})
 	db.AutoMigrate(domain.RoutineInstance{})
 	db.AutoMigrate(&domain.Note{}, &domain.NoteItem{})
-	db.AutoMigrate(&domain.Project{}, &domain.Action{}, &domain.ActionGroup{})
+	db.AutoMigrate(&domain.Project{}, &domain.Action{}, &domain.ActionGroup{}, &domain.WorkSession{})
 
 	if err := BackfillActionCompletedAt(db); err != nil {
 		slog.Warn("failed to backfill actions.completed_at", "error", err)
