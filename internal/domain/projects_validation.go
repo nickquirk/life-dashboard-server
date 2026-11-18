@@ -191,3 +191,28 @@ func (r *UpdateGroupRequest) Validate() error {
 	}
 	return nil
 }
+
+func (r *CreateWorkSessionRequest) Validate() error {
+	if r.Date == nil || r.Date.IsZero() {
+		return fmt.Errorf("%w: date is required", ErrInvalidInput)
+	}
+	if err := validateDuration(r.DurationMins); err != nil {
+		return err
+	}
+	return validateGroupID(r.GroupID)
+}
+
+// Validate refuses an empty update, so a client bug shows up rather than
+// silently doing nothing.
+func (r *UpdateWorkSessionRequest) Validate() error {
+	if r.Date == nil && r.DurationMins == nil {
+		return fmt.Errorf("%w: nothing to update: send date or durationMins", ErrInvalidInput)
+	}
+	if r.Date != nil && r.Date.IsZero() {
+		return fmt.Errorf("%w: date is required", ErrInvalidInput)
+	}
+	if r.DurationMins != nil {
+		return validateDuration(*r.DurationMins)
+	}
+	return nil
+}

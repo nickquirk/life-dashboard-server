@@ -722,3 +722,64 @@ type UngroupRequest struct {
 type UngroupResponse struct {
 	ID uint `json:"id"`
 }
+
+// ------ Work sessions ---------
+
+// GroupRef is the slice of a group a Work session is labelled with. No
+// colour: a group's colour is board-only; the calendar uses the project's.
+type GroupRef struct {
+	ID    uint   `json:"id"`
+	Title string `json:"title"`
+}
+
+// WorkSessionWithScope is a Work session plus what the calendar draws it with.
+type WorkSessionWithScope struct {
+	WorkSession
+	Project ProjectRef `json:"project"`
+	Group   *GroupRef  `json:"group"` // null for a project Work session
+}
+
+type CreateWorkSessionRequest struct {
+	UserID       uint       `json:"-"`
+	ProjectID    uint       `json:"-"`
+	GroupID      *uint      `json:"groupId"`
+	Date         *time.Time `json:"date"`
+	DurationMins int        `json:"durationMins"`
+}
+
+// UpdateWorkSessionRequest moves and/or resizes a Work session.
+type UpdateWorkSessionRequest struct {
+	ID           uint       `json:"-"`
+	UserID       uint       `json:"-"`
+	Date         *time.Time `json:"date"`
+	DurationMins *int       `json:"durationMins"`
+}
+
+type CompleteWorkSessionRequest struct {
+	ID     uint `json:"-"`
+	UserID uint `json:"-"`
+}
+
+type ReopenWorkSessionRequest struct {
+	ID     uint `json:"-"`
+	UserID uint `json:"-"`
+}
+
+type DeleteWorkSessionRequest struct {
+	ID     uint `json:"-"`
+	UserID uint `json:"-"`
+}
+
+type DeleteWorkSessionResponse struct {
+	ID uint `json:"id"`
+}
+
+type GetWorkSessionsRequest struct {
+	UserID uint      `json:"-"`
+	Start  time.Time `json:"-"`
+	End    time.Time `json:"-"`
+}
+
+type GetWorkSessionsResponse struct {
+	WorkSessions []WorkSessionWithScope `json:"workSessions"`
+}

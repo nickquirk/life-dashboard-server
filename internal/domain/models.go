@@ -240,3 +240,24 @@ type ActionGroup struct {
 	Color     string `json:"color"` // a Swatch name
 	IsPinned  bool   `gorm:"not null;default:false" json:"isPinned"`
 }
+
+// WorkSession is time on the calendar for a project, optionally narrowed to
+// one of its groups. It has no title: it's labelled by its group, or its
+// project when it has none, so Ungroup relabels it without a write. Never a
+// bare "Session": that's the sign-in session.
+type WorkSession struct {
+	ID        uint           `gorm:"primarykey" json:"id"`
+	CreatedAt time.Time      `json:"createdAt"`
+	UpdatedAt time.Time      `json:"updatedAt"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+
+	UserID    uint         `gorm:"index:idx_ws_user_date,priority:1;not null" json:"userId"`
+	ProjectID uint         `gorm:"index;not null" json:"projectId"`
+	Project   Project      `gorm:"foreignKey:ProjectID" json:"-"` // Preloaded for reads; exposed trimmed via WorkSessionWithScope
+	GroupID   *uint        `gorm:"index" json:"groupId"`          // nil = the whole project
+	Group     *ActionGroup `gorm:"foreignKey:GroupID" json:"-"`
+
+	Date         time.Time  `gorm:"index:idx_ws_user_date,priority:2;type:datetime" json:"date"`
+	DurationMins int        `gorm:"not null" json:"durationMins"`
+	CompletedAt  *time.Time `gorm:"type:datetime" json:"completedAt"` // set exactly when ticked
+}

@@ -80,6 +80,18 @@ func TestProjectsValidation(t *testing.T) {
 		{"set group ok", &SetActionGroupRequest{GroupID: ptrUint(3)}, ""},
 		{"set group zero", &SetActionGroupRequest{GroupID: ptrUint(0)}, "groupId"},
 		{"create action zero group", &CreateActionRequest{Title: "x", GroupID: ptrUint(0)}, "groupId"},
+
+		{"create work session ok", &CreateWorkSessionRequest{Date: &now, DurationMins: 60}, ""},
+		{"create work session with group", &CreateWorkSessionRequest{Date: &now, DurationMins: 60, GroupID: ptrUint(3)}, ""},
+		{"create work session no date", &CreateWorkSessionRequest{DurationMins: 60}, "date is required"},
+		{"create work session zero duration", &CreateWorkSessionRequest{Date: &now}, "durationMins"},
+		{"create work session huge duration", &CreateWorkSessionRequest{Date: &now, DurationMins: 1441}, "durationMins"},
+		{"create work session zero group", &CreateWorkSessionRequest{Date: &now, DurationMins: 60, GroupID: ptrUint(0)}, "groupId"},
+		{"update work session empty", &UpdateWorkSessionRequest{}, "nothing to update"},
+		{"update work session date only", &UpdateWorkSessionRequest{Date: &now}, ""},
+		{"update work session duration only", &UpdateWorkSessionRequest{DurationMins: ptrInt(90)}, ""},
+		{"update work session bad duration", &UpdateWorkSessionRequest{DurationMins: ptrInt(0)}, "durationMins"},
+		{"update work session zero date", &UpdateWorkSessionRequest{Date: &time.Time{}}, "date is required"},
 	}
 
 	for _, tt := range tests {
