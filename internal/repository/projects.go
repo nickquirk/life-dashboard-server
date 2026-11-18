@@ -58,10 +58,14 @@ func (r *GormProjectRepository) GetProjectsByUserID(userID uint, archived bool) 
 		Table("projects AS p").
 		Select(`
 			p.*,
-			COUNT(a.id) AS action_count,
-			COALESCE(SUM(CASE WHEN a.stage = ? THEN 1 ELSE 0 END), 0) AS done_count
-		`, domain.StageDone).
+			COALESCE(SUM(CASE WHEN a.id IS NOT NULL AND (g.id IS NULL OR g.is_pinned = ?) THEN 1 ELSE 0 END), 0) AS action_count,
+			COALESCE(SUM(CASE WHEN a.stage = ? AND (g.id IS NULL OR g.is_pinned = ?) THEN 1 ELSE 0 END), 0) AS done_count,
+			COALESCE(SUM(CASE WHEN g.is_pinned = ? AND a.stage <> ? THEN 1 ELSE 0 END), 0) AS ongoing_open_count
+		`, false, domain.StageDone, false, true, domain.StageDone).
 		Joins("LEFT JOIN actions AS a ON a.project_id = p.id AND a.deleted_at IS NULL").
+		// Pinned groups are ongoing: their actions are left out of progress
+		// and counted as ongoing instead. A missing group counts as ungrouped
+		Joins("LEFT JOIN action_groups AS g ON g.id = a.group_id AND g.deleted_at IS NULL").
 		Where("p.user_id = ? AND p.deleted_at IS NULL AND p.is_archived = ?", userID, archived).
 		Group("p.id").
 		Order("p.created_at ASC").

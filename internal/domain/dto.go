@@ -525,8 +525,10 @@ type GetProjectsRequest struct {
 
 type ProjectWithStats struct {
 	Project
-	ActionCount int `json:"actionCount"`
-	DoneCount   int `json:"doneCount"`
+	// Both leave out actions in pinned groups, which are ongoing
+	ActionCount      int `json:"actionCount"`
+	DoneCount        int `json:"doneCount"`
+	OngoingOpenCount int `json:"ongoingOpenCount"` // Open actions in pinned groups
 }
 
 type GetProjectsResponse struct {

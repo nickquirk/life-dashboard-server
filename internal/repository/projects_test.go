@@ -85,6 +85,40 @@ func TestProjectRepo_GetProjects_Stats(t *testing.T) {
 	assert.Equal(t, 0, projects[1].DoneCount)
 }
 
+func TestProjectRepo_GetProjects_PinnedGroupsAreOngoing(t *testing.T) {
+	repo, db := newProjectRepo(t)
+	for _, archived := range []bool{false, true} {
+		p := seedProject(t, db, domain.Project{IsArchived: archived})
+		pinned := seedGroup(t, db, domain.ActionGroup{ProjectID: p.ID, IsPinned: true})
+		unpinned := seedGroup(t, db, domain.ActionGroup{ProjectID: p.ID, Title: "Shed"})
+		seedAction(t, db, domain.Action{ProjectID: p.ID})
+		seedAction(t, db, domain.Action{ProjectID: p.ID, Stage: domain.StageDone, GroupID: &unpinned.ID})
+		seedAction(t, db, domain.Action{ProjectID: p.ID, GroupID: &pinned.ID})
+		seedAction(t, db, domain.Action{ProjectID: p.ID, GroupID: &pinned.ID})
+		seedAction(t, db, domain.Action{ProjectID: p.ID, Stage: domain.StageDone, GroupID: &pinned.ID})
+
+		counts := func() domain.ProjectWithStats {
+			got, err := repo.GetProjectsByUserID(testUserID, archived)
+			require.NoError(t, err)
+			require.Len(t, got, 1)
+			return got[0]
+		}
+		got := counts()
+		assert.Equal(t, 2, got.ActionCount, "archived=%v", archived)
+		assert.Equal(t, 1, got.DoneCount)
+		assert.Equal(t, 2, got.OngoingOpenCount, "done pinned actions aren't open")
+
+		require.NoError(t, db.Model(&pinned).Update("is_pinned", false).Error)
+		got = counts()
+		assert.Equal(t, 5, got.ActionCount)
+		assert.Equal(t, 2, got.DoneCount)
+		assert.Equal(t, 0, got.OngoingOpenCount)
+
+		require.NoError(t, db.Model(&pinned).Update("is_pinned", true).Error)
+		assert.Equal(t, 2, counts().ActionCount)
+	}
+}
+
 func TestProjectRepo_GetProjects_FiltersArchivedAndUser(t *testing.T) {
 	repo, db := newProjectRepo(t)
 	active := seedProject(t, db, domain.Project{})
