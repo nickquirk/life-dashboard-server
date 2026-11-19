@@ -98,6 +98,12 @@ func InitMigration(db *gorm.DB) error {
 		return fmt.Errorf("backfill actions.completed_at: %w", err)
 	}
 
+	// Single-action scheduling was retired: work sessions are the only way
+	// project work reaches the calendar. Runs once, while actions.date exists.
+	if err := dropActionDate(db); err != nil {
+		return err
+	}
+
 	// The single-session app_refresh_token column on users was replaced by the
 	// sessions table. AutoMigrate doesn't drop columns, so do it explicitly.
 	// Existing users will need to re-authenticate after this deploy.
@@ -130,11 +136,72 @@ func InitMigration(db *gorm.DB) error {
 // BackfillActionCompletedAt fills completed_at for actions done before the
 // column existed. Approximate (date is the scheduled start, updated_at moves
 // on any edit), but good enough for the Done column's "last 7 days". Safe to
-// rerun because the predicate skips filled rows.
+// rerun because the predicate skips filled rows. It reads actions.date, so it
+// only runs while that column exists: once more before dropActionDate drops
+// it, and never on a fresh database.
 func BackfillActionCompletedAt(db *gorm.DB) error {
+	if !db.Migrator().HasColumn(&domain.Action{}, "date") {
+		return nil
+	}
 	return db.Exec(`
 		UPDATE actions
 		SET completed_at = COALESCE(date, updated_at)
 		WHERE stage = 'done' AND completed_at IS NULL
 	`).Error
+}
+
+// dropActionDate moves every Scheduled action to the end of its project's
+// Ready column, in calendar order, then drops actions.date and its index.
+// Done actions keep their stage and completed_at. Guarded by the column, so
+// it runs once; each step is safe to retry.
+func dropActionDate(db *gorm.DB) error {
+	m := db.Migrator()
+	if !m.HasColumn(&domain.Action{}, "date") {
+		return nil
+	}
+
+	// Raw table, because the struct no longer has Date; soft-deleted rows too
+	err := db.Transaction(func(tx *gorm.DB) error {
+		var rows []struct {
+			ID        uint
+			ProjectID uint
+		}
+		if err := tx.Table("actions").Select("id, project_id").
+			Where("stage = ?", "scheduled").
+			Order("project_id, date, id").Scan(&rows).Error; err != nil {
+			return err
+		}
+		next := map[uint]int{}
+		for _, r := range rows {
+			pos, ok := next[r.ProjectID]
+			if !ok {
+				if err := tx.Table("actions").Select("COALESCE(MAX(position), -1) + 1").
+					Where("project_id = ? AND stage = ?", r.ProjectID, "ready").
+					Scan(&pos).Error; err != nil {
+					return err
+				}
+			}
+			if err := tx.Table("actions").Where("id = ?", r.ID).
+				Updates(map[string]any{"stage": "ready", "position": pos}).Error; err != nil {
+				return err
+			}
+			next[r.ProjectID] = pos + 1
+		}
+		slog.Info("moved scheduled actions to ready", "count", len(rows))
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("move scheduled actions to ready: %w", err)
+	}
+
+	// Before the column, or MySQL quietly shrinks it to an index on user_id
+	if m.HasIndex(&domain.Action{}, "idx_actions_user_date") {
+		if err := m.DropIndex(&domain.Action{}, "idx_actions_user_date"); err != nil {
+			return fmt.Errorf("drop idx_actions_user_date: %w", err)
+		}
+	}
+	if err := m.DropColumn(&domain.Action{}, "date"); err != nil {
+		return fmt.Errorf("drop actions.date: %w", err)
+	}
+	return nil
 }
