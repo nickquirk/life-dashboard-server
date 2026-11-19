@@ -408,13 +408,12 @@ func (r *GormProjectRepository) SetActionGroup(userID, actionID uint, groupID *u
 // Its Work sessions, past and future, become Work sessions for the project.
 func (r *GormProjectRepository) Ungroup(userID, groupID uint) error {
 	return r.Db.Transaction(func(tx *gorm.DB) error {
-		// Delete first: it locks the group row, so a concurrent move into
-		// the group waits for us and then finds it gone.
-		result := tx.Unscoped().Where("id = ? AND user_id = ?", groupID, userID).Delete(&domain.ActionGroup{})
-		if result.Error != nil {
-			return result.Error
-		}
-		if result.RowsAffected == 0 {
+		// Lock first, so a concurrent move into the group waits for us and
+		// then finds it gone. Delete last: work_sessions.group_id is a foreign
+		// key, so its Work sessions must let go of it before it goes.
+		var group domain.ActionGroup
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("id = ? AND user_id = ?", groupID, userID).First(&group).Error; err != nil {
 			return gorm.ErrRecordNotFound
 		}
 		if err := tx.Model(&domain.Action{}).
@@ -422,9 +421,12 @@ func (r *GormProjectRepository) Ungroup(userID, groupID uint) error {
 			Update("group_id", nil).Error; err != nil {
 			return err
 		}
-		return tx.Model(&domain.WorkSession{}).
+		if err := tx.Model(&domain.WorkSession{}).
 			Where("group_id = ? AND user_id = ?", groupID, userID).
-			Update("group_id", nil).Error
+			Update("group_id", nil).Error; err != nil {
+			return err
+		}
+		return tx.Unscoped().Delete(&group).Error
 	})
 }
 
