@@ -604,23 +604,6 @@ type ReorderActionsResponse struct {
 	Stage     Stage `json:"stage"`
 }
 
-type ScheduleActionRequest struct {
-	ID     uint       `json:"-"`
-	UserID uint       `json:"-"`
-	Date   *time.Time `json:"date"`
-}
-
-type MoveActionRequest struct {
-	ID     uint       `json:"-"`
-	UserID uint       `json:"-"`
-	Date   *time.Time `json:"date"`
-}
-
-type UnscheduleActionRequest struct {
-	ID     uint `json:"-"`
-	UserID uint `json:"-"`
-}
-
 type CompleteActionRequest struct {
 	ID     uint `json:"-"`
 	UserID uint `json:"-"`
@@ -655,12 +638,6 @@ type GetActionsRequest struct {
 
 type GetActionsResponse struct {
 	Actions []Action `json:"actions"`
-}
-
-type GetScheduledActionsRequest struct {
-	UserID uint      `json:"-"`
-	Start  time.Time `json:"-"`
-	End    time.Time `json:"-"`
 }
 
 type GetReadyActionsRequest struct {

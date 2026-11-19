@@ -17,7 +17,6 @@ type MockProjectRepository struct {
 	CreateActionFunc          func(a domain.Action) (domain.Action, error)
 	GetActionByIDFunc         func(userID, actionID uint) (domain.Action, error)
 	GetActionsByProjectIDFunc func(userID, projectID uint) ([]domain.Action, error)
-	GetActionsInRangeFunc     func(userID uint, start, end time.Time) ([]domain.Action, error)
 	GetReadyActionsFunc       func(userID uint) ([]domain.Action, error)
 	UpdateActionFunc          func(userID, actionID uint, updates map[string]interface{}) error
 	NextPositionFunc          func(userID, projectID uint, stage domain.Stage) (int, error)
@@ -97,13 +96,6 @@ func (m *MockProjectRepository) GetActionByID(userID, actionID uint) (domain.Act
 func (m *MockProjectRepository) GetActionsByProjectID(userID, projectID uint) ([]domain.Action, error) {
 	if m.GetActionsByProjectIDFunc != nil {
 		return m.GetActionsByProjectIDFunc(userID, projectID)
-	}
-	return nil, nil
-}
-
-func (m *MockProjectRepository) GetActionsInRange(userID uint, start, end time.Time) ([]domain.Action, error) {
-	if m.GetActionsInRangeFunc != nil {
-		return m.GetActionsInRangeFunc(userID, start, end)
 	}
 	return nil, nil
 }

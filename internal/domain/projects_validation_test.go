@@ -47,16 +47,12 @@ func TestProjectsValidation(t *testing.T) {
 		{"update action blank title", &UpdateActionRequest{Title: ptrStr("")}, "title is required"},
 
 		{"change stage refine", &ChangeStageRequest{Stage: StageRefine}, ""},
-		{"change stage scheduled rejected", &ChangeStageRequest{Stage: StageScheduled}, "stage"},
+		{"change stage unknown stage rejected", &ChangeStageRequest{Stage: "scheduled"}, "stage"},
 		{"change stage done rejected", &ChangeStageRequest{Stage: StageDone}, "stage"},
 		{"change stage unknown rejected", &ChangeStageRequest{Stage: "nope"}, "stage"},
 
 		{"reorder ready", &ReorderActionsRequest{Stage: StageReady}, ""},
-		{"reorder scheduled rejected", &ReorderActionsRequest{Stage: StageScheduled}, "reordered"},
-
-		{"schedule ok", &ScheduleActionRequest{Date: &now}, ""},
-		{"schedule no date", &ScheduleActionRequest{}, "date is required"},
-		{"move no date", &MoveActionRequest{}, "date is required"},
+		{"reorder unknown stage rejected", &ReorderActionsRequest{Stage: "scheduled"}, "reordered"},
 
 		{"break down ok", &BreakDownActionRequest{Titles: []string{"a", "b"}}, ""},
 		{"break down one title", &BreakDownActionRequest{Titles: []string{"a"}}, "at least"},
@@ -142,10 +138,9 @@ func TestStage(t *testing.T) {
 		assert.True(t, s.Valid())
 		assert.True(t, s.IsBoardStage())
 	}
-	for _, s := range []Stage{StageScheduled, StageDone} {
-		assert.True(t, s.Valid())
-		assert.False(t, s.IsBoardStage())
-	}
+	assert.True(t, StageDone.Valid())
+	assert.False(t, StageDone.IsBoardStage())
+	assert.False(t, Stage("scheduled").Valid())
 	assert.False(t, Stage("nope").Valid())
 }
 

@@ -61,13 +61,6 @@ func actionRepo(a domain.Action) (*mocks.MockProjectRepository, *domain.Action) 
 						id := v.(uint)
 						cur.WorkSessionID = &id
 					}
-				case "date":
-					if v == nil {
-						cur.Date = nil
-					} else {
-						d := v.(time.Time)
-						cur.Date = &d
-					}
 				}
 			}
 			return nil
@@ -111,7 +104,6 @@ func TestService_ChangeStage_BoardMovesAppendToColumn(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, c.to, got.Stage)
 			assert.Equal(t, nextPos, got.Position)
-			assert.Nil(t, got.Date)
 		})
 	}
 }
@@ -122,17 +114,15 @@ func TestService_ChangeStage_ReadyRequiresDuration(t *testing.T) {
 	requireInvalid(t, err, "duration")
 }
 
-func TestService_ChangeStage_RejectedFromScheduledAndDone(t *testing.T) {
-	for _, from := range []domain.Stage{domain.StageScheduled, domain.StageDone} {
-		repo, _ := actionRepo(domain.Action{Stage: from, DurationMins: dur(30), Date: at(9)})
-		_, err := newProjectService(repo).ChangeActionStage(domain.ChangeStageRequest{ID: 10, UserID: 1, Stage: domain.StageRefine})
-		requireInvalid(t, err, string(from))
-	}
+func TestService_ChangeStage_RejectedFromDone(t *testing.T) {
+	repo, _ := actionRepo(domain.Action{Stage: domain.StageDone, DurationMins: dur(30)})
+	_, err := newProjectService(repo).ChangeActionStage(domain.ChangeStageRequest{ID: 10, UserID: 1, Stage: domain.StageRefine})
+	requireInvalid(t, err, string(domain.StageDone))
 }
 
 func TestService_ChangeStage_RejectsNonBoardTarget(t *testing.T) {
 	repo, _ := actionRepo(domain.Action{Stage: domain.StageReady, DurationMins: dur(30)})
-	_, err := newProjectService(repo).ChangeActionStage(domain.ChangeStageRequest{ID: 10, UserID: 1, Stage: domain.StageScheduled})
+	_, err := newProjectService(repo).ChangeActionStage(domain.ChangeStageRequest{ID: 10, UserID: 1, Stage: domain.StageDone})
 	requireInvalid(t, err, "stage")
 }
 
@@ -148,89 +138,15 @@ func TestService_ChangeStage_NotFound(t *testing.T) {
 	assert.True(t, errors.Is(err, gorm.ErrRecordNotFound))
 }
 
-// --- ScheduleAction ---
-
-func TestService_Schedule_FromReady(t *testing.T) {
-	repo, _ := actionRepo(domain.Action{Stage: domain.StageReady, DurationMins: dur(30)})
-	local := time.Date(2026, 10, 17, 9, 0, 0, 0, time.FixedZone("BST", 3600))
-	got, err := newProjectService(repo).ScheduleAction(domain.ScheduleActionRequest{ID: 10, UserID: 1, Date: &local})
-	require.NoError(t, err)
-	assert.Equal(t, domain.StageScheduled, got.Stage)
-	require.NotNil(t, got.Date)
-	assert.True(t, got.Date.Equal(local))
-	assert.Equal(t, time.UTC, got.Date.Location(), "stored as UTC")
-}
-
-func TestService_Schedule_RejectedOutsideReady(t *testing.T) {
-	for _, from := range []domain.Stage{domain.StageBraindump, domain.StageRefine, domain.StageScheduled, domain.StageDone} {
-		repo, _ := actionRepo(domain.Action{Stage: from, DurationMins: dur(30)})
-		_, err := newProjectService(repo).ScheduleAction(domain.ScheduleActionRequest{ID: 10, UserID: 1, Date: at(9)})
-		requireInvalid(t, err, "schedule")
-	}
-}
-
-func TestService_Schedule_RequiresDate(t *testing.T) {
-	repo, _ := actionRepo(domain.Action{Stage: domain.StageReady, DurationMins: dur(30)})
-	_, err := newProjectService(repo).ScheduleAction(domain.ScheduleActionRequest{ID: 10, UserID: 1})
-	requireInvalid(t, err, "date")
-}
-
-// --- MoveAction ---
-
-func TestService_Move_ChangesDate(t *testing.T) {
-	repo, _ := actionRepo(domain.Action{Stage: domain.StageScheduled, DurationMins: dur(30), Date: at(9)})
-	got, err := newProjectService(repo).MoveAction(domain.MoveActionRequest{ID: 10, UserID: 1, Date: at(14)})
-	require.NoError(t, err)
-	assert.Equal(t, domain.StageScheduled, got.Stage)
-	assert.True(t, got.Date.Equal(*at(14)))
-}
-
-func TestService_Move_RejectedUnlessScheduled(t *testing.T) {
-	for _, from := range []domain.Stage{domain.StageReady, domain.StageDone} {
-		repo, _ := actionRepo(domain.Action{Stage: from, DurationMins: dur(30)})
-		_, err := newProjectService(repo).MoveAction(domain.MoveActionRequest{ID: 10, UserID: 1, Date: at(14)})
-		requireInvalid(t, err, "move")
-	}
-}
-
-// --- UnscheduleAction ---
-
-func TestService_Unschedule_BackToReady(t *testing.T) {
-	repo, _ := actionRepo(domain.Action{Stage: domain.StageScheduled, DurationMins: dur(30), Date: at(9)})
-	got, err := newProjectService(repo).UnscheduleAction(domain.UnscheduleActionRequest{ID: 10, UserID: 1})
-	require.NoError(t, err)
-	assert.Equal(t, domain.StageReady, got.Stage)
-	assert.Nil(t, got.Date)
-	assert.Equal(t, nextPos, got.Position)
-}
-
-func TestService_Unschedule_RejectedUnlessScheduled(t *testing.T) {
-	for _, from := range []domain.Stage{domain.StageReady, domain.StageDone} {
-		repo, _ := actionRepo(domain.Action{Stage: from, DurationMins: dur(30)})
-		_, err := newProjectService(repo).UnscheduleAction(domain.UnscheduleActionRequest{ID: 10, UserID: 1})
-		requireInvalid(t, err, "unschedule")
-	}
-}
-
 // --- CompleteAction ---
 
-func TestService_Complete_FromBoardStages_StaysUndated(t *testing.T) {
+func TestService_Complete_FromBoardStages(t *testing.T) {
 	for _, from := range []domain.Stage{domain.StageBraindump, domain.StageRefine, domain.StageReady} {
 		repo, _ := actionRepo(domain.Action{Stage: from})
 		got, err := newProjectService(repo).CompleteAction(domain.CompleteActionRequest{ID: 10, UserID: 1})
 		require.NoError(t, err)
 		assert.Equal(t, domain.StageDone, got.Stage)
-		assert.Nil(t, got.Date)
 	}
-}
-
-func TestService_Complete_FromScheduled_KeepsDate(t *testing.T) {
-	repo, _ := actionRepo(domain.Action{Stage: domain.StageScheduled, DurationMins: dur(30), Date: at(9)})
-	got, err := newProjectService(repo).CompleteAction(domain.CompleteActionRequest{ID: 10, UserID: 1})
-	require.NoError(t, err)
-	assert.Equal(t, domain.StageDone, got.Stage)
-	require.NotNil(t, got.Date)
-	assert.True(t, got.Date.Equal(*at(9)))
 }
 
 func TestService_Complete_SetsCompletedAt(t *testing.T) {
@@ -260,14 +176,12 @@ func TestService_Complete_AlreadyDoneRejected(t *testing.T) {
 
 func TestService_Reopen_Outcomes(t *testing.T) {
 	cases := []struct {
-		name     string
-		action   domain.Action
-		want     domain.Stage
-		wantDate bool
+		name   string
+		action domain.Action
+		want   domain.Stage
 	}{
-		{"with date -> scheduled", domain.Action{Stage: domain.StageDone, DurationMins: dur(30), Date: at(9), CompletedAt: at(10)}, domain.StageScheduled, true},
-		{"duration only -> ready", domain.Action{Stage: domain.StageDone, DurationMins: dur(30), CompletedAt: at(10)}, domain.StageReady, false},
-		{"neither -> refine", domain.Action{Stage: domain.StageDone, CompletedAt: at(10)}, domain.StageRefine, false},
+		{"with duration -> ready", domain.Action{Stage: domain.StageDone, DurationMins: dur(30), CompletedAt: at(10)}, domain.StageReady},
+		{"without duration -> refine", domain.Action{Stage: domain.StageDone, CompletedAt: at(10)}, domain.StageRefine},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -275,7 +189,7 @@ func TestService_Reopen_Outcomes(t *testing.T) {
 			got, err := newProjectService(repo).ReopenAction(domain.ReopenActionRequest{ID: 10, UserID: 1})
 			require.NoError(t, err)
 			assert.Equal(t, c.want, got.Stage)
-			assert.Equal(t, c.wantDate, got.Date != nil)
+			assert.Equal(t, nextPos, got.Position, "end of the column")
 			assert.Nil(t, got.CompletedAt)
 		})
 	}
@@ -311,18 +225,22 @@ func TestService_BreakDown_ChildrenLandInRefine(t *testing.T) {
 	assert.Len(t, resp.Actions, 2)
 }
 
-func TestService_BreakDown_RejectedFromScheduledAndDone(t *testing.T) {
-	for _, from := range []domain.Stage{domain.StageScheduled, domain.StageDone} {
-		repo, _ := actionRepo(domain.Action{Stage: from, DurationMins: dur(30), Date: at(9)})
-		called := false
-		repo.ReplaceWithActionsFunc = func(uint, uint, []domain.Action) ([]domain.Action, error) {
-			called = true
-			return nil, nil
-		}
-		_, err := newProjectService(repo).BreakDownAction(domain.BreakDownActionRequest{ID: 10, UserID: 1, Titles: []string{"a", "b"}})
-		requireInvalid(t, err, "break down")
-		assert.False(t, called)
+func TestService_BreakDown_RejectedFromDone(t *testing.T) {
+	repo, _ := actionRepo(domain.Action{Stage: domain.StageDone, DurationMins: dur(30)})
+	called := false
+	repo.ReplaceWithActionsFunc = func(uint, uint, []domain.Action) ([]domain.Action, error) {
+		called = true
+		return nil, nil
 	}
+	_, err := newProjectService(repo).BreakDownAction(domain.BreakDownActionRequest{ID: 10, UserID: 1, Titles: []string{"a", "b"}})
+	requireInvalid(t, err, "break down")
+	assert.False(t, called)
+}
+
+func TestService_BreakDown_AllowedFromReady(t *testing.T) {
+	repo, _ := actionRepo(domain.Action{Stage: domain.StageReady, DurationMins: dur(30)})
+	_, err := newProjectService(repo).BreakDownAction(domain.BreakDownActionRequest{ID: 10, UserID: 1, Titles: []string{"a", "b"}})
+	require.NoError(t, err)
 }
 
 func TestService_BreakDown_NeedsTwoTitles(t *testing.T) {
@@ -333,14 +251,12 @@ func TestService_BreakDown_NeedsTwoTitles(t *testing.T) {
 
 // --- UpdateAction ---
 
-func TestService_UpdateAction_ClearingDurationRejectedWhenNeeded(t *testing.T) {
-	for _, from := range []domain.Stage{domain.StageReady, domain.StageScheduled} {
-		repo, _ := actionRepo(domain.Action{Stage: from, DurationMins: dur(30)})
-		_, err := newProjectService(repo).UpdateAction(domain.UpdateActionRequest{
-			ID: 10, UserID: 1, DurationMins: domain.NullableInt{Set: true},
-		})
-		requireInvalid(t, err, "duration")
-	}
+func TestService_UpdateAction_ClearingDurationRejectedInReady(t *testing.T) {
+	repo, _ := actionRepo(domain.Action{Stage: domain.StageReady, DurationMins: dur(30)})
+	_, err := newProjectService(repo).UpdateAction(domain.UpdateActionRequest{
+		ID: 10, UserID: 1, DurationMins: domain.NullableInt{Set: true},
+	})
+	requireInvalid(t, err, "duration")
 }
 
 func TestService_UpdateAction_ClearingDurationAllowedElsewhere(t *testing.T) {
@@ -433,21 +349,6 @@ func TestService_CreateAction_UnknownProject(t *testing.T) {
 }
 
 // --- Reads ---
-
-func TestService_GetScheduledActions_TrimsProject(t *testing.T) {
-	repo := &mocks.MockProjectRepository{
-		GetActionsInRangeFunc: func(userID uint, start, end time.Time) ([]domain.Action, error) {
-			return []domain.Action{{
-				ID: 1, Stage: domain.StageScheduled, Date: at(9),
-				Project: domain.Project{ID: 3, Title: "Garden", Color: "green", UserID: 1},
-			}}, nil
-		},
-	}
-	resp, err := newProjectService(repo).GetScheduledActions(domain.GetScheduledActionsRequest{UserID: 1})
-	require.NoError(t, err)
-	require.Len(t, resp.Actions, 1)
-	assert.Equal(t, domain.ProjectRef{ID: 3, Title: "Garden", Color: "green"}, resp.Actions[0].Project)
-}
 
 func TestService_GetReadyActions_EmptyIsNonNil(t *testing.T) {
 	repo := &mocks.MockProjectRepository{
@@ -569,7 +470,6 @@ func TestService_NewGroup_Refused(t *testing.T) {
 func TestService_CreateGroup_Refused(t *testing.T) {
 	cases := map[string]domain.Action{
 		"already in a group": {Stage: domain.StageRefine, GroupID: gid(2)},
-		"scheduled":          {Stage: domain.StageScheduled, DurationMins: dur(30), Date: at(9)},
 		"done":               {Stage: domain.StageDone},
 	}
 	for name, a := range cases {

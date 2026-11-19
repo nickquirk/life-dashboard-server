@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"testing"
-	"time"
 
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
 	"github.com/stretchr/testify/assert"
@@ -162,9 +161,8 @@ func TestProjectRepo_DeleteProject_RemovesItsActions(t *testing.T) {
 	repo, db := newProjectRepo(t)
 	p := seedProject(t, db, domain.Project{})
 	other := seedProject(t, db, domain.Project{Title: "Other"})
-	date := time.Date(2026, 10, 17, 9, 0, 0, 0, time.UTC)
 	seedAction(t, db, domain.Action{ProjectID: p.ID})
-	seedAction(t, db, domain.Action{ProjectID: p.ID, Stage: domain.StageScheduled, Date: &date, DurationMins: ptrInt(30)})
+	seedAction(t, db, domain.Action{ProjectID: p.ID, Stage: domain.StageReady, DurationMins: ptrInt(30)})
 	kept := seedAction(t, db, domain.Action{ProjectID: other.ID})
 
 	require.NoError(t, repo.DeleteProject(testUserID, p.ID))
@@ -172,9 +170,6 @@ func TestProjectRepo_DeleteProject_RemovesItsActions(t *testing.T) {
 	assert.Equal(t, int64(1), actionCount(t, db))
 	_, err := repo.GetActionByID(testUserID, kept.ID)
 	assert.NoError(t, err)
-	inRange, err := repo.GetActionsInRange(testUserID, date.Add(-time.Hour), date.Add(time.Hour))
-	require.NoError(t, err)
-	assert.Empty(t, inRange)
 }
 
 func TestProjectRepo_DeleteProject_WrongUserChangesNothing(t *testing.T) {
@@ -213,19 +208,6 @@ func TestProjectRepo_UpdateAction_WrongUser(t *testing.T) {
 	assert.True(t, errors.Is(err, gorm.ErrRecordNotFound))
 }
 
-func TestProjectRepo_UpdateAction_ClearsDate(t *testing.T) {
-	repo, db := newProjectRepo(t)
-	p := seedProject(t, db, domain.Project{})
-	date := time.Date(2026, 10, 17, 9, 0, 0, 0, time.UTC)
-	a := seedAction(t, db, domain.Action{ProjectID: p.ID, Stage: domain.StageScheduled, Date: &date})
-
-	require.NoError(t, repo.UpdateAction(testUserID, a.ID, map[string]interface{}{"stage": domain.StageReady, "date": nil}))
-	got, err := repo.GetActionByID(testUserID, a.ID)
-	require.NoError(t, err)
-	assert.Nil(t, got.Date)
-	assert.Equal(t, domain.StageReady, got.Stage)
-}
-
 func TestProjectRepo_GetActionsByProjectID_OrderAndScope(t *testing.T) {
 	repo, db := newProjectRepo(t)
 	p := seedProject(t, db, domain.Project{})
@@ -254,33 +236,6 @@ func TestProjectRepo_GetActionsByProjectID_EmptyIsNonNil(t *testing.T) {
 	got, err := repo.GetActionsByProjectID(testUserID, p.ID)
 	require.NoError(t, err)
 	assert.NotNil(t, got)
-}
-
-func TestProjectRepo_GetActionsInRange_BoundariesAndProject(t *testing.T) {
-	repo, db := newProjectRepo(t)
-	p := seedProject(t, db, domain.Project{Title: "Garden", Color: "green"})
-	archived := seedProject(t, db, domain.Project{Title: "Old", Color: "pink", IsArchived: true})
-	start := time.Date(2026, 10, 12, 0, 0, 0, 0, time.UTC)
-	end := time.Date(2026, 10, 18, 23, 59, 59, 0, time.UTC)
-	before := start.Add(-time.Second)
-	after := end.Add(time.Second)
-	onStart, onEnd := start, end
-
-	seedAction(t, db, domain.Action{ProjectID: p.ID, Stage: domain.StageScheduled, Date: &before})
-	a1 := seedAction(t, db, domain.Action{ProjectID: p.ID, Stage: domain.StageScheduled, Date: &onStart})
-	a2 := seedAction(t, db, domain.Action{ProjectID: archived.ID, Stage: domain.StageDone, Date: &onEnd})
-	seedAction(t, db, domain.Action{ProjectID: p.ID, Stage: domain.StageScheduled, Date: &after})
-	seedAction(t, db, domain.Action{ProjectID: p.ID}) // undated
-	otherP := seedProject(t, db, domain.Project{UserID: otherProjectUserID})
-	seedAction(t, db, domain.Action{UserID: otherProjectUserID, ProjectID: otherP.ID, Stage: domain.StageScheduled, Date: &onStart})
-
-	got, err := repo.GetActionsInRange(testUserID, start, end)
-	require.NoError(t, err)
-	require.Len(t, got, 2)
-	assert.Equal(t, a1.ID, got[0].ID)
-	assert.Equal(t, "Garden", got[0].Project.Title)
-	assert.Equal(t, a2.ID, got[1].ID, "archived projects' actions stay on the calendar")
-	assert.Equal(t, "pink", got[1].Project.Color)
 }
 
 func TestProjectRepo_GetReadyActions_SkipsArchivedAndOtherStages(t *testing.T) {

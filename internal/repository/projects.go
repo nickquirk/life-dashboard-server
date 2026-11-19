@@ -21,7 +21,6 @@ type ProjectRepository interface {
 	CreateAction(domain.Action) (domain.Action, error)
 	GetActionByID(userID, actionID uint) (domain.Action, error)
 	GetActionsByProjectID(userID, projectID uint) ([]domain.Action, error)
-	GetActionsInRange(userID uint, start, end time.Time) ([]domain.Action, error)
 	GetReadyActions(userID uint) ([]domain.Action, error)
 	UpdateAction(userID, actionID uint, updates map[string]interface{}) error
 	NextPosition(userID, projectID uint, stage domain.Stage) (int, error)
@@ -101,7 +100,7 @@ func (r *GormProjectRepository) UpdateProject(userID, projectID uint, updates ma
 }
 
 // DeleteProject deletes the project and every action, Work session and group
-// in it, including scheduled actions, in one transaction. Actions go before
+// in it in one transaction. Actions go before
 // Work sessions so no action is left pointing at a deleted session.
 func (r *GormProjectRepository) DeleteProject(userID, projectID uint) error {
 	return r.Db.Transaction(func(tx *gorm.DB) error {
@@ -156,8 +155,7 @@ func (r *GormProjectRepository) GetActionByID(userID, actionID uint) (domain.Act
 	return action, nil
 }
 
-// GetActionsByProjectID returns a project's whole board. Board stages have no
-// date, so they sort by position; scheduled and done sort by date.
+// GetActionsByProjectID returns a project's whole board, sorted by position.
 func (r *GormProjectRepository) GetActionsByProjectID(userID, projectID uint) ([]domain.Action, error) {
 	if _, err := r.GetProjectByID(userID, projectID); err != nil {
 		return nil, err
@@ -165,18 +163,7 @@ func (r *GormProjectRepository) GetActionsByProjectID(userID, projectID uint) ([
 	actions := make([]domain.Action, 0)
 	err := r.Db.
 		Where("project_id = ? AND user_id = ?", projectID, userID).
-		Order("date ASC").Order("position ASC").Order("updated_at ASC").Order("id ASC").
-		Find(&actions).Error
-	return actions, err
-}
-
-// GetActionsInRange returns dated actions (scheduled, or done after being
-// scheduled) whose start falls in [start, end], including archived projects'.
-func (r *GormProjectRepository) GetActionsInRange(userID uint, start, end time.Time) ([]domain.Action, error) {
-	actions := make([]domain.Action, 0)
-	err := r.Db.Preload("Project").
-		Where("user_id = ? AND date >= ? AND date <= ?", userID, start, end).
-		Order("date ASC").
+		Order("position ASC").Order("updated_at ASC").Order("id ASC").
 		Find(&actions).Error
 	return actions, err
 }

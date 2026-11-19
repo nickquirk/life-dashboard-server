@@ -115,20 +115,6 @@ func (r *ReorderActionsRequest) Validate() error {
 	return nil
 }
 
-func (r *ScheduleActionRequest) Validate() error {
-	if r.Date == nil || r.Date.IsZero() {
-		return fmt.Errorf("%w: date is required", ErrInvalidInput)
-	}
-	return nil
-}
-
-func (r *MoveActionRequest) Validate() error {
-	if r.Date == nil || r.Date.IsZero() {
-		return fmt.Errorf("%w: date is required", ErrInvalidInput)
-	}
-	return nil
-}
-
 func (r *BreakDownActionRequest) Validate() error {
 	if len(r.Titles) < minBreakDownTitles {
 		return fmt.Errorf("%w: break down needs at least %d titles", ErrInvalidInput, minBreakDownTitles)

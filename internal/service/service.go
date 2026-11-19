@@ -75,13 +75,9 @@ type Service interface {
 	// ------ Actions ---------
 	CreateAction(req domain.CreateActionRequest) (domain.Action, error)
 	GetActions(req domain.GetActionsRequest) (domain.GetActionsResponse, error)
-	GetScheduledActions(req domain.GetScheduledActionsRequest) (domain.GetActionsWithProjectResponse, error)
 	GetReadyActions(req domain.GetReadyActionsRequest) (domain.GetActionsWithProjectResponse, error)
 	UpdateAction(req domain.UpdateActionRequest) (domain.Action, error)
 	ChangeActionStage(req domain.ChangeStageRequest) (domain.Action, error)
-	ScheduleAction(req domain.ScheduleActionRequest) (domain.Action, error)
-	MoveAction(req domain.MoveActionRequest) (domain.Action, error)
-	UnscheduleAction(req domain.UnscheduleActionRequest) (domain.Action, error)
 	CompleteAction(req domain.CompleteActionRequest) (domain.Action, error)
 	ReopenAction(req domain.ReopenActionRequest) (domain.Action, error)
 	BreakDownAction(req domain.BreakDownActionRequest) (domain.GetActionsResponse, error)

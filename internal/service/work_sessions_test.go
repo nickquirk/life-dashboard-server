@@ -202,9 +202,9 @@ func TestService_CompleteAction_InWorkSession(t *testing.T) {
 }
 
 func TestService_CompleteAction_InWorkSession_OnlyFromReady(t *testing.T) {
-	for _, stage := range []domain.Stage{domain.StageBraindump, domain.StageRefine, domain.StageScheduled} {
+	for _, stage := range []domain.Stage{domain.StageBraindump, domain.StageRefine} {
 		t.Run(string(stage), func(t *testing.T) {
-			repo, _ := actionRepo(domain.Action{Stage: stage, DurationMins: dur(30), Date: at(9)})
+			repo, _ := actionRepo(domain.Action{Stage: stage, DurationMins: dur(30)})
 			repo.CompleteActionInWorkSessionFunc = func(uint, uint, uint) (domain.Action, error) {
 				t.Fatal("should not reach the repository")
 				return domain.Action{}, nil

@@ -16,23 +16,14 @@ import (
 // per-verb effects below, this table is the lifecycle:
 //
 //	ChangeStage  braindump ⇄ refine ⇄ ready   entering ready needs a duration
-//	Schedule     ready → scheduled           sets the date
-//	Move         scheduled → scheduled       changes the date
-//	Unschedule   scheduled → ready           clears the date
-//	Complete     any but done → done         keeps the date if it has one
-//	Reopen       done → scheduled | ready | refine
+//	Complete     any but done → done
+//	Reopen       done → ready | refine
 //	BreakDown    braindump/refine/ready → several new actions in refine
-//
-// Invariant: date is set ⇔ stage is scheduled, or stage is done and the
-// action was completed while scheduled.
 
 type actionVerb string
 
 const (
 	verbChangeStage actionVerb = "change the stage of"
-	verbSchedule    actionVerb = "schedule"
-	verbMove        actionVerb = "move"
-	verbUnschedule  actionVerb = "unschedule"
 	verbComplete    actionVerb = "complete"
 	verbReopen      actionVerb = "reopen"
 	verbBreakDown   actionVerb = "break down"
@@ -40,10 +31,7 @@ const (
 
 var verbAllowedFrom = map[actionVerb][]domain.Stage{
 	verbChangeStage: {domain.StageBraindump, domain.StageRefine, domain.StageReady},
-	verbSchedule:    {domain.StageReady},
-	verbMove:        {domain.StageScheduled},
-	verbUnschedule:  {domain.StageScheduled},
-	verbComplete:    {domain.StageBraindump, domain.StageRefine, domain.StageReady, domain.StageScheduled},
+	verbComplete:    {domain.StageBraindump, domain.StageRefine, domain.StageReady},
 	verbReopen:      {domain.StageDone},
 	verbBreakDown:   {domain.StageBraindump, domain.StageRefine, domain.StageReady},
 }
@@ -59,19 +47,15 @@ func checkVerb(a domain.Action, v actionVerb) error {
 
 // needsDuration reports whether an action in stage s must have a duration.
 func needsDuration(s domain.Stage) bool {
-	return s == domain.StageReady || s == domain.StageScheduled
+	return s == domain.StageReady
 }
 
 // reopenStage is where a done action goes when it's unticked.
 func reopenStage(a domain.Action) domain.Stage {
-	switch {
-	case a.Date != nil:
-		return domain.StageScheduled
-	case a.DurationMins != nil:
+	if a.DurationMins != nil {
 		return domain.StageReady
-	default:
-		return domain.StageRefine
 	}
+	return domain.StageRefine
 }
 
 // --- Projects ---
@@ -134,14 +118,6 @@ func (s *service) GetActions(req domain.GetActionsRequest) (domain.GetActionsRes
 		return domain.GetActionsResponse{}, err
 	}
 	return domain.GetActionsResponse{Actions: actions}, nil
-}
-
-func (s *service) GetScheduledActions(req domain.GetScheduledActionsRequest) (domain.GetActionsWithProjectResponse, error) {
-	actions, err := s.projectRepo.GetActionsInRange(req.UserID, req.Start, req.End)
-	if err != nil {
-		return domain.GetActionsWithProjectResponse{}, err
-	}
-	return domain.GetActionsWithProjectResponse{Actions: withProjects(actions)}, nil
 }
 
 func (s *service) GetReadyActions(req domain.GetReadyActionsRequest) (domain.GetActionsWithProjectResponse, error) {
@@ -259,55 +235,6 @@ func (s *service) ChangeActionStage(req domain.ChangeStageRequest) (domain.Actio
 	return s.moveToColumn(current, req.Stage, nil)
 }
 
-func (s *service) ScheduleAction(req domain.ScheduleActionRequest) (domain.Action, error) {
-	if err := req.Validate(); err != nil {
-		return domain.Action{}, err
-	}
-
-	current, err := s.projectRepo.GetActionByID(req.UserID, req.ID)
-	if err != nil {
-		return domain.Action{}, err
-	}
-	if err := checkVerb(current, verbSchedule); err != nil {
-		return domain.Action{}, err
-	}
-
-	return s.applyActionUpdates(req.UserID, req.ID, map[string]interface{}{
-		"stage": domain.StageScheduled,
-		"date":  req.Date.UTC(),
-	})
-}
-
-func (s *service) MoveAction(req domain.MoveActionRequest) (domain.Action, error) {
-	if err := req.Validate(); err != nil {
-		return domain.Action{}, err
-	}
-
-	current, err := s.projectRepo.GetActionByID(req.UserID, req.ID)
-	if err != nil {
-		return domain.Action{}, err
-	}
-	if err := checkVerb(current, verbMove); err != nil {
-		return domain.Action{}, err
-	}
-
-	return s.applyActionUpdates(req.UserID, req.ID, map[string]interface{}{
-		"date": req.Date.UTC(),
-	})
-}
-
-func (s *service) UnscheduleAction(req domain.UnscheduleActionRequest) (domain.Action, error) {
-	current, err := s.projectRepo.GetActionByID(req.UserID, req.ID)
-	if err != nil {
-		return domain.Action{}, err
-	}
-	if err := checkVerb(current, verbUnschedule); err != nil {
-		return domain.Action{}, err
-	}
-
-	return s.moveToColumn(current, domain.StageReady, map[string]interface{}{"date": nil})
-}
-
 func (s *service) CompleteAction(req domain.CompleteActionRequest) (domain.Action, error) {
 	if err := req.Validate(); err != nil {
 		return domain.Action{}, err
@@ -329,8 +256,6 @@ func (s *service) CompleteAction(req domain.CompleteActionRequest) (domain.Actio
 		return s.projectRepo.CompleteActionInWorkSession(req.UserID, req.ID, *req.WorkSessionID)
 	}
 
-	// The date is left alone: a scheduled action stays on its calendar day,
-	// drawn completed; an undated one stays undated.
 	return s.applyActionUpdates(req.UserID, req.ID, map[string]interface{}{
 		"stage":        domain.StageDone,
 		"completed_at": time.Now().UTC(),
@@ -352,14 +277,8 @@ func (s *service) ReopenAction(req domain.ReopenActionRequest) (domain.Action, e
 		return domain.Action{}, err
 	}
 
-	var reopened domain.Action
-	to := reopenStage(current)
-	if to == domain.StageScheduled {
-		reopened, err = s.applyActionUpdates(req.UserID, req.ID, map[string]interface{}{"stage": to, "completed_at": nil, "work_session_id": nil})
-	} else {
-		// Unticking clears the link to the Work session it was done in
-		reopened, err = s.moveToColumn(current, to, map[string]interface{}{"completed_at": nil, "work_session_id": nil})
-	}
+	// Unticking clears the link to the Work session it was done in
+	reopened, err := s.moveToColumn(current, reopenStage(current), map[string]interface{}{"completed_at": nil, "work_session_id": nil})
 	if err != nil {
 		return domain.Action{}, err
 	}

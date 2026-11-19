@@ -7,11 +7,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
 	"github.com/nickquirk/life-dashboard-server/internal/testutil/mocks"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 )
 
@@ -103,39 +104,6 @@ var idRoutes = []idRoute{
 			m.ChangeActionStageFunc = func(req domain.ChangeStageRequest) (domain.Action, error) {
 				*id, *user = req.ID, req.UserID
 				return domain.Action{ID: req.ID, Stage: req.Stage}, err
-			}
-		},
-		wantJSON: `"stage":"ready"`,
-	},
-	{
-		name: "scheduleAction", method: http.MethodPost, body: `{"date":"2026-10-17T09:00:00Z"}`,
-		handler: func(h *Handler) http.HandlerFunc { return h.scheduleAction },
-		stub: func(m *mocks.MockService, err error, id, user *uint) {
-			m.ScheduleActionFunc = func(req domain.ScheduleActionRequest) (domain.Action, error) {
-				*id, *user = req.ID, req.UserID
-				return domain.Action{ID: req.ID, Stage: domain.StageScheduled, Date: req.Date}, err
-			}
-		},
-		wantJSON: `"date":"2026-10-17T09:00:00Z"`,
-	},
-	{
-		name: "moveAction", method: http.MethodPost, body: `{"date":"2026-10-18T14:00:00Z"}`,
-		handler: func(h *Handler) http.HandlerFunc { return h.moveAction },
-		stub: func(m *mocks.MockService, err error, id, user *uint) {
-			m.MoveActionFunc = func(req domain.MoveActionRequest) (domain.Action, error) {
-				*id, *user = req.ID, req.UserID
-				return domain.Action{ID: req.ID, Stage: domain.StageScheduled, Date: req.Date}, err
-			}
-		},
-		wantJSON: `"date":"2026-10-18T14:00:00Z"`,
-	},
-	{
-		name: "unscheduleAction", method: http.MethodPost,
-		handler: func(h *Handler) http.HandlerFunc { return h.unscheduleAction },
-		stub: func(m *mocks.MockService, err error, id, user *uint) {
-			m.UnscheduleActionFunc = func(req domain.UnscheduleActionRequest) (domain.Action, error) {
-				*id, *user = req.ID, req.UserID
-				return domain.Action{ID: req.ID, Stage: domain.StageReady}, err
 			}
 		},
 		wantJSON: `"stage":"ready"`,
@@ -384,26 +352,23 @@ func TestGetProjects_NoUser(t *testing.T) {
 
 // --- getActions ---
 
-func TestGetActions_Range(t *testing.T) {
-	var got domain.GetScheduledActionsRequest
-	svc := &mocks.MockService{
-		GetScheduledActionsFunc: func(req domain.GetScheduledActionsRequest) (domain.GetActionsWithProjectResponse, error) {
-			got = req
-			return domain.GetActionsWithProjectResponse{Actions: []domain.ActionWithProject{{
-				Action:  domain.Action{ID: 1, Stage: domain.StageScheduled},
-				Project: domain.ProjectRef{ID: 3, Title: "Garden", Color: "green"},
-			}}}, nil
-		},
-	}
+func TestGetActions_RangeNoLongerServed(t *testing.T) {
 	r := withUser(httptest.NewRequest(http.MethodGet, "/api/actions?start=2026-10-12T00:00:00Z&end=2026-10-18T23:59:59Z", nil), 1)
 	rr := httptest.NewRecorder()
-	testHandler(svc).getActions(rr, r)
+	testHandler(&mocks.MockService{}).getActions(rr, r)
+	assert.Equal(t, http.StatusBadRequest, rr.Code)
+	assert.Contains(t, rr.Body.String(), "stage=ready is required")
+}
 
-	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Contains(t, rr.Body.String(), `"project":{"id":3,"title":"Garden","color":"green"}`)
-	assert.True(t, got.Start.Equal(time.Date(2026, 10, 12, 0, 0, 0, 0, time.UTC)))
-	assert.True(t, got.End.Equal(time.Date(2026, 10, 18, 23, 59, 59, 0, time.UTC)))
-	assert.Equal(t, uint(1), got.UserID)
+func TestSchedulingRoutesRemoved(t *testing.T) {
+	t.Setenv("CLIENT_URL", "http://localhost:3000")
+	mx := chi.NewRouter()
+	require.NoError(t, GetRoutes(mx, testHandler(&mocks.MockService{})))
+	for _, verb := range []string{"schedule", "move", "unschedule"} {
+		rr := httptest.NewRecorder()
+		mx.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/api/actions/5/"+verb, nil))
+		assert.Equal(t, http.StatusNotFound, rr.Code, verb)
+	}
 }
 
 func TestGetActions_Ready(t *testing.T) {

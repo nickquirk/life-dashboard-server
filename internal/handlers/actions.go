@@ -11,10 +11,8 @@ import (
 	"github.com/nickquirk/life-dashboard-server/internal/domain"
 )
 
-// getActions serves the two cross-project reads:
-//
-//	?stage=ready            Plan sidebar: ready actions across active projects
-//	?start=…&end=… (RFC3339) calendar range, including archived projects
+// getActions serves ?stage=ready, the Plan sidebar's ready actions across
+// active projects. stage=ready is required.
 func (h *Handler) getActions(w http.ResponseWriter, r *http.Request) {
 	userID, ok := h.GetUserID(r)
 	if !ok {
@@ -22,29 +20,13 @@ func (h *Handler) getActions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	q := r.URL.Query()
-	if stage := q.Get("stage"); stage != "" {
-		if domain.Stage(stage) != domain.StageReady {
-			h.respondWithError(w, "Only stage=ready is supported", fmt.Errorf("unsupported stage %q", stage), http.StatusBadRequest, "userID", userID)
-			return
-		}
-		resp, err := h.Service.GetReadyActions(domain.GetReadyActionsRequest{UserID: userID})
-		if err != nil {
-			h.respondWithError(w, "Failed to fetch ready actions", err, http.StatusInternalServerError, "userID", userID)
-			return
-		}
-		h.respondWithJSON(w, http.StatusOK, resp, "userID", userID)
+	if stage := r.URL.Query().Get("stage"); domain.Stage(stage) != domain.StageReady {
+		h.respondWithError(w, "stage=ready is required", fmt.Errorf("unsupported stage %q", stage), http.StatusBadRequest, "userID", userID)
 		return
 	}
-
-	start, end, ok := h.parseRange(w, r, userID)
-	if !ok {
-		return
-	}
-
-	resp, err := h.Service.GetScheduledActions(domain.GetScheduledActionsRequest{UserID: userID, Start: start, End: end})
+	resp, err := h.Service.GetReadyActions(domain.GetReadyActionsRequest{UserID: userID})
 	if err != nil {
-		h.respondWithError(w, "Failed to fetch scheduled actions", err, http.StatusInternalServerError, "userID", userID)
+		h.respondWithError(w, "Failed to fetch ready actions", err, http.StatusInternalServerError, "userID", userID)
 		return
 	}
 	h.respondWithJSON(w, http.StatusOK, resp, "userID", userID)
@@ -121,79 +103,6 @@ func (h *Handler) changeActionStage(w http.ResponseWriter, r *http.Request) {
 	resp, err := h.Service.ChangeActionStage(req)
 	if err != nil {
 		h.respondWithServiceError(w, err, "Action not found", "Failed to change action stage", "userID", userID, "actionID", actionID)
-		return
-	}
-	h.respondWithJSON(w, http.StatusOK, resp, "userID", userID, "actionID", actionID)
-}
-
-func (h *Handler) scheduleAction(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.GetUserID(r)
-	if !ok {
-		h.respondWithError(w, "User not found", fmt.Errorf("user ID not in context"), http.StatusUnauthorized)
-		return
-	}
-	actionID, ok := h.parseIDParam(w, r, "id", "action", userID)
-	if !ok {
-		return
-	}
-
-	var req domain.ScheduleActionRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.respondWithError(w, "Invalid request body", err, http.StatusBadRequest, "userID", userID)
-		return
-	}
-	req.ID = actionID
-	req.UserID = userID
-
-	resp, err := h.Service.ScheduleAction(req)
-	if err != nil {
-		h.respondWithServiceError(w, err, "Action not found", "Failed to schedule action", "userID", userID, "actionID", actionID)
-		return
-	}
-	h.respondWithJSON(w, http.StatusOK, resp, "userID", userID, "actionID", actionID)
-}
-
-func (h *Handler) moveAction(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.GetUserID(r)
-	if !ok {
-		h.respondWithError(w, "User not found", fmt.Errorf("user ID not in context"), http.StatusUnauthorized)
-		return
-	}
-	actionID, ok := h.parseIDParam(w, r, "id", "action", userID)
-	if !ok {
-		return
-	}
-
-	var req domain.MoveActionRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.respondWithError(w, "Invalid request body", err, http.StatusBadRequest, "userID", userID)
-		return
-	}
-	req.ID = actionID
-	req.UserID = userID
-
-	resp, err := h.Service.MoveAction(req)
-	if err != nil {
-		h.respondWithServiceError(w, err, "Action not found", "Failed to move action", "userID", userID, "actionID", actionID)
-		return
-	}
-	h.respondWithJSON(w, http.StatusOK, resp, "userID", userID, "actionID", actionID)
-}
-
-func (h *Handler) unscheduleAction(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.GetUserID(r)
-	if !ok {
-		h.respondWithError(w, "User not found", fmt.Errorf("user ID not in context"), http.StatusUnauthorized)
-		return
-	}
-	actionID, ok := h.parseIDParam(w, r, "id", "action", userID)
-	if !ok {
-		return
-	}
-
-	resp, err := h.Service.UnscheduleAction(domain.UnscheduleActionRequest{ID: actionID, UserID: userID})
-	if err != nil {
-		h.respondWithServiceError(w, err, "Action not found", "Failed to unschedule action", "userID", userID, "actionID", actionID)
 		return
 	}
 	h.respondWithJSON(w, http.StatusOK, resp, "userID", userID, "actionID", actionID)
