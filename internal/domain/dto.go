@@ -624,6 +624,8 @@ type UnscheduleActionRequest struct {
 type CompleteActionRequest struct {
 	ID     uint `json:"-"`
 	UserID uint `json:"-"`
+	// Ticked inside this Work session, which links the action to it. Optional
+	WorkSessionID *uint `json:"workSessionId"`
 }
 
 type ReopenActionRequest struct {
@@ -732,11 +734,19 @@ type GroupRef struct {
 	Title string `json:"title"`
 }
 
+// ActionRef is the slice of an action a Work session lists under "Done here".
+type ActionRef struct {
+	ID    uint   `json:"id"`
+	Title string `json:"title"`
+}
+
 // WorkSessionWithScope is a Work session plus what the calendar draws it with.
 type WorkSessionWithScope struct {
 	WorkSession
 	Project ProjectRef `json:"project"`
 	Group   *GroupRef  `json:"group"` // null for a project Work session
+	// Actions ticked off inside it, in the order they were done. Never null
+	DoneActions []ActionRef `json:"doneActions"`
 }
 
 type CreateWorkSessionRequest struct {

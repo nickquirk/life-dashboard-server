@@ -223,6 +223,9 @@ type Action struct {
 	Date         *time.Time `gorm:"index:idx_actions_user_date,priority:2;type:datetime" json:"date"`      // Scheduled start; set only when scheduled, or done after being scheduled
 	Position     int        `gorm:"not null;default:0;index:idx_actions_board,priority:3" json:"position"` // Order within its stage
 	CompletedAt  *time.Time `gorm:"type:datetime" json:"completedAt"`                                      // When last completed; set exactly when stage is done
+	// The Work session it was ticked off in. nil when ticked on the board, and
+	// whenever it isn't done: reopening clears it
+	WorkSessionID *uint `gorm:"index" json:"workSessionId"`
 }
 
 // ActionGroup collects actions on a project board. It lasts until it's
@@ -260,4 +263,7 @@ type WorkSession struct {
 	Date         time.Time  `gorm:"index:idx_ws_user_date,priority:2;type:datetime" json:"date"`
 	DurationMins int        `gorm:"not null" json:"durationMins"`
 	CompletedAt  *time.Time `gorm:"type:datetime" json:"completedAt"` // set exactly when ticked
+
+	// Actions ticked off inside it; preloaded for reads, exposed as ActionRefs
+	DoneActions []Action `gorm:"foreignKey:WorkSessionID" json:"-"`
 }

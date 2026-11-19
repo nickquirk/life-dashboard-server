@@ -192,6 +192,13 @@ func (r *UpdateGroupRequest) Validate() error {
 	return nil
 }
 
+func (r *CompleteActionRequest) Validate() error {
+	if r.WorkSessionID != nil && *r.WorkSessionID == 0 {
+		return fmt.Errorf("%w: workSessionId must be a positive ID", ErrInvalidInput)
+	}
+	return nil
+}
+
 func (r *CreateWorkSessionRequest) Validate() error {
 	if r.Date == nil || r.Date.IsZero() {
 		return fmt.Errorf("%w: date is required", ErrInvalidInput)

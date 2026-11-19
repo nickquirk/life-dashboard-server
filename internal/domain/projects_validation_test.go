@@ -81,6 +81,9 @@ func TestProjectsValidation(t *testing.T) {
 		{"set group zero", &SetActionGroupRequest{GroupID: ptrUint(0)}, "groupId"},
 		{"create action zero group", &CreateActionRequest{Title: "x", GroupID: ptrUint(0)}, "groupId"},
 
+		{"complete action plain ok", &CompleteActionRequest{}, ""},
+		{"complete action in work session ok", &CompleteActionRequest{WorkSessionID: ptrUint(4)}, ""},
+		{"complete action zero work session", &CompleteActionRequest{WorkSessionID: ptrUint(0)}, "workSessionId"},
 		{"create work session ok", &CreateWorkSessionRequest{Date: &now, DurationMins: 60}, ""},
 		{"create work session with group", &CreateWorkSessionRequest{Date: &now, DurationMins: 60, GroupID: ptrUint(3)}, ""},
 		{"create work session no date", &CreateWorkSessionRequest{DurationMins: 60}, "date is required"},
