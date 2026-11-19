@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -11,6 +12,7 @@ import (
 	"github.com/nickquirk/life-dashboard-server/internal/testutil/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 func scoped(id uint) domain.WorkSessionWithScope {
@@ -152,3 +154,65 @@ func TestGetWorkSessions_NoUser(t *testing.T) {
 	testHandler(&mocks.MockService{}).getWorkSessions(rr, httptest.NewRequest(http.MethodGet, "/api/work-sessions", nil))
 	assert.Equal(t, http.StatusUnauthorized, rr.Code)
 }
+
+func TestCompleteAction_OptionalWorkSession(t *testing.T) {
+	cases := []struct {
+		name     string
+		body     string
+		svcErr   error
+		wantCode int
+		wantWS   *uint
+	}{
+		{"no body", "", nil, http.StatusOK, nil},
+		{"empty object", "{}", nil, http.StatusOK, nil},
+		{"in a Work session", `{"workSessionId":20}`, nil, http.StatusOK, ptrU(20)},
+		{"bad body", `{"workSessionId":`, nil, http.StatusBadRequest, nil},
+		{"out of scope", `{"workSessionId":20}`, fmt.Errorf("%w: This action isn't part of this Work session", domain.ErrInvalidInput), http.StatusBadRequest, ptrU(20)},
+		{"unknown session", `{"workSessionId":99}`, gorm.ErrRecordNotFound, http.StatusNotFound, ptrU(99)},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			var got *domain.CompleteActionRequest
+			svc := &mocks.MockService{
+				CompleteActionFunc: func(req domain.CompleteActionRequest) (domain.Action, error) {
+					got = &req
+					return domain.Action{ID: req.ID, Stage: domain.StageDone, WorkSessionID: req.WorkSessionID}, c.svcErr
+				},
+			}
+			r := withUser(httptest.NewRequest(http.MethodPost, "/api/actions/10/complete", bytes.NewReader([]byte(c.body))), 1)
+			r = withChi(r, "id", "10")
+			rr := httptest.NewRecorder()
+			testHandler(svc).completeAction(rr, r)
+
+			require.Equal(t, c.wantCode, rr.Code, rr.Body.String())
+			if c.name == "bad body" {
+				assert.Nil(t, got)
+				return
+			}
+			require.NotNil(t, got)
+			assert.Equal(t, uint(10), got.ID)
+			assert.Equal(t, c.wantWS, got.WorkSessionID)
+			if c.wantCode == http.StatusOK && c.wantWS != nil {
+				assert.Contains(t, rr.Body.String(), `"workSessionId":20`)
+			}
+		})
+	}
+}
+
+func TestWorkSessionReads_IncludeDoneActions(t *testing.T) {
+	svc := &mocks.MockService{
+		GetWorkSessionsFunc: func(req domain.GetWorkSessionsRequest) (domain.GetWorkSessionsResponse, error) {
+			ws := scoped(1)
+			ws.DoneActions = []domain.ActionRef{{ID: 4, Title: "pot"}}
+			return domain.GetWorkSessionsResponse{WorkSessions: []domain.WorkSessionWithScope{ws}}, nil
+		},
+	}
+	r := withUser(httptest.NewRequest(http.MethodGet, "/api/work-sessions?start=2026-11-16T00:00:00Z&end=2026-11-22T23:59:59Z", nil), 1)
+	rr := httptest.NewRecorder()
+	testHandler(svc).getWorkSessions(rr, r)
+
+	require.Equal(t, http.StatusOK, rr.Code)
+	assert.Contains(t, rr.Body.String(), `"doneActions":[{"id":4,"title":"pot"}]`)
+}
+
+func ptrU(v uint) *uint { return &v }

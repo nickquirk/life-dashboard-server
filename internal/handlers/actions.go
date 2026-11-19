@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -208,9 +210,18 @@ func (h *Handler) completeAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.Service.CompleteAction(domain.CompleteActionRequest{ID: actionID, UserID: userID})
+	// The body is optional: {"workSessionId": n} ticks it off inside that Work
+	// session. No body is a plain complete
+	req := domain.CompleteActionRequest{}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil && !errors.Is(err, io.EOF) {
+		h.respondWithError(w, "Invalid request body", err, http.StatusBadRequest, "userID", userID)
+		return
+	}
+	req.ID, req.UserID = actionID, userID
+
+	resp, err := h.Service.CompleteAction(req)
 	if err != nil {
-		h.respondWithServiceError(w, err, "Action not found", "Failed to complete action", "userID", userID, "actionID", actionID)
+		h.respondWithServiceError(w, err, "Action or Work session not found", "Failed to complete action", "userID", userID, "actionID", actionID)
 		return
 	}
 	h.respondWithJSON(w, http.StatusOK, resp, "userID", userID, "actionID", actionID)
