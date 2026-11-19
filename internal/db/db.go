@@ -68,22 +68,34 @@ func InitDb() (*gorm.DB, error) {
 	return db, nil
 }
 
-func InitMigration(db *gorm.DB) {
-	db.AutoMigrate(domain.User{})
-	db.AutoMigrate(domain.Session{})
-	db.AutoMigrate(domain.TaskList{})
-	db.AutoMigrate(domain.Task{})
-	db.AutoMigrate(domain.Zone{})
-	db.AutoMigrate(domain.UserSettings{})
-	db.AutoMigrate(domain.Feedback{})
-	db.AutoMigrate(domain.Scratchpad{})
-	db.AutoMigrate(domain.Routine{})
-	db.AutoMigrate(domain.RoutineInstance{})
-	db.AutoMigrate(&domain.Note{}, &domain.NoteItem{})
-	db.AutoMigrate(&domain.Project{}, &domain.Action{}, &domain.ActionGroup{}, &domain.WorkSession{})
+// InitMigration migrates the schema. It stops at the first failure so a
+// half-migrated schema fails the start instead of serving 500s.
+func InitMigration(db *gorm.DB) error {
+	steps := []struct {
+		name   string
+		models []any
+	}{
+		{"users", []any{&domain.User{}}},
+		{"sessions", []any{&domain.Session{}}},
+		{"task lists", []any{&domain.TaskList{}}},
+		{"tasks", []any{&domain.Task{}}},
+		{"zones", []any{&domain.Zone{}}},
+		{"user settings", []any{&domain.UserSettings{}}},
+		{"feedback", []any{&domain.Feedback{}}},
+		{"scratchpads", []any{&domain.Scratchpad{}}},
+		{"routines", []any{&domain.Routine{}}},
+		{"routine instances", []any{&domain.RoutineInstance{}}},
+		{"notes", []any{&domain.Note{}, &domain.NoteItem{}}},
+		{"projects", []any{&domain.Project{}, &domain.Action{}, &domain.ActionGroup{}, &domain.WorkSession{}}},
+	}
+	for _, s := range steps {
+		if err := db.AutoMigrate(s.models...); err != nil {
+			return fmt.Errorf("migrate %s: %w", s.name, err)
+		}
+	}
 
 	if err := BackfillActionCompletedAt(db); err != nil {
-		slog.Warn("failed to backfill actions.completed_at", "error", err)
+		return fmt.Errorf("backfill actions.completed_at: %w", err)
 	}
 
 	// The single-session app_refresh_token column on users was replaced by the
@@ -91,14 +103,13 @@ func InitMigration(db *gorm.DB) {
 	// Existing users will need to re-authenticate after this deploy.
 	if db.Migrator().HasColumn(&domain.User{}, "app_refresh_token") {
 		if err := db.Migrator().DropColumn(&domain.User{}, "app_refresh_token"); err != nil {
-			slog.Warn("failed to drop deprecated app_refresh_token column", "error", err)
+			return fmt.Errorf("drop users.app_refresh_token: %w", err)
 		}
 	}
 
 	// One-time migration: target_total_mins -> goal_type/goal_target.
 	// Safe to run repeatedly because the predicate excludes already-migrated rows.
 	if db.Migrator().HasColumn(&domain.Routine{}, "target_total_mins") {
-		// Backfill existing data
 		if err := db.Exec(`
         UPDATE routines
         SET goal_type = 'time', goal_target = target_total_mins
@@ -106,15 +117,14 @@ func InitMigration(db *gorm.DB) {
           AND target_total_mins > 0
           AND goal_target IS NULL
     `).Error; err != nil {
-			slog.Warn("failed to backfill goal columns", "error", err)
-			panic("failed to backfill goal columns")
-		} else {
-			// Only drop the column if the backfill didn't throw an error
-			if err := db.Migrator().DropColumn(&domain.Routine{}, "target_total_mins"); err != nil {
-				slog.Warn("failed to drop deprecated target_total_mins column", "error", err)
-			}
+			return fmt.Errorf("backfill routines goal columns: %w", err)
+		}
+		// Only drop the column once the backfill succeeded
+		if err := db.Migrator().DropColumn(&domain.Routine{}, "target_total_mins"); err != nil {
+			return fmt.Errorf("drop routines.target_total_mins: %w", err)
 		}
 	}
+	return nil
 }
 
 // BackfillActionCompletedAt fills completed_at for actions done before the

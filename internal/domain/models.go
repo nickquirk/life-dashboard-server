@@ -264,6 +264,8 @@ type WorkSession struct {
 	DurationMins int        `gorm:"not null" json:"durationMins"`
 	CompletedAt  *time.Time `gorm:"type:datetime" json:"completedAt"` // set exactly when ticked
 
-	// Actions ticked off inside it; preloaded for reads, exposed as ActionRefs
-	DoneActions []Action `gorm:"foreignKey:WorkSessionID" json:"-"`
+	// Actions ticked off inside it; preloaded for reads, exposed as ActionRefs.
+	// -:migration: no DB foreign key, which broke MySQL migration order;
+	// DeleteWorkSession clears the link itself.
+	DoneActions []Action `gorm:"foreignKey:WorkSessionID;-:migration" json:"-"`
 }

@@ -48,7 +48,9 @@ func (a *Application) Run() error {
 	// Check if we are running as a dedicated Migration Job
 	if os.Getenv("MIGRATE_ONLY") == "true" {
 		slog.Info("running database migrations", "mode", "job")
-		db.InitMigration(a.DB)
+		if err := db.InitMigration(a.DB); err != nil {
+			return err
+		}
 		slog.Info("migrations complete, exiting")
 		return nil // Exit the application, do NOT start the server
 	}
@@ -56,7 +58,9 @@ func (a *Application) Run() error {
 	// If we are not in prod auto-migrate on startup
 	if os.Getenv("ENV") != "prod" {
 		slog.Info("running database migrations", "mode", "local")
-		db.InitMigration(a.DB)
+		if err := db.InitMigration(a.DB); err != nil {
+			return err
+		}
 	} else {
 		slog.Info("skipping startup migrations", "mode", "prod")
 	}

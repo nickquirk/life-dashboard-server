@@ -102,7 +102,7 @@ func (r *GormProjectRepository) UpdateProject(userID, projectID uint, updates ma
 
 // DeleteProject deletes the project and every action, Work session and group
 // in it, including scheduled actions, in one transaction. Actions go before
-// Work sessions: actions.work_session_id is a foreign key.
+// Work sessions so no action is left pointing at a deleted session.
 func (r *GormProjectRepository) DeleteProject(userID, projectID uint) error {
 	return r.Db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Unscoped().
@@ -557,7 +557,7 @@ func (r *GormProjectRepository) UpdateWorkSession(userID, id uint, updates map[s
 }
 
 // DeleteWorkSession hard-deletes a Work session. Its actions stay done and
-// lose the link, deleted ones included (the link is a foreign key).
+// lose the link, deleted ones included (no DB foreign key does this for us).
 func (r *GormProjectRepository) DeleteWorkSession(userID, id uint) error {
 	return r.Db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Unscoped().Model(&domain.Action{}).

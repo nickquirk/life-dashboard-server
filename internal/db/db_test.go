@@ -43,3 +43,28 @@ func TestBackfillActionCompletedAt(t *testing.T) {
 	assert.True(t, get(rows[2].ID).CompletedAt.Equal(kept), "already filled is left alone")
 	assert.Nil(t, get(rows[3].ID).CompletedAt)
 }
+
+func TestInitMigration_ReturnsError(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	require.NoError(t, sqlDB.Close())
+
+	assert.ErrorContains(t, InitMigration(db), "migrate users")
+}
+
+// A DB foreign key from actions to work_sessions made MySQL migrate actions
+// before work_sessions existed, so work_sessions was never created.
+func TestInitMigration_NoWorkSessionForeignKeyOnActions(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+	require.NoError(t, InitMigration(db))
+
+	assert.True(t, db.Migrator().HasTable(&domain.WorkSession{}))
+	assert.True(t, db.Migrator().HasColumn(&domain.Action{}, "work_session_id"))
+	var ddl string
+	require.NoError(t, db.Raw(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'actions'`).Scan(&ddl).Error)
+	assert.NotContains(t, ddl, "work_sessions")
+	require.NoError(t, InitMigration(db), "second run is a no-op")
+}

@@ -245,7 +245,7 @@ func TestProjectRepo_DeleteWorkSession_KeepsActionsDone(t *testing.T) {
 	a := seedAction(t, db, domain.Action{ProjectID: p.ID, Stage: domain.StageReady})
 	_, err := repo.CompleteActionInWorkSession(testUserID, a.ID, ws.ID)
 	require.NoError(t, err)
-	// A deleted action still holds the foreign key, so its link goes too
+	// A deleted action still holds the link, so it is cleared too
 	gone := seedAction(t, db, domain.Action{ProjectID: p.ID, Stage: domain.StageDone, WorkSessionID: &ws.ID})
 	require.NoError(t, db.Delete(&gone).Error)
 
