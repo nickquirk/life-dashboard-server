@@ -498,3 +498,20 @@ func TestCreateAction_PassesGroupID(t *testing.T) {
 		assert.Equal(t, uint(7), *got)
 	}
 }
+
+func TestGetStripGroups(t *testing.T) {
+	var gotUser uint
+	svc := &mocks.MockService{
+		GetStripGroupsFunc: func(userID uint) (domain.GetGroupsResponse, error) {
+			gotUser = userID
+			return domain.GetGroupsResponse{Groups: []domain.ActionGroup{{ID: 2, Title: "Beds"}}}, nil
+		},
+	}
+	r := withUser(httptest.NewRequest(http.MethodGet, "/api/groups", nil), 1)
+	rr := httptest.NewRecorder()
+	testHandler(svc).getStripGroups(rr, r)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, uint(1), gotUser)
+	assert.Contains(t, rr.Body.String(), `"groups":[{"id":2`)
+}

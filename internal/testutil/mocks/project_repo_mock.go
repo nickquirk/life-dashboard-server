@@ -33,6 +33,7 @@ type MockProjectRepository struct {
 	SetActionGroupFunc        func(userID, actionID uint, groupID *uint) (domain.Action, error)
 	UngroupFunc               func(userID, groupID uint) error
 	ActiveGroupColorsFunc     func(userID, projectID, exceptGroupID uint) ([]string, error)
+	GetStripGroupsFunc        func(userID uint) ([]domain.ActionGroup, error)
 	GroupIsCompleteFunc       func(userID, groupID uint) (bool, error)
 
 	CreateWorkSessionFunc      func(ws domain.WorkSession) (domain.WorkSession, error)
@@ -259,4 +260,11 @@ func (m *MockProjectRepository) CompleteActionInWorkSession(userID, actionID, wo
 		return m.CompleteActionInWorkSessionFunc(userID, actionID, workSessionID)
 	}
 	return domain.Action{}, nil
+}
+
+func (m *MockProjectRepository) GetStripGroups(userID uint) ([]domain.ActionGroup, error) {
+	if m.GetStripGroupsFunc != nil {
+		return m.GetStripGroupsFunc(userID)
+	}
+	return nil, nil
 }

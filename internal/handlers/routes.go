@@ -117,6 +117,7 @@ func GetRoutes(mx *chi.Mux, h *Handler) error {
 			auth.Post("/actions/{id}/group", h.setActionGroup)
 			auth.Delete("/actions/{id}", h.deleteAction)
 
+			auth.Get("/groups", h.getStripGroups)
 			auth.Patch("/groups/{id}", h.updateGroup)
 			auth.Post("/groups/{id}/ungroup", h.ungroup)
 			// Work sessions

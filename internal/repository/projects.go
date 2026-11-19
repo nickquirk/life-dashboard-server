@@ -38,6 +38,7 @@ type ProjectRepository interface {
 	SetActionGroup(userID, actionID uint, groupID *uint) (domain.Action, error)
 	Ungroup(userID, groupID uint) error
 	ActiveGroupColors(userID, projectID, exceptGroupID uint) ([]string, error)
+	GetStripGroups(userID uint) ([]domain.ActionGroup, error)
 	GroupIsComplete(userID, groupID uint) (bool, error)
 
 	CreateWorkSession(ws domain.WorkSession) (domain.WorkSession, error)
@@ -443,13 +444,37 @@ func (r *GormProjectRepository) ActiveGroupColors(userID, projectID, exceptGroup
 		Joins("LEFT JOIN actions AS a ON a.group_id = g.id AND a.deleted_at IS NULL").
 		Where("g.user_id = ? AND g.project_id = ? AND g.id <> ? AND g.deleted_at IS NULL", userID, projectID, exceptGroupID).
 		Group("g.id, g.color, g.is_pinned").
-		Having("g.is_pinned = ? OR COUNT(a.id) = 0 OR SUM(CASE WHEN a.stage <> ? THEN 1 ELSE 0 END) > 0", true, domain.StageDone).
+		Scopes(onStrip).
 		Order("g.id ASC").
 		Pluck("g.color", &colors).Error
 	if err != nil {
 		return nil, err
 	}
 	return colors, nil
+}
+
+// onStrip keeps the groups on their board's strip: pinned, empty, or with an
+// unfinished action. It expects action_groups AS g left-joined to actions AS a,
+// grouped by the group.
+func onStrip(db *gorm.DB) *gorm.DB {
+	return db.Having("g.is_pinned = ? OR COUNT(a.id) = 0 OR SUM(CASE WHEN a.stage <> ? THEN 1 ELSE 0 END) > 0", true, domain.StageDone)
+}
+
+// GetStripGroups is every group on the strip of the user's non-archived
+// projects, in strip order (pinned first, then by creation) within each project.
+func (r *GormProjectRepository) GetStripGroups(userID uint) ([]domain.ActionGroup, error) {
+	groups := make([]domain.ActionGroup, 0)
+	err := r.Db.
+		Table("action_groups AS g").
+		Select("g.*").
+		Joins("JOIN projects AS p ON p.id = g.project_id AND p.deleted_at IS NULL AND p.is_archived = ?", false).
+		Joins("LEFT JOIN actions AS a ON a.group_id = g.id AND a.deleted_at IS NULL").
+		Where("g.user_id = ? AND g.deleted_at IS NULL", userID).
+		Group("g.id").
+		Scopes(onStrip).
+		Order("g.project_id ASC").Order("g.is_pinned DESC").Order("g.created_at ASC").Order("g.id ASC").
+		Find(&groups).Error
+	return groups, err
 }
 
 // GroupIsComplete reports whether the group has actions and all of them are

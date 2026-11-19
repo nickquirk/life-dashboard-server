@@ -74,6 +74,7 @@ type MockService struct {
 	ReorderActionsFunc        func(req domain.ReorderActionsRequest) (domain.ReorderActionsResponse, error)
 	DeleteActionFunc          func(req domain.DeleteActionRequest) (domain.DeleteActionResponse, error)
 	GetGroupsFunc             func(req domain.GetGroupsRequest) (domain.GetGroupsResponse, error)
+	GetStripGroupsFunc        func(userID uint) (domain.GetGroupsResponse, error)
 	CreateGroupFunc           func(req domain.CreateGroupRequest) (domain.CreateGroupResponse, error)
 	SetActionGroupFunc        func(req domain.SetActionGroupRequest) (domain.Action, error)
 	UpdateGroupFunc           func(req domain.UpdateGroupRequest) (domain.ActionGroup, error)
@@ -610,4 +611,11 @@ func (m *MockService) DeleteWorkSession(req domain.DeleteWorkSessionRequest) (do
 		return m.DeleteWorkSessionFunc(req)
 	}
 	return domain.DeleteWorkSessionResponse{}, nil
+}
+
+func (m *MockService) GetStripGroups(userID uint) (domain.GetGroupsResponse, error) {
+	if m.GetStripGroupsFunc != nil {
+		return m.GetStripGroupsFunc(userID)
+	}
+	return domain.GetGroupsResponse{}, nil
 }

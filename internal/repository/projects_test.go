@@ -751,3 +751,31 @@ func TestProjectRepo_GroupIsComplete(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, complete, "another user sees nothing")
 }
+
+func TestProjectRepo_GetStripGroups(t *testing.T) {
+	repo, db := newProjectRepo(t)
+	p := seedProject(t, db, domain.Project{})
+	empty := seedGroup(t, db, domain.ActionGroup{ProjectID: p.ID, Title: "empty"})
+	working := seedGroup(t, db, domain.ActionGroup{ProjectID: p.ID, Title: "working"})
+	seedAction(t, db, domain.Action{ProjectID: p.ID, GroupID: &working.ID, Stage: domain.StageDone})
+	seedAction(t, db, domain.Action{ProjectID: p.ID, GroupID: &working.ID, Stage: domain.StageReady})
+	complete := seedGroup(t, db, domain.ActionGroup{ProjectID: p.ID, Title: "complete"})
+	seedAction(t, db, domain.Action{ProjectID: p.ID, GroupID: &complete.ID, Stage: domain.StageDone})
+	pinned := seedGroup(t, db, domain.ActionGroup{ProjectID: p.ID, Title: "pinned", IsPinned: true})
+	seedAction(t, db, domain.Action{ProjectID: p.ID, GroupID: &pinned.ID, Stage: domain.StageDone})
+	archived := seedProject(t, db, domain.Project{IsArchived: true})
+	seedGroup(t, db, domain.ActionGroup{ProjectID: archived.ID, Title: "archived"})
+	otherP := seedProject(t, db, domain.Project{UserID: otherProjectUserID})
+	seedGroup(t, db, domain.ActionGroup{UserID: otherProjectUserID, ProjectID: otherP.ID, Title: "theirs"})
+
+	groups, err := repo.GetStripGroups(testUserID)
+	require.NoError(t, err)
+	titles := make([]string, 0, len(groups))
+	for _, g := range groups {
+		titles = append(titles, g.Title)
+	}
+	// Pinned first, then by creation; the unpinned complete group sits out
+	assert.Equal(t, []string{"pinned", "empty", "working"}, titles)
+	assert.Equal(t, p.ID, groups[1].ProjectID)
+	assert.Equal(t, empty.ID, groups[1].ID)
+}

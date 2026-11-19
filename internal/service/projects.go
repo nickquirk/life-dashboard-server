@@ -439,6 +439,16 @@ func (s *service) GetGroups(req domain.GetGroupsRequest) (domain.GetGroupsRespon
 	return domain.GetGroupsResponse{Groups: groups}, nil
 }
 
+// GetStripGroups is the groups on every active project's strip, for the Plan
+// sidebar, which spans projects and doesn't load each board.
+func (s *service) GetStripGroups(userID uint) (domain.GetGroupsResponse, error) {
+	groups, err := s.projectRepo.GetStripGroups(userID)
+	if err != nil {
+		return domain.GetGroupsResponse{}, err
+	}
+	return domain.GetGroupsResponse{Groups: groups}, nil
+}
+
 // NewGroup makes an empty group on the board, coloured like a new one from
 // Create group.
 func (s *service) NewGroup(req domain.NewGroupRequest) (domain.ActionGroup, error) {

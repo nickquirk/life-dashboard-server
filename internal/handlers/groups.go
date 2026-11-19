@@ -27,6 +27,21 @@ func (h *Handler) getProjectGroups(w http.ResponseWriter, r *http.Request) {
 	h.respondWithJSON(w, http.StatusOK, resp, "userID", userID, "projectID", projectID)
 }
 
+// getStripGroups is the groups on every active project's strip.
+func (h *Handler) getStripGroups(w http.ResponseWriter, r *http.Request) {
+	userID, ok := h.GetUserID(r)
+	if !ok {
+		h.respondWithError(w, "User not found", fmt.Errorf("user ID not in context"), http.StatusUnauthorized)
+		return
+	}
+	resp, err := h.Service.GetStripGroups(userID)
+	if err != nil {
+		h.respondWithError(w, "Failed to fetch groups", err, http.StatusInternalServerError, "userID", userID)
+		return
+	}
+	h.respondWithJSON(w, http.StatusOK, resp, "userID", userID)
+}
+
 func (h *Handler) newGroup(w http.ResponseWriter, r *http.Request) {
 	userID, ok := h.GetUserID(r)
 	if !ok {
