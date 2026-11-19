@@ -183,3 +183,65 @@ func TestGetWorkSessions_AddsScope(t *testing.T) {
 	assert.Equal(t, "Beds", resp.WorkSessions[1].Group.Title)
 	assert.Equal(t, "green", resp.WorkSessions[1].Project.Color)
 }
+
+// --- Ticking actions inside a Work session ---
+
+func TestService_CompleteAction_InWorkSession(t *testing.T) {
+	repo, _ := actionRepo(domain.Action{Stage: domain.StageReady, DurationMins: dur(30)})
+	var called []uint
+	repo.CompleteActionInWorkSessionFunc = func(userID, actionID, workSessionID uint) (domain.Action, error) {
+		called = []uint{userID, actionID, workSessionID}
+		return domain.Action{ID: actionID, Stage: domain.StageDone, WorkSessionID: &workSessionID}, nil
+	}
+	ws := uint(20)
+
+	got, err := newProjectService(repo).CompleteAction(domain.CompleteActionRequest{ID: 10, UserID: 1, WorkSessionID: &ws})
+	require.NoError(t, err)
+	assert.Equal(t, []uint{1, 10, 20}, called)
+	assert.Equal(t, ws, *got.WorkSessionID)
+}
+
+func TestService_CompleteAction_InWorkSession_OnlyFromReady(t *testing.T) {
+	for _, stage := range []domain.Stage{domain.StageBraindump, domain.StageRefine, domain.StageScheduled} {
+		t.Run(string(stage), func(t *testing.T) {
+			repo, _ := actionRepo(domain.Action{Stage: stage, DurationMins: dur(30), Date: at(9)})
+			repo.CompleteActionInWorkSessionFunc = func(uint, uint, uint) (domain.Action, error) {
+				t.Fatal("should not reach the repository")
+				return domain.Action{}, nil
+			}
+			ws := uint(20)
+			_, err := newProjectService(repo).CompleteAction(domain.CompleteActionRequest{ID: 10, UserID: 1, WorkSessionID: &ws})
+			requireInvalid(t, err, "Only Ready actions")
+		})
+	}
+}
+
+func TestService_CompleteAction_OnTheBoard_NoLink(t *testing.T) {
+	repo, _ := actionRepo(domain.Action{Stage: domain.StageReady, DurationMins: dur(30)})
+	repo.CompleteActionInWorkSessionFunc = func(uint, uint, uint) (domain.Action, error) {
+		t.Fatal("a board tick should not link")
+		return domain.Action{}, nil
+	}
+	got, err := newProjectService(repo).CompleteAction(domain.CompleteActionRequest{ID: 10, UserID: 1})
+	require.NoError(t, err)
+	assert.Equal(t, domain.StageDone, got.Stage)
+	assert.Nil(t, got.WorkSessionID)
+}
+
+func TestService_ReopenAction_ClearsWorkSessionLink(t *testing.T) {
+	ws := uint(20)
+	repo, _ := actionRepo(domain.Action{Stage: domain.StageDone, DurationMins: dur(30), CompletedAt: at(10), WorkSessionID: &ws})
+	got, err := newProjectService(repo).ReopenAction(domain.ReopenActionRequest{ID: 10, UserID: 1})
+	require.NoError(t, err)
+	assert.Equal(t, domain.StageReady, got.Stage)
+	assert.Nil(t, got.WorkSessionID)
+}
+
+func TestWithScope_DoneActions(t *testing.T) {
+	empty := withScope(domain.WorkSession{})
+	assert.NotNil(t, empty.DoneActions)
+	assert.Empty(t, empty.DoneActions)
+
+	got := withScope(domain.WorkSession{DoneActions: []domain.Action{{ID: 4, Title: "pot"}, {ID: 5, Title: "soil"}}})
+	assert.Equal(t, []domain.ActionRef{{ID: 4, Title: "pot"}, {ID: 5, Title: "soil"}}, got.DoneActions)
+}

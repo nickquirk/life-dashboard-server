@@ -45,6 +45,7 @@ type ProjectRepository interface {
 	GetWorkSessionsInRange(userID uint, start, end time.Time) ([]domain.WorkSession, error)
 	UpdateWorkSession(userID, id uint, updates map[string]interface{}) error
 	DeleteWorkSession(userID, id uint) error
+	CompleteActionInWorkSession(userID, actionID, workSessionID uint) (domain.Action, error)
 }
 
 type GormProjectRepository struct {
@@ -99,17 +100,18 @@ func (r *GormProjectRepository) UpdateProject(userID, projectID uint, updates ma
 }
 
 // DeleteProject deletes the project and every action, Work session and group
-// in it, including scheduled actions, in one transaction.
+// in it, including scheduled actions, in one transaction. Actions go before
+// Work sessions: actions.work_session_id is a foreign key.
 func (r *GormProjectRepository) DeleteProject(userID, projectID uint) error {
 	return r.Db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Unscoped().
 			Where("project_id = ? AND user_id = ?", projectID, userID).
-			Delete(&domain.WorkSession{}).Error; err != nil {
+			Delete(&domain.Action{}).Error; err != nil {
 			return err
 		}
 		if err := tx.Unscoped().
 			Where("project_id = ? AND user_id = ?", projectID, userID).
-			Delete(&domain.Action{}).Error; err != nil {
+			Delete(&domain.WorkSession{}).Error; err != nil {
 			return err
 		}
 		if err := tx.Unscoped().
@@ -494,10 +496,16 @@ func (r *GormProjectRepository) CreateWorkSession(ws domain.WorkSession) (domain
 	return ws, err
 }
 
-// GetWorkSessionByID returns the Work session with its Project and Group.
+// "Done here" lists actions in the order they were ticked
+func doneActionsOrder(db *gorm.DB) *gorm.DB {
+	return db.Order("completed_at ASC").Order("id ASC")
+}
+
+// GetWorkSessionByID returns the Work session with its Project, Group and
+// the actions ticked off in it.
 func (r *GormProjectRepository) GetWorkSessionByID(userID, id uint) (domain.WorkSession, error) {
 	var ws domain.WorkSession
-	if err := r.Db.Preload("Project").Preload("Group").
+	if err := r.Db.Preload("Project").Preload("Group").Preload("DoneActions", doneActionsOrder).
 		Where("id = ? AND user_id = ?", id, userID).First(&ws).Error; err != nil {
 		return domain.WorkSession{}, gorm.ErrRecordNotFound
 	}
@@ -508,7 +516,7 @@ func (r *GormProjectRepository) GetWorkSessionByID(userID, id uint) (domain.Work
 // [start, end], including archived projects', so past days don't empty.
 func (r *GormProjectRepository) GetWorkSessionsInRange(userID uint, start, end time.Time) ([]domain.WorkSession, error) {
 	sessions := make([]domain.WorkSession, 0)
-	err := r.Db.Preload("Project").Preload("Group").
+	err := r.Db.Preload("Project").Preload("Group").Preload("DoneActions", doneActionsOrder).
 		Where("user_id = ? AND date >= ? AND date <= ?", userID, start, end).
 		Order("date ASC").Order("id ASC").
 		Find(&sessions).Error
@@ -523,16 +531,54 @@ func (r *GormProjectRepository) UpdateWorkSession(userID, id uint, updates map[s
 	return result.Error
 }
 
-// DeleteWorkSession hard-deletes a Work session.
-// Slice 3: once actions link to the Work session they were done in, clear
-// that link in the same transaction.
+// DeleteWorkSession hard-deletes a Work session. Its actions stay done and
+// lose the link, deleted ones included (the link is a foreign key).
 func (r *GormProjectRepository) DeleteWorkSession(userID, id uint) error {
-	result := r.Db.Unscoped().Where("id = ? AND user_id = ?", id, userID).Delete(&domain.WorkSession{})
-	if result.Error != nil {
-		return result.Error
-	}
-	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
-	}
-	return nil
+	return r.Db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Unscoped().Model(&domain.Action{}).
+			Where("work_session_id = ? AND user_id = ?", id, userID).
+			Update("work_session_id", nil).Error; err != nil {
+			return err
+		}
+		result := tx.Unscoped().Where("id = ? AND user_id = ?", id, userID).Delete(&domain.WorkSession{})
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return gorm.ErrRecordNotFound
+		}
+		return nil
+	})
+}
+
+// CompleteActionInWorkSession ticks an action off inside a Work session and
+// links it there. The session row is locked, so a concurrent delete either
+// finishes first (not found) or waits and then clears this link too. The
+// action must be in the session's scope; the caller checks its stage.
+func (r *GormProjectRepository) CompleteActionInWorkSession(userID, actionID, workSessionID uint) (domain.Action, error) {
+	var action domain.Action
+	err := r.Db.Transaction(func(tx *gorm.DB) error {
+		var ws domain.WorkSession
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("id = ? AND user_id = ?", workSessionID, userID).First(&ws).Error; err != nil {
+			return gorm.ErrRecordNotFound
+		}
+		if err := tx.Where("id = ? AND user_id = ?", actionID, userID).First(&action).Error; err != nil {
+			return gorm.ErrRecordNotFound
+		}
+		inGroup := ws.GroupID == nil || (action.GroupID != nil && *action.GroupID == *ws.GroupID)
+		if action.ProjectID != ws.ProjectID || !inGroup {
+			return fmt.Errorf("%w: This action isn't part of this Work session", domain.ErrInvalidInput)
+		}
+		if err := tx.Model(&action).Updates(map[string]interface{}{
+			"stage":           domain.StageDone,
+			"completed_at":    time.Now().UTC(),
+			"work_session_id": workSessionID,
+		}).Error; err != nil {
+			return err
+		}
+		// Hand back the action as stored
+		return tx.First(&action, action.ID).Error
+	})
+	return action, err
 }

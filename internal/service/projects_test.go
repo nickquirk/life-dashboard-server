@@ -54,6 +54,13 @@ func actionRepo(a domain.Action) (*mocks.MockProjectRepository, *domain.Action) 
 						d := v.(time.Time)
 						cur.CompletedAt = &d
 					}
+				case "work_session_id":
+					if v == nil {
+						cur.WorkSessionID = nil
+					} else {
+						id := v.(uint)
+						cur.WorkSessionID = &id
+					}
 				case "date":
 					if v == nil {
 						cur.Date = nil

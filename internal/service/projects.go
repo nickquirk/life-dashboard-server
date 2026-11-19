@@ -309,12 +309,24 @@ func (s *service) UnscheduleAction(req domain.UnscheduleActionRequest) (domain.A
 }
 
 func (s *service) CompleteAction(req domain.CompleteActionRequest) (domain.Action, error) {
+	if err := req.Validate(); err != nil {
+		return domain.Action{}, err
+	}
 	current, err := s.projectRepo.GetActionByID(req.UserID, req.ID)
 	if err != nil {
 		return domain.Action{}, err
 	}
 	if err := checkVerb(current, verbComplete); err != nil {
 		return domain.Action{}, err
+	}
+
+	// Inside a Work session, ticking always goes from Ready to Done, and links
+	// the action to the session
+	if req.WorkSessionID != nil {
+		if current.Stage != domain.StageReady {
+			return domain.Action{}, fmt.Errorf("%w: Only Ready actions can be ticked off in a Work session", domain.ErrInvalidInput)
+		}
+		return s.projectRepo.CompleteActionInWorkSession(req.UserID, req.ID, *req.WorkSessionID)
 	}
 
 	// The date is left alone: a scheduled action stays on its calendar day,
@@ -343,9 +355,10 @@ func (s *service) ReopenAction(req domain.ReopenActionRequest) (domain.Action, e
 	var reopened domain.Action
 	to := reopenStage(current)
 	if to == domain.StageScheduled {
-		reopened, err = s.applyActionUpdates(req.UserID, req.ID, map[string]interface{}{"stage": to, "completed_at": nil})
+		reopened, err = s.applyActionUpdates(req.UserID, req.ID, map[string]interface{}{"stage": to, "completed_at": nil, "work_session_id": nil})
 	} else {
-		reopened, err = s.moveToColumn(current, to, map[string]interface{}{"completed_at": nil})
+		// Unticking clears the link to the Work session it was done in
+		reopened, err = s.moveToColumn(current, to, map[string]interface{}{"completed_at": nil, "work_session_id": nil})
 	}
 	if err != nil {
 		return domain.Action{}, err
@@ -743,6 +756,10 @@ func withScope(ws domain.WorkSession) domain.WorkSessionWithScope {
 	}
 	if ws.Group != nil {
 		out.Group = &domain.GroupRef{ID: ws.Group.ID, Title: ws.Group.Title}
+	}
+	out.DoneActions = make([]domain.ActionRef, 0, len(ws.DoneActions))
+	for _, a := range ws.DoneActions {
+		out.DoneActions = append(out.DoneActions, domain.ActionRef{ID: a.ID, Title: a.Title})
 	}
 	return out
 }

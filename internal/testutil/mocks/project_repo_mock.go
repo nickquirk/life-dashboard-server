@@ -40,6 +40,8 @@ type MockProjectRepository struct {
 	GetWorkSessionsInRangeFunc func(userID uint, start, end time.Time) ([]domain.WorkSession, error)
 	UpdateWorkSessionFunc      func(userID, id uint, updates map[string]interface{}) error
 	DeleteWorkSessionFunc      func(userID, id uint) error
+
+	CompleteActionInWorkSessionFunc func(userID, actionID, workSessionID uint) (domain.Action, error)
 }
 
 func (m *MockProjectRepository) CreateProject(p domain.Project) (domain.Project, error) {
@@ -250,4 +252,11 @@ func (m *MockProjectRepository) DeleteWorkSession(userID, id uint) error {
 		return m.DeleteWorkSessionFunc(userID, id)
 	}
 	return nil
+}
+
+func (m *MockProjectRepository) CompleteActionInWorkSession(userID, actionID, workSessionID uint) (domain.Action, error) {
+	if m.CompleteActionInWorkSessionFunc != nil {
+		return m.CompleteActionInWorkSessionFunc(userID, actionID, workSessionID)
+	}
+	return domain.Action{}, nil
 }

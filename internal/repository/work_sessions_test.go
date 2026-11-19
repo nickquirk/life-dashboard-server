@@ -154,3 +154,138 @@ func TestProjectRepo_DeleteProject_RemovesWorkSessions(t *testing.T) {
 	_, err := repo.GetWorkSessionByID(testUserID, kept.ID)
 	require.NoError(t, err)
 }
+
+func TestProjectRepo_CompleteActionInWorkSession(t *testing.T) {
+	repo, db := newProjectRepo(t)
+	p := seedProject(t, db, domain.Project{})
+	other := seedProject(t, db, domain.Project{Title: "Other"})
+	g := seedGroup(t, db, domain.ActionGroup{ProjectID: p.ID})
+	g2 := seedGroup(t, db, domain.ActionGroup{ProjectID: p.ID})
+	whole := seedWorkSession(t, db, domain.WorkSession{ProjectID: p.ID})
+	grouped := seedWorkSession(t, db, domain.WorkSession{ProjectID: p.ID, GroupID: &g.ID})
+
+	t.Run("links a ticked action and marks it done", func(t *testing.T) {
+		a := seedAction(t, db, domain.Action{ProjectID: p.ID, Stage: domain.StageReady})
+		done, err := repo.CompleteActionInWorkSession(testUserID, a.ID, whole.ID)
+		require.NoError(t, err)
+		assert.Equal(t, domain.StageDone, done.Stage)
+		require.NotNil(t, done.CompletedAt)
+		require.NotNil(t, done.WorkSessionID)
+		assert.Equal(t, whole.ID, *done.WorkSessionID)
+	})
+
+	t.Run("a project session takes grouped actions too", func(t *testing.T) {
+		a := seedAction(t, db, domain.Action{ProjectID: p.ID, GroupID: &g2.ID, Stage: domain.StageReady})
+		_, err := repo.CompleteActionInWorkSession(testUserID, a.ID, whole.ID)
+		require.NoError(t, err)
+	})
+
+	t.Run("refuses an action outside its scope and changes nothing", func(t *testing.T) {
+		for _, tc := range []struct {
+			name    string
+			action  domain.Action
+			session uint
+		}{
+			{"other project", domain.Action{ProjectID: other.ID, Stage: domain.StageReady}, whole.ID},
+			{"other group", domain.Action{ProjectID: p.ID, GroupID: &g2.ID, Stage: domain.StageReady}, grouped.ID},
+			{"ungrouped in a group session", domain.Action{ProjectID: p.ID, Stage: domain.StageReady}, grouped.ID},
+		} {
+			a := seedAction(t, db, tc.action)
+			_, err := repo.CompleteActionInWorkSession(testUserID, a.ID, tc.session)
+			assert.True(t, errors.Is(err, domain.ErrInvalidInput), tc.name)
+
+			var stored domain.Action
+			require.NoError(t, db.First(&stored, a.ID).Error)
+			assert.Equal(t, domain.StageReady, stored.Stage, tc.name)
+			assert.Nil(t, stored.WorkSessionID, tc.name)
+		}
+	})
+
+	t.Run("an unknown or another user's session is not found", func(t *testing.T) {
+		theirs := seedWorkSession(t, db, domain.WorkSession{UserID: otherProjectUserID, ProjectID: p.ID})
+		a := seedAction(t, db, domain.Action{ProjectID: p.ID, Stage: domain.StageReady})
+		for _, id := range []uint{999, theirs.ID} {
+			_, err := repo.CompleteActionInWorkSession(testUserID, a.ID, id)
+			assert.True(t, errors.Is(err, gorm.ErrRecordNotFound), "session %d", id)
+		}
+	})
+}
+
+func TestProjectRepo_WorkSessionReads_IncludeDoneActionsInOrder(t *testing.T) {
+	repo, db := newProjectRepo(t)
+	p := seedProject(t, db, domain.Project{})
+	ws := seedWorkSession(t, db, domain.WorkSession{ProjectID: p.ID})
+	later, earlier := wsDay.Add(2*time.Hour), wsDay.Add(time.Hour)
+	seedAction(t, db, domain.Action{ProjectID: p.ID, Title: "second", Stage: domain.StageDone, CompletedAt: &later, WorkSessionID: &ws.ID})
+	seedAction(t, db, domain.Action{ProjectID: p.ID, Title: "first", Stage: domain.StageDone, CompletedAt: &earlier, WorkSessionID: &ws.ID})
+	seedAction(t, db, domain.Action{ProjectID: p.ID, Title: "on the board", Stage: domain.StageDone, CompletedAt: &earlier})
+
+	titles := func(actions []domain.Action) []string {
+		out := []string{}
+		for _, a := range actions {
+			out = append(out, a.Title)
+		}
+		return out
+	}
+
+	byID, err := repo.GetWorkSessionByID(testUserID, ws.ID)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"first", "second"}, titles(byID.DoneActions))
+
+	inRange, err := repo.GetWorkSessionsInRange(testUserID, wsDay.Add(-time.Hour), wsDay.Add(time.Hour))
+	require.NoError(t, err)
+	require.Len(t, inRange, 1)
+	assert.Equal(t, []string{"first", "second"}, titles(inRange[0].DoneActions))
+}
+
+func TestProjectRepo_DeleteWorkSession_KeepsActionsDone(t *testing.T) {
+	repo, db := newProjectRepo(t)
+	p := seedProject(t, db, domain.Project{})
+	ws := seedWorkSession(t, db, domain.WorkSession{ProjectID: p.ID})
+	a := seedAction(t, db, domain.Action{ProjectID: p.ID, Stage: domain.StageReady})
+	_, err := repo.CompleteActionInWorkSession(testUserID, a.ID, ws.ID)
+	require.NoError(t, err)
+	// A deleted action still holds the foreign key, so its link goes too
+	gone := seedAction(t, db, domain.Action{ProjectID: p.ID, Stage: domain.StageDone, WorkSessionID: &ws.ID})
+	require.NoError(t, db.Delete(&gone).Error)
+
+	require.NoError(t, repo.DeleteWorkSession(testUserID, ws.ID))
+
+	var stored domain.Action
+	require.NoError(t, db.First(&stored, a.ID).Error)
+	assert.Equal(t, domain.StageDone, stored.Stage)
+	assert.Nil(t, stored.WorkSessionID)
+	var storedGone domain.Action
+	require.NoError(t, db.Unscoped().First(&storedGone, gone.ID).Error)
+	assert.Nil(t, storedGone.WorkSessionID)
+}
+
+func TestProjectRepo_Ungroup_KeepsDoneHereLinks(t *testing.T) {
+	repo, db := newProjectRepo(t)
+	p := seedProject(t, db, domain.Project{})
+	g := seedGroup(t, db, domain.ActionGroup{ProjectID: p.ID})
+	ws := seedWorkSession(t, db, domain.WorkSession{ProjectID: p.ID, GroupID: &g.ID})
+	a := seedAction(t, db, domain.Action{ProjectID: p.ID, GroupID: &g.ID, Stage: domain.StageReady})
+	_, err := repo.CompleteActionInWorkSession(testUserID, a.ID, ws.ID)
+	require.NoError(t, err)
+
+	require.NoError(t, repo.Ungroup(testUserID, g.ID))
+
+	var stored domain.Action
+	require.NoError(t, db.First(&stored, a.ID).Error)
+	require.NotNil(t, stored.WorkSessionID)
+	assert.Equal(t, ws.ID, *stored.WorkSessionID)
+}
+
+func TestProjectRepo_DeleteProject_WithDoneHereLinks(t *testing.T) {
+	repo, db := newProjectRepo(t)
+	p := seedProject(t, db, domain.Project{})
+	ws := seedWorkSession(t, db, domain.WorkSession{ProjectID: p.ID})
+	a := seedAction(t, db, domain.Action{ProjectID: p.ID, Stage: domain.StageReady})
+	_, err := repo.CompleteActionInWorkSession(testUserID, a.ID, ws.ID)
+	require.NoError(t, err)
+
+	require.NoError(t, repo.DeleteProject(testUserID, p.ID))
+	assert.Equal(t, int64(0), workSessionCount(t, db))
+	assert.Equal(t, int64(0), actionCount(t, db))
+}
