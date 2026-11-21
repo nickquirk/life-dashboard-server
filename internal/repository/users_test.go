@@ -12,7 +12,8 @@ import (
 
 func newUserRepo(t *testing.T) (*GormUserRepository, *gorm.DB) {
 	t.Helper()
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	// Foreign keys on, so a table deleted out of order fails like on MySQL
+	db, err := gorm.Open(sqlite.Open("file::memory:?_foreign_keys=on"), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
@@ -32,6 +33,7 @@ func newUserRepo(t *testing.T) (*GormUserRepository, *gorm.DB) {
 		&domain.Project{},
 		&domain.Action{},
 		&domain.ActionGroup{},
+		&domain.WorkSession{},
 	); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
@@ -91,6 +93,9 @@ func TestUserRepo_DeleteUserAndDataRemovesAllUserRows(t *testing.T) {
 	group := domain.ActionGroup{UserID: user.ID, ProjectID: project.ID, Title: "Group", Color: "blue"}
 	require.NoError(t, db.Create(&group).Error)
 	require.NoError(t, db.Create(&domain.Action{UserID: user.ID, ProjectID: project.ID, GroupID: &group.ID, Title: "Action"}).Error)
+	require.NoError(t, db.Omit("Project", "Group").Create(&domain.WorkSession{
+		UserID: user.ID, ProjectID: project.ID, GroupID: &group.ID, Date: time.Now(), DurationMins: 60,
+	}).Error)
 
 	// A row belonging to another user that must survive.
 	otherZone := domain.Zone{UserID: otherUser.ID, Label: "Keep"}
@@ -113,6 +118,7 @@ func TestUserRepo_DeleteUserAndDataRemovesAllUserRows(t *testing.T) {
 	assertGone(t, db, "project", &domain.Project{}, "user_id = ?", user.ID)
 	assertGone(t, db, "action", &domain.Action{}, "user_id = ?", user.ID)
 	assertGone(t, db, "action_group", &domain.ActionGroup{}, "user_id = ?", user.ID)
+	assertGone(t, db, "work_session", &domain.WorkSession{}, "user_id = ?", user.ID)
 
 	// The other user's data must be untouched.
 	var otherZoneCount int64
